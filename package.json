@@ -1,0 +1,30 @@
+{
+  "name": "q8",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Q8: The Omni-Model Personal Assistant - Local-First Multi-Agent AI Dashboard",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "storybook": "turbo storybook"
+  },
+  "devDependencies": {
+    "@turbo/gen": "^2.0.0",
+    "turbo": "^2.0.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "pnpm@9.1.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # GitHub MCP Server
+  github-mcp:
+    build:
+      context: ../../apps/mcp-servers/github
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ../../apps/web/.env.local
+    environment:
+      - PORT=3001
+    restart: unless-stopped
+
+  # Google Workspace MCP Server
+  google-mcp:
+    build:
+      context: ../../apps/mcp-servers/google
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    env_file:
+      - ../../apps/web/.env.local
+    environment:
+      - PORT=3002
+    restart: unless-stopped
+
+  # Spotify MCP Server
+  spotify-mcp:
+    build:
+      context: ../../apps/mcp-servers/spotify
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    env_file:
+      - ../../apps/web/.env.local
+    environment:
+      - PORT=3003
+    restart: unless-stopped
+
+networks:
+  default:
+    name: q8-network
