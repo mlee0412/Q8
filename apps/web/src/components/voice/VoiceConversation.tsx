@@ -34,9 +34,9 @@ interface VoiceConversationProps {
   userId: string;
 
   /**
-   * Conversation ID for chat
+   * Thread ID for chat
    */
-  conversationId: string;
+  threadId: string;
 
   /**
    * TTS Voice
@@ -65,7 +65,7 @@ export function VoiceConversation({
   isOpen,
   onClose,
   userId,
-  conversationId,
+  threadId,
   voice = 'nova',
   className,
 }: VoiceConversationProps) {
@@ -100,7 +100,7 @@ export function VoiceConversation({
     sendMessage,
   } = useChat({
     userId,
-    conversationId,
+    threadId,
     onMessage: handleAgentResponse,
   });
 
