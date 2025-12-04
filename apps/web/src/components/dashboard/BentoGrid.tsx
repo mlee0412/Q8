@@ -29,12 +29,12 @@ interface BentoItemProps {
 }
 
 export function BentoItem({ children, colSpan = 1, rowSpan = 1, className }: BentoItemProps) {
-  // Map colSpan to Tailwind classes
+  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
   const colSpanClasses: Record<number, string> = {
     1: 'col-span-1',
-    2: 'col-span-2',
-    3: 'col-span-3',
-    4: 'col-span-4',
+    2: 'col-span-1 md:col-span-2',
+    3: 'col-span-1 md:col-span-3',
+    4: 'col-span-1 md:col-span-4',
   };
 
   // Map rowSpan to Tailwind classes
@@ -49,7 +49,7 @@ export function BentoItem({ children, colSpan = 1, rowSpan = 1, className }: Ben
     <motion.div
       layout
       className={cn(
-        'glass-panel relative overflow-hidden',
+        'glass-panel relative overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className

@@ -201,12 +201,27 @@ export function SmartHomeWidget({
     { id: 'climate', icon: Thermometer, label: 'Climate' },
   ];
 
+  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
+  const colSpanClasses: Record<number, string> = {
+    1: 'col-span-1',
+    2: 'col-span-1 md:col-span-2',
+    3: 'col-span-1 md:col-span-3',
+    4: 'col-span-1 md:col-span-4',
+  };
+
+  // Map rowSpan to Tailwind classes
+  const rowSpanClasses: Record<number, string> = {
+    1: 'row-span-1',
+    2: 'row-span-2',
+    3: 'row-span-3',
+    4: 'row-span-4',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      style={{ gridColumn: `span ${colSpan}`, gridRow: `span ${rowSpan}` }}
-      className={cn('glass-panel rounded-xl overflow-hidden flex flex-col', className)}
+      className={cn('glass-panel rounded-xl overflow-hidden flex flex-col w-full', colSpanClasses[colSpan], rowSpanClasses[rowSpan], className)}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-glass-border">

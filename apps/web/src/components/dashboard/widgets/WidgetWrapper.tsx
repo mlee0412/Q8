@@ -151,18 +151,30 @@ export function WidgetWrapper({
     return date.toLocaleDateString();
   };
 
+  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
+  const colSpanClasses: Record<number, string> = {
+    1: 'col-span-1',
+    2: 'col-span-1 md:col-span-2',
+    3: 'col-span-1 md:col-span-3',
+    4: 'col-span-1 md:col-span-4',
+  };
+
+  // Map rowSpan to Tailwind classes
+  const rowSpanClasses: Record<number, string> = {
+    1: 'row-span-1',
+    2: 'row-span-2',
+    3: 'row-span-3',
+    4: 'row-span-4',
+  };
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      style={{
-        gridColumn: isExpanded ? 'span 4' : `span ${colSpan}`,
-        gridRow: isExpanded ? 'span 4' : `span ${rowSpan}`,
-      }}
       className={cn(
-        'glass-panel rounded-xl flex flex-col overflow-hidden relative',
-        isExpanded && 'z-50',
+        'glass-panel rounded-xl flex flex-col overflow-hidden relative w-full',
+        isExpanded ? 'col-span-1 md:col-span-4 row-span-4 z-50' : cn(colSpanClasses[colSpan], rowSpanClasses[rowSpan]),
         className
       )}
     >

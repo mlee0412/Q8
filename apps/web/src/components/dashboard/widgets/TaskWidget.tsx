@@ -149,16 +149,30 @@ export function TaskWidget({
 
   const incompleteTasks = tasks?.filter((t) => !t.completed) || [];
 
+  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
+  const colSpanClasses: Record<number, string> = {
+    1: 'col-span-1',
+    2: 'col-span-1 md:col-span-2',
+    3: 'col-span-1 md:col-span-3',
+    4: 'col-span-1 md:col-span-4',
+  };
+
+  // Map rowSpan to Tailwind classes
+  const rowSpanClasses: Record<number, string> = {
+    1: 'row-span-1',
+    2: 'row-span-2',
+    3: 'row-span-3',
+    4: 'row-span-4',
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      style={{
-        gridColumn: `span ${colSpan}`,
-        gridRow: `span ${rowSpan}`,
-      }}
       className={cn(
-        'glass-panel rounded-xl p-6 flex flex-col overflow-hidden',
+        'glass-panel rounded-xl p-6 flex flex-col overflow-hidden w-full',
+        colSpanClasses[colSpan],
+        rowSpanClasses[rowSpan],
         className
       )}
     >
