@@ -34,7 +34,7 @@
     "framer-motion": "^11.0.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^0.344.0",
-    "next": "^15.0.3",
+    "next": "^15.3.3",
     "next-themes": "^0.2.1",
     "openai": "^4.28.0",
     "pouchdb-adapter-idb": "^8.0.1",
