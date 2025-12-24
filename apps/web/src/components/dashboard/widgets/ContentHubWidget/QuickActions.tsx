@@ -99,11 +99,16 @@ export function QuickActions({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-neon-accent"
-            onClick={onSmartHome}
+            className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-neon-accent hover:bg-neon-accent/10"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Cast button clicked in QuickActions');
+              onSmartHome();
+            }}
           >
             <Home className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Cast</span>
+            <span className="hidden sm:inline">Cast to TV</span>
           </Button>
         )}
 

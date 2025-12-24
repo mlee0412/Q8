@@ -50,7 +50,11 @@
       "Bash(wc:*)",
       "Bash(if exist \"C:\\Users\\Minki\\Q8\\apps\\web\\.next\" rmdir /s /q \"C:\\Users\\Minki\\Q8\\apps\\web\\.next\")",
       "Bash(timeout /t 60)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []

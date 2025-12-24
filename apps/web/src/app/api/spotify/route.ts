@@ -45,6 +45,16 @@ interface SpotifyPlaybackState {
   repeat_state: 'off' | 'track' | 'context';
 }
 
+interface SpotifyDevice {
+  id: string;
+  is_active: boolean;
+  is_private_session: boolean;
+  is_restricted: boolean;
+  name: string;
+  type: string;
+  volume_percent: number;
+}
+
 // Cache for access token
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -96,7 +106,10 @@ async function getAccessToken(): Promise<string | null> {
 /**
  * GET /api/spotify - Get current playback state
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const includeDevices = searchParams.get('devices') === 'true';
+
   try {
     const accessToken = await getAccessToken();
 
@@ -107,26 +120,41 @@ export async function GET() {
       );
     }
 
-    const response = await fetch(`${SPOTIFY_API_BASE}/me/player`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    // Fetch playback state and optionally available devices
+    const [playerResponse, devicesResponse] = await Promise.all([
+      fetch(`${SPOTIFY_API_BASE}/me/player`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
+      includeDevices 
+        ? fetch(`${SPOTIFY_API_BASE}/me/player/devices`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    // Parse available devices if requested
+    let availableDevices: SpotifyDevice[] = [];
+    if (devicesResponse?.ok) {
+      const devicesData = await devicesResponse.json();
+      availableDevices = devicesData.devices ?? [];
+    }
 
     // No active playback
-    if (response.status === 204) {
+    if (playerResponse.status === 204) {
       return NextResponse.json({
         isPlaying: false,
         track: null,
         device: null,
+        availableDevices,
+        noActiveDevice: true,
       });
     }
 
-    if (!response.ok) {
-      throw new Error(`Spotify API error: ${response.status}`);
+    if (!playerResponse.ok) {
+      throw new Error(`Spotify API error: ${playerResponse.status}`);
     }
 
-    const data: SpotifyPlaybackState = await response.json();
+    const data: SpotifyPlaybackState = await playerResponse.json();
 
     return NextResponse.json({
       isPlaying: data.is_playing,
@@ -150,8 +178,10 @@ export async function GET() {
             name: data.device.name,
             type: data.device.type,
             volume: data.device.volume_percent,
+            isActive: true,
           }
         : null,
+      availableDevices,
     });
   } catch (error) {
     console.error('Spotify API error:', error);
@@ -178,42 +208,67 @@ export async function POST(request: NextRequest) {
     let method = 'PUT';
     let body = null;
 
+    // Build device_id query param if provided
+    const deviceQuery = params.device_id ? `device_id=${params.device_id}` : '';
+
     switch (action) {
       case 'play':
         endpoint = '/me/player/play';
+        if (deviceQuery) endpoint += `?${deviceQuery}`;
         if (params.uri) {
           body = JSON.stringify({ uris: [params.uri] });
+        } else if (params.context_uri) {
+          body = JSON.stringify({ 
+            context_uri: params.context_uri,
+            offset: params.offset ? { position: params.offset } : undefined,
+          });
         }
         break;
 
       case 'pause':
         endpoint = '/me/player/pause';
+        if (deviceQuery) endpoint += `?${deviceQuery}`;
         break;
 
       case 'next':
         endpoint = '/me/player/next';
+        if (deviceQuery) endpoint += `?${deviceQuery}`;
         method = 'POST';
         break;
 
       case 'previous':
         endpoint = '/me/player/previous';
+        if (deviceQuery) endpoint += `?${deviceQuery}`;
         method = 'POST';
         break;
 
       case 'shuffle':
         endpoint = `/me/player/shuffle?state=${params.state}`;
+        if (deviceQuery) endpoint += `&${deviceQuery}`;
         break;
 
       case 'repeat':
         endpoint = `/me/player/repeat?state=${params.state}`;
+        if (deviceQuery) endpoint += `&${deviceQuery}`;
         break;
 
       case 'volume':
-        endpoint = `/me/player/volume?volume_percent=${params.volume}`;
+        endpoint = `/me/player/volume?volume_percent=${Math.round(params.volume)}`;
+        if (deviceQuery) endpoint += `&${deviceQuery}`;
         break;
 
       case 'seek':
-        endpoint = `/me/player/seek?position_ms=${params.position}`;
+        endpoint = `/me/player/seek?position_ms=${Math.round(params.position)}`;
+        if (deviceQuery) endpoint += `&${deviceQuery}`;
+        break;
+
+      case 'transfer':
+        // Transfer playback to a specific device
+        endpoint = '/me/player';
+        body = JSON.stringify({ 
+          device_ids: [params.device_id],
+          play: params.play ?? true,
+        });
         break;
 
       default:
@@ -231,7 +286,56 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok && response.status !== 204) {
       const errorText = await response.text();
-      throw new Error(`Spotify API error: ${response.status} - ${errorText}`);
+      
+      // Parse Spotify error for better messages
+      let errorMessage = `Spotify API error: ${response.status}`;
+      let errorCode = 'UNKNOWN';
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        }
+        // Handle specific error cases
+        if (errorJson.error?.reason === 'NO_ACTIVE_DEVICE') {
+          return NextResponse.json(
+            { error: 'No active Spotify device. Open Spotify on a device first.', code: 'NO_ACTIVE_DEVICE' },
+            { status: 400 }
+          );
+        }
+        if (errorJson.error?.reason === 'PREMIUM_REQUIRED') {
+          return NextResponse.json(
+            { error: 'Spotify Premium is required for playback control.', code: 'PREMIUM_REQUIRED' },
+            { status: 403 }
+          );
+        }
+        // Handle permission/scope errors (403 with "Permissions missing" or similar)
+        if (response.status === 403 || errorMessage.toLowerCase().includes('permission')) {
+          return NextResponse.json(
+            { 
+              error: 'Spotify permissions missing. Please re-authorize at /api/spotify/auth', 
+              code: 'PERMISSIONS_MISSING',
+              authUrl: '/api/spotify/auth'
+            },
+            { status: 403 }
+          );
+        }
+      } catch {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      // Check for 403 status even if parsing failed
+      if (response.status === 403) {
+        return NextResponse.json(
+          { 
+            error: 'Spotify permissions missing. Please re-authorize at /api/spotify/auth', 
+            code: 'PERMISSIONS_MISSING',
+            authUrl: '/api/spotify/auth'
+          },
+          { status: 403 }
+        );
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return NextResponse.json({ success: true, action });
@@ -252,7 +356,7 @@ function getMockPlaybackState() {
     isPlaying: true,
     progress: 45000,
     shuffleState: false,
-    repeatState: 'off',
+    repeatState: 'off' as const,
     track: {
       id: 'mock-1',
       title: 'Blinding Lights',
@@ -267,7 +371,9 @@ function getMockPlaybackState() {
       name: 'Mock Device',
       type: 'Computer',
       volume: 50,
+      isActive: true,
     },
+    availableDevices: [],
     isMock: true,
   };
 }

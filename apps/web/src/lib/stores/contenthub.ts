@@ -8,12 +8,25 @@ import type {
   ContentMode,
 } from '@/types/contenthub';
 
+interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: string;
+  volume: number;
+  isActive?: boolean;
+}
+
 interface ContentHubState {
   // Playback state
   nowPlaying: ContentItem | null;
   isPlaying: boolean;
   progress: number;
   volume: number;
+
+  // Spotify-specific state
+  shuffleState: boolean;
+  repeatState: 'off' | 'track' | 'context';
+  spotifyDevice: SpotifyDevice | null;
 
   // Queue management
   queue: ContentItem[];
@@ -82,6 +95,9 @@ const initialState = {
   isPlaying: false,
   progress: 0,
   volume: 80,
+  shuffleState: false,
+  repeatState: 'off' as const,
+  spotifyDevice: null,
   queue: [],
   history: [],
   savedForLater: [],
@@ -260,6 +276,15 @@ export const useActiveMode = () =>
 
 export const useDominantColor = () =>
   useContentHubStore((state) => state.dominantColor);
+
+export const useShuffleState = () =>
+  useContentHubStore((state) => state.shuffleState);
+
+export const useRepeatState = () =>
+  useContentHubStore((state) => state.repeatState);
+
+export const useSpotifyDevice = () =>
+  useContentHubStore((state) => state.spotifyDevice);
 
 export const useContentHubActions = () =>
   useContentHubStore((state) => ({

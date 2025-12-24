@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Fetch content from Spotify
+ * Fetch content from Spotify including recommendations
  */
 async function fetchSpotifyContent(result: AggregatedContent): Promise<void> {
   try {
@@ -94,7 +94,10 @@ async function fetchSpotifyContent(result: AggregatedContent): Promise<void> {
     const data = await response.json();
     result.sources.spotify.connected = true;
 
+    let seedTrackId: string | null = null;
+
     if (data.track) {
+      seedTrackId = data.track.id;
       const nowPlaying: ContentItem = {
         id: `spotify-${data.track.id}`,
         source: 'spotify',
@@ -109,6 +112,7 @@ async function fetchSpotifyContent(result: AggregatedContent): Promise<void> {
           album: data.track.album,
           isPlaying: data.isPlaying,
           progress: data.progress,
+          uri: `spotify:track:${data.track.id}`,
         },
       };
 
@@ -118,8 +122,56 @@ async function fetchSpotifyContent(result: AggregatedContent): Promise<void> {
         result.recentlyPlayed.push(nowPlaying);
       }
     }
+
+    // Fetch recommendations based on seed track
+    if (seedTrackId) {
+      await fetchSpotifyRecommendations(result, seedTrackId, baseUrl);
+    }
   } catch (error) {
     result.sources.spotify.error = error instanceof Error ? error.message : 'Connection failed';
+  }
+}
+
+/**
+ * Fetch Spotify recommendations based on seed track
+ */
+async function fetchSpotifyRecommendations(
+  result: AggregatedContent, 
+  seedTrackId: string,
+  baseUrl: string
+): Promise<void> {
+  try {
+    const response = await fetch(
+      `${baseUrl}/api/spotify/recommendations?seed_tracks=${seedTrackId}&limit=12`,
+      { cache: 'no-store' }
+    );
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    if (data.tracks && Array.isArray(data.tracks)) {
+      for (const track of data.tracks) {
+        const item: ContentItem = {
+          id: `spotify-${track.id}`,
+          source: 'spotify',
+          type: 'track',
+          title: track.name || 'Unknown Track',
+          subtitle: track.artists?.map((a: { name: string }) => a.name).join(', ') || 'Unknown Artist',
+          thumbnailUrl: track.album?.images?.[0]?.url || '',
+          duration: track.duration_ms || 0,
+          playbackUrl: track.external_urls?.spotify || '',
+          deepLinkUrl: track.external_urls?.spotify || '',
+          sourceMetadata: {
+            album: track.album?.name,
+            uri: track.uri,
+          },
+        };
+        result.recommendations.push(item);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to fetch Spotify recommendations:', error);
   }
 }
 

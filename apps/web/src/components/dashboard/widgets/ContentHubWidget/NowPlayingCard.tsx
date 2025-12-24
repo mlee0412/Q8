@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback } from 'react';
 import {
   Play,
   Pause,
@@ -8,12 +9,15 @@ import {
   SkipForward,
   Shuffle,
   Repeat,
+  Repeat1,
   Volume2,
+  Volume1,
   VolumeX,
   ExternalLink,
   Maximize2,
   Cast,
   ListMusic,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,6 +34,12 @@ interface NowPlayingCardProps {
   onPrevious: () => void;
   onSeek?: (position: number) => void;
   onExpand?: () => void;
+  onShuffle?: () => void;
+  onRepeat?: () => void;
+  onVolumeChange?: (volume: number) => void;
+  shuffleState?: boolean;
+  repeatState?: 'off' | 'track' | 'context';
+  isLoading?: boolean;
   showControls?: boolean;
   compact?: boolean;
   className?: string;
@@ -50,12 +60,39 @@ export function NowPlayingCard({
   onPrevious,
   onSeek,
   onExpand,
+  onShuffle,
+  onRepeat,
+  onVolumeChange,
+  shuffleState = false,
+  repeatState = 'off',
+  isLoading = false,
   showControls = true,
   compact = false,
   className,
 }: NowPlayingCardProps) {
-  const { volume, setVolume, toggleExpanded } = useContentHubStore();
-  const { gradientStyle, dominantColor } = useColorTheme(item?.thumbnailUrl ?? null);
+  const { volume, setVolume } = useContentHubStore();
+  const { gradientStyle } = useColorTheme(item?.thumbnailUrl ?? null);
+  const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+
+  // Handle volume slider interaction
+  const handleVolumeClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickPosition = (e.clientX - rect.left) / rect.width;
+    const newVolume = Math.round(clickPosition * 100);
+    setVolume(newVolume);
+    onVolumeChange?.(newVolume);
+  }, [setVolume, onVolumeChange]);
+
+  // Get repeat icon based on state
+  const RepeatIcon = repeatState === 'track' ? Repeat1 : Repeat;
+
+  // Get volume icon based on level
+  const getVolumeIcon = () => {
+    if (volume === 0) return VolumeX;
+    if (volume < 50) return Volume1;
+    return Volume2;
+  };
+  const VolumeIcon = getVolumeIcon();
 
   // Calculate progress percentage
   const progressPercent = item?.duration
@@ -257,7 +294,15 @@ export function NowPlayingCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-white/70 hover:text-white"
+              className={cn(
+                'h-7 w-7 transition-colors',
+                shuffleState 
+                  ? 'text-neon-primary hover:text-neon-accent' 
+                  : 'text-white/70 hover:text-white'
+              )}
+              onClick={onShuffle}
+              disabled={!onShuffle}
+              title={shuffleState ? 'Shuffle on' : 'Shuffle off'}
             >
               <Shuffle className="h-3.5 w-3.5" />
             </Button>
@@ -268,6 +313,7 @@ export function NowPlayingCard({
               size="icon"
               className="h-7 w-7 text-white/70 hover:text-white"
               onClick={onPrevious}
+              disabled={isLoading}
             >
               <SkipBack className="h-4 w-4" />
             </Button>
@@ -278,8 +324,11 @@ export function NowPlayingCard({
               size="icon"
               className="h-10 w-10"
               onClick={onPlayPause}
+              disabled={isLoading}
             >
-              {isPlaying ? (
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isPlaying ? (
                 <Pause className="h-4 w-4" />
               ) : (
                 <Play className="h-4 w-4 ml-0.5" />
@@ -292,6 +341,7 @@ export function NowPlayingCard({
               size="icon"
               className="h-7 w-7 text-white/70 hover:text-white"
               onClick={onNext}
+              disabled={isLoading}
             >
               <SkipForward className="h-4 w-4" />
             </Button>
@@ -300,9 +350,17 @@ export function NowPlayingCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-white/70 hover:text-white"
+              className={cn(
+                'h-7 w-7 transition-colors',
+                repeatState !== 'off'
+                  ? 'text-neon-primary hover:text-neon-accent' 
+                  : 'text-white/70 hover:text-white'
+              )}
+              onClick={onRepeat}
+              disabled={!onRepeat}
+              title={`Repeat: ${repeatState}`}
             >
-              <Repeat className="h-3.5 w-3.5" />
+              <RepeatIcon className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
@@ -314,20 +372,26 @@ export function NowPlayingCard({
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-white/50 hover:text-white"
-              onClick={() => setVolume(volume === 0 ? 80 : 0)}
+              onClick={() => {
+                const newVolume = volume === 0 ? 80 : 0;
+                setVolume(newVolume);
+                onVolumeChange?.(newVolume);
+              }}
             >
-              {volume === 0 ? (
-                <VolumeX className="h-3 w-3" />
-              ) : (
-                <Volume2 className="h-3 w-3" />
-              )}
+              <VolumeIcon className="h-3 w-3" />
             </Button>
-            <div className="w-20 h-1 bg-white/20 rounded-full overflow-hidden">
+            <div 
+              className="w-20 h-1.5 bg-white/20 rounded-full overflow-hidden cursor-pointer group"
+              onClick={handleVolumeClick}
+            >
               <motion.div
-                className="h-full bg-white/50"
+                className="h-full bg-white/50 group-hover:bg-neon-primary transition-colors"
                 style={{ width: `${volume}%` }}
               />
             </div>
+            <span className="text-[10px] text-white/40 w-6 text-right">
+              {volume}%
+            </span>
           </div>
         )}
       </div>
