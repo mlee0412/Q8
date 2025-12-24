@@ -234,17 +234,17 @@ async function getRecentTransactions(
   if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
   // Filter by amount if specified
-  let filtered = transactions || [];
+  let filtered: any[] = transactions || [];
   if (minAmount !== undefined) {
-    filtered = filtered.filter((tx) => Math.abs(tx.amount) >= minAmount);
+    filtered = filtered.filter((tx: any) => Math.abs(tx.amount) >= minAmount);
   }
   if (maxAmount !== undefined) {
-    filtered = filtered.filter((tx) => Math.abs(tx.amount) <= maxAmount);
+    filtered = filtered.filter((tx: any) => Math.abs(tx.amount) <= maxAmount);
   }
 
   return {
     count: filtered.length,
-    transactions: filtered.map((tx) => ({
+    transactions: filtered.map((tx: any) => ({
       date: tx.date,
       merchant: tx.merchant_name || 'Unknown',
       amount: tx.amount,
@@ -286,7 +286,7 @@ async function getUpcomingBills(
   const today = new Date().toISOString().slice(0, 10);
   let totalDue = 0;
 
-  const upcomingBills = (bills || []).map((bill) => {
+  const upcomingBills = (bills || []).map((bill: any) => {
     const daysUntil = Math.ceil(
       (new Date(bill.next_due_date).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -312,7 +312,7 @@ async function getUpcomingBills(
     total_due: totalDue,
     formatted_total: formatCurrency(totalDue),
     bills_count: upcomingBills.length,
-    overdue_count: upcomingBills.filter((b) => b.status === 'overdue').length,
+    overdue_count: upcomingBills.filter((b: any) => b.status === 'overdue').length,
     bills: upcomingBills,
   };
 }
@@ -441,8 +441,9 @@ async function simulateWealth(
     }
   }
 
-  const finalNominal = projections[projections.length - 1].nominal;
-  const finalReal = projections[projections.length - 1].real;
+  const lastProjection = projections[projections.length - 1];
+  const finalNominal = lastProjection?.nominal ?? 0;
+  const finalReal = lastProjection?.real ?? 0;
   const totalContributed = monthlyContribution * 12 * years;
   const investmentGrowth = finalNominal - currentNetWorth - totalContributed;
 
@@ -536,7 +537,7 @@ async function getNetWorthHistory(
       change_percent: changePercent.toFixed(1) + '%',
       trend: change > 0 ? 'increasing' : change < 0 ? 'decreasing' : 'stable',
     },
-    history: snapshots.map((s) => ({
+    history: snapshots.map((s: any) => ({
       date: s.date,
       net_worth: formatCurrency(parseFloat(s.net_worth)),
     })),
@@ -597,8 +598,11 @@ async function findSubscriptions(
         // Estimate frequency based on date gaps
         const dayGaps: number[] = [];
         for (let i = 1; i < data.dates.length; i++) {
+          const currDate = data.dates[i];
+          const prevDate = data.dates[i - 1];
+          if (!currDate || !prevDate) continue;
           const gap = Math.abs(
-            new Date(data.dates[i]).getTime() - new Date(data.dates[i - 1]).getTime()
+            new Date(currDate).getTime() - new Date(prevDate).getTime()
           ) / (1000 * 60 * 60 * 24);
           dayGaps.push(gap);
         }
@@ -683,8 +687,8 @@ async function compareSpending(
     fetchPeriod(start2, end2),
   ]);
 
-  const total1 = txs1.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-  const total2 = txs2.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const total1 = txs1.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
+  const total2 = txs2.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
   const difference = total2 - total1;
   const percentChange = total1 > 0 ? ((difference / total1) * 100) : 0;
 

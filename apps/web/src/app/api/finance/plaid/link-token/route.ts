@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from 'plaid';
+import { 
+  Configuration, 
+  PlaidApi, 
+  PlaidEnvironments, 
+  Products, 
+  CountryCode,
+  DepositoryAccountSubtype,
+  CreditAccountSubtype,
+} from 'plaid';
 
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
 const PLAID_SECRET = process.env.PLAID_SECRET;
@@ -56,10 +64,15 @@ export async function POST(request: NextRequest) {
       // Enable account selection
       account_filters: {
         depository: {
-          account_subtypes: ['checking', 'savings', 'money market', 'cd'],
+          account_subtypes: [
+            DepositoryAccountSubtype.Checking,
+            DepositoryAccountSubtype.Savings,
+            DepositoryAccountSubtype.MoneyMarket,
+            DepositoryAccountSubtype.Cd,
+          ],
         },
         credit: {
-          account_subtypes: ['credit card'],
+          account_subtypes: [CreditAccountSubtype.CreditCard],
         },
       },
     };

@@ -485,7 +485,7 @@ function generateResponse(
 
   if (q.includes('afford') || q.includes('buy') || q.includes('purchase')) {
     const match = question.match(/\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/);
-    const amount = match ? parseFloat(match[1].replace(',', '')) : 0;
+    const amount = match && match[1] ? parseFloat(match[1].replace(',', '')) : 0;
     
     if (amount > 0) {
       const safeAmount = context.liquidAssets * 0.3;
