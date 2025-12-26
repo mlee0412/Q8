@@ -175,7 +175,7 @@ function LightControlModal({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
+      document.body.style.touchAction = 'manipulation';
     }
     return () => {
       document.body.style.overflow = '';
