@@ -166,22 +166,46 @@ function LightControlModal({
   const [activeTab, setActiveTab] = useState<'brightness' | 'color' | 'effects'>('brightness');
   const sliderRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const backdropPointerDown = useRef(false);
+  const modalOpenTime = useRef(0);
 
   useEffect(() => {
     setBrightness(currentBrightness);
   }, [currentBrightness]);
 
-  // Prevent body scrolling when modal is open
+  // Prevent body scrolling when modal is open and track open time
   useEffect(() => {
     if (isOpen) {
+      modalOpenTime.current = Date.now();
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'manipulation';
     }
     return () => {
       document.body.style.overflow = '';
-      document.body.style.touchAction = '';
     };
   }, [isOpen]);
+
+  // Backdrop close handler - only close if pointer started AND ended on backdrop
+  const handleBackdropPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only track if the pointer down is directly on the backdrop
+    backdropPointerDown.current = e.target === e.currentTarget;
+  }, []);
+
+  const handleBackdropPointerUp = useCallback((e: React.PointerEvent) => {
+    // Ignore clicks within 300ms of modal opening (prevents ghost clicks from long-press)
+    if (Date.now() - modalOpenTime.current < 300) {
+      backdropPointerDown.current = false;
+      return;
+    }
+    // Only close if pointer started AND ended on the backdrop itself
+    if (backdropPointerDown.current && e.target === e.currentTarget) {
+      onClose();
+    }
+    backdropPointerDown.current = false;
+  }, [onClose]);
+
+  const handleBackdropPointerCancel = useCallback(() => {
+    backdropPointerDown.current = false;
+  }, []);
 
   const handleBrightnessChange = useCallback((value: number) => {
     const clampedValue = Math.max(1, Math.min(100, value));
@@ -201,58 +225,39 @@ function LightControlModal({
     return value;
   }, [handleBrightnessChange]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  // Unified pointer event handlers for slider (works on both touch and mouse)
+  const handleSliderPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Capture pointer to receive events even if pointer moves outside element
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
     isDragging.current = true;
     handleSliderInteraction(e.clientY);
-  };
+  }, [handleSliderInteraction]);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleSliderPointerMove = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
+      e.preventDefault();
       handleSliderInteraction(e.clientY);
     }
   }, [handleSliderInteraction]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleSliderPointerUp = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       isDragging.current = false;
       handleBrightnessCommit(brightness);
     }
   }, [brightness, handleBrightnessCommit]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    isDragging.current = true;
-    if (e.touches[0]) {
-      handleSliderInteraction(e.touches[0].clientY);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isDragging.current && e.touches[0]) {
-      handleSliderInteraction(e.touches[0].clientY);
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleSliderPointerCancel = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       isDragging.current = false;
-      handleBrightnessCommit(brightness);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleMouseMove, handleMouseUp]);
+  // Mouse event listeners removed - using pointer events with capture instead
 
   const setColor = (rgb: [number, number, number]) => {
     callService('light', 'turn_on', config.entityId, { rgb_color: rgb, brightness_pct: brightness });
@@ -278,13 +283,10 @@ function LightControlModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-        style={{ touchAction: 'none' }}
-        onClick={onClose}
-        onTouchEnd={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
-        }}
+        style={{ touchAction: 'manipulation' }}
+        onPointerDown={handleBackdropPointerDown}
+        onPointerUp={handleBackdropPointerUp}
+        onPointerCancel={handleBackdropPointerCancel}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -293,8 +295,7 @@ function LightControlModal({
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className="relative w-[340px] max-h-[90vh] bg-gradient-to-b from-gray-900 to-gray-950 rounded-3xl shadow-2xl border border-white/10 overflow-hidden"
           style={{ touchAction: 'manipulation' }}
-          onClick={(e) => e.stopPropagation()}
-          onTouchEnd={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -306,7 +307,7 @@ function LightControlModal({
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={onClose}
-              className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="h-11 w-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
             >
               <X className="h-5 w-5" />
             </motion.button>
@@ -318,10 +319,10 @@ function LightControlModal({
               ref={sliderRef}
               className="relative w-24 h-64 rounded-[40px] cursor-pointer overflow-hidden select-none"
               style={{ backgroundColor: lightColorDim, touchAction: 'none' }}
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              onPointerDown={handleSliderPointerDown}
+              onPointerMove={handleSliderPointerMove}
+              onPointerUp={handleSliderPointerUp}
+              onPointerCancel={handleSliderPointerCancel}
             >
               {/* Filled portion */}
               <motion.div
@@ -444,7 +445,7 @@ function LightControlModal({
                       whileTap={{ scale: 0.97 }}
                       onClick={() => setEffect(effect.value)}
                       className={cn(
-                        'py-2.5 px-2 rounded-xl text-[10px] font-semibold bg-gradient-to-br text-white shadow-md border border-white/10',
+                        'min-h-[44px] py-2 px-2 rounded-xl text-[10px] font-semibold bg-gradient-to-br text-white shadow-md border border-white/10',
                         effect.gradient
                       )}
                     >
@@ -473,7 +474,7 @@ function LightControlModal({
                         handleBrightnessCommit(level);
                       }}
                       className={cn(
-                        'py-2.5 rounded-xl text-xs font-semibold transition-all',
+                        'min-h-[44px] py-2 rounded-xl text-xs font-semibold transition-all',
                         brightness === level
                           ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 border border-white/20'
                           : 'bg-white/10 border border-white/20 text-white/80 hover:bg-white/20'
