@@ -238,12 +238,14 @@ function LightControlModal({
   const handleSliderPointerMove = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
       e.preventDefault();
+      e.stopPropagation();
       handleSliderInteraction(e.clientY);
     }
   }, [handleSliderInteraction]);
 
   const handleSliderPointerUp = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
+      e.stopPropagation();
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       isDragging.current = false;
       handleBrightnessCommit(brightness);
@@ -252,6 +254,7 @@ function LightControlModal({
 
   const handleSliderPointerCancel = useCallback((e: React.PointerEvent) => {
     if (isDragging.current) {
+      e.stopPropagation();
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
       isDragging.current = false;
     }
@@ -295,7 +298,13 @@ function LightControlModal({
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
           className="relative w-[340px] max-h-[90vh] bg-gradient-to-b from-gray-900 to-gray-950 rounded-3xl shadow-2xl border border-white/10 overflow-hidden"
           style={{ touchAction: 'manipulation' }}
+          onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          onTouchCancel={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
