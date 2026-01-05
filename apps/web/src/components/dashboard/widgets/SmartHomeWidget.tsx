@@ -276,10 +276,30 @@ function LightControlModal({
     }
   }, []);
 
+  // Handle lost pointer capture - prevents the event from bubbling and closing modal
+  const handleLostPointerCapture = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    // Clean up dragging state if pointer capture was lost unexpectedly
+    if (isDragging.current) {
+      isDragging.current = false;
+      handleBrightnessCommit(brightness);
+    }
+  }, [brightness, handleBrightnessCommit]);
+
   // Utility handler to prevent touch/pointer events from bubbling to backdrop
   // This is critical for mobile - without it, touches on buttons bubble up and close the modal
-  const stopPropagationHandler = useCallback((e: React.PointerEvent | React.TouchEvent) => {
+  const stopPropagationHandler = useCallback((e: React.PointerEvent | React.TouchEvent | React.MouseEvent) => {
     e.stopPropagation();
+  }, []);
+
+  // Click handler wrapper that stops propagation - critical for mobile
+  // Without this, onClick events bubble to backdrop and close modal
+  const createClickHandler = useCallback(<T extends unknown[]>(handler: (...args: T) => void) => {
+    return (e: React.MouseEvent, ...args: T) => {
+      e.stopPropagation();
+      e.preventDefault();
+      handler(...args);
+    };
   }, []);
 
   // Mouse event listeners removed - using pointer events with capture instead
@@ -339,7 +359,10 @@ function LightControlModal({
               whileTap={{ scale: 0.9 }}
               onPointerDown={stopPropagationHandler}
               onPointerUp={stopPropagationHandler}
-              onClick={onClose}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
               className="h-11 w-11 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
               style={{ touchAction: 'manipulation' }}
             >
@@ -357,6 +380,8 @@ function LightControlModal({
               onPointerMove={handleSliderPointerMove}
               onPointerUp={handleSliderPointerUp}
               onPointerCancel={handleSliderPointerCancel}
+              onLostPointerCapture={handleLostPointerCapture}
+              onGotPointerCapture={stopPropagationHandler}
             >
               {/* Filled portion - pointer-events-none ensures slider container captures all touch */}
               <motion.div
@@ -385,7 +410,10 @@ function LightControlModal({
               whileTap={{ scale: 0.95 }}
               onPointerDown={stopPropagationHandler}
               onPointerUp={stopPropagationHandler}
-              onClick={togglePower}
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePower();
+              }}
               className={cn(
                 'h-12 w-12 rounded-full flex items-center justify-center transition-all',
                 isOn
@@ -402,7 +430,10 @@ function LightControlModal({
               whileTap={{ scale: 0.95 }}
               onPointerDown={stopPropagationHandler}
               onPointerUp={stopPropagationHandler}
-              onClick={() => setActiveTab('brightness')}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('brightness');
+              }}
               className={cn(
                 'h-12 w-12 rounded-full flex items-center justify-center transition-all',
                 activeTab === 'brightness'
@@ -418,7 +449,10 @@ function LightControlModal({
               whileTap={{ scale: 0.95 }}
               onPointerDown={stopPropagationHandler}
               onPointerUp={stopPropagationHandler}
-              onClick={() => setActiveTab('color')}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab('color');
+              }}
               className={cn(
                 'h-12 w-12 rounded-full flex items-center justify-center transition-all',
                 activeTab === 'color'
@@ -435,7 +469,10 @@ function LightControlModal({
                 whileTap={{ scale: 0.95 }}
                 onPointerDown={stopPropagationHandler}
                 onPointerUp={stopPropagationHandler}
-                onClick={() => setActiveTab('effects')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveTab('effects');
+                }}
                 className={cn(
                   'h-12 w-12 rounded-full flex items-center justify-center transition-all',
                   activeTab === 'effects'
@@ -466,7 +503,10 @@ function LightControlModal({
                       whileTap={{ scale: 0.9 }}
                       onPointerDown={stopPropagationHandler}
                       onPointerUp={stopPropagationHandler}
-                      onClick={() => setColor(preset.rgb)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setColor(preset.rgb);
+                      }}
                       className={cn(
                         'h-14 w-14 rounded-full bg-gradient-to-br shadow-lg border-2 border-white/20 hover:border-white/50 transition-all mx-auto',
                         preset.gradient
@@ -494,7 +534,10 @@ function LightControlModal({
                       whileTap={{ scale: 0.97 }}
                       onPointerDown={stopPropagationHandler}
                       onPointerUp={stopPropagationHandler}
-                      onClick={() => setEffect(effect.value)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEffect(effect.value);
+                      }}
                       className={cn(
                         'min-h-[44px] py-2 px-2 rounded-xl text-[10px] font-semibold bg-gradient-to-br text-white shadow-md border border-white/10',
                         effect.gradient
@@ -523,7 +566,8 @@ function LightControlModal({
                       whileTap={{ scale: 0.95 }}
                       onPointerDown={stopPropagationHandler}
                       onPointerUp={stopPropagationHandler}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleBrightnessChange(level);
                         handleBrightnessCommit(level);
                       }}
