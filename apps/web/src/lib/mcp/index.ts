@@ -8,6 +8,7 @@ export * from './tools/github';
 export * from './tools/google';
 export * from './tools/supabase';
 export * from './tools/home-assistant';
+export * from './tools/finance';
 
 import { initGitHubTools } from './tools/github';
 import { initGoogleTools } from './tools/google';
@@ -31,8 +32,6 @@ export async function initializeAllMCPServers() {
     supabase: results[2].status === 'fulfilled',
     homeAssistant: results[3].status === 'fulfilled',
   };
-
-  console.log('MCP Servers initialized:', summary);
 
   return summary;
 }

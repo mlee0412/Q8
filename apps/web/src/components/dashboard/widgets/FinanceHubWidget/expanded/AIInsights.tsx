@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -16,6 +16,9 @@ import {
   RefreshCw,
   Send,
   MessageSquare,
+  Wrench,
+  Bot,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,6 +31,7 @@ import {
   useRecurring,
 } from '@/lib/stores/financehub';
 import { formatCurrency } from '@/types/finance';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AIInsightsProps {
   className?: string;
@@ -35,12 +39,13 @@ interface AIInsightsProps {
 
 interface Insight {
   id: string;
-  type: 'spending' | 'savings' | 'debt' | 'bills' | 'subscriptions' | 'general';
+  type: string;
   severity: 'info' | 'warning' | 'urgent' | 'success';
   title: string;
   message: string;
   action?: string;
   icon: typeof TrendingUp;
+  data?: Record<string, unknown>;
 }
 
 interface ChatMessage {
@@ -48,6 +53,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  toolsUsed?: string[];
 }
 
 const SEVERITY_COLORS = {
@@ -64,22 +70,40 @@ const SEVERITY_ICONS = {
   success: CheckCircle,
 };
 
-const TYPE_ICONS = {
+const TYPE_ICONS: Record<string, typeof TrendingUp> = {
   spending: TrendingDown,
+  spending_alert: TrendingDown,
   savings: PiggyBank,
   debt: CreditCard,
+  debt_strategy: CreditCard,
   bills: DollarSign,
+  bill_reminder: DollarSign,
   subscriptions: BarChart3,
+  subscription_review: BarChart3,
   general: Sparkles,
+  goal_progress: TrendingUp,
+  budget_warning: AlertTriangle,
+  anomaly_detected: AlertTriangle,
 };
+
+const SUGGESTED_QUESTIONS = [
+  'Can I afford a $500 purchase?',
+  'How much am I spending on food?',
+  'What bills are coming up?',
+  'How can I save more?',
+  "What's my cash flow this month?",
+  'Show me my recurring expenses',
+];
 
 /**
  * AIInsights Component
  *
  * Displays AI-generated financial insights and provides
- * a chat interface for financial questions.
+ * a real AI-powered chat interface for financial questions.
  */
 export function AIInsights({ className }: AIInsightsProps) {
+  const { userId } = useAuth();
+
   const netWorth = useNetWorth();
   const liquidAssets = useLiquidAssets();
   const totalLiabilities = useTotalLiabilities();
@@ -92,20 +116,33 @@ export function AIInsights({ className }: AIInsightsProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [activeTab, setActiveTab] = useState<'insights' | 'chat'>('insights');
+  const [aiError, setAiError] = useState<string | null>(null);
 
-  // Generate insights based on current data
-  const generateInsights = useCallback(() => {
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Scroll to bottom of chat when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages, isSending]);
+
+  // Generate insights from both local data and AI API
+  const generateInsights = useCallback(async () => {
     setIsLoading(true);
     const newInsights: Insight[] = [];
+
+    // --- LOCAL INSIGHTS (instant, always available) ---
 
     // Calculate spending by category for last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const recentTransactions = transactions.filter(
       (tx) => new Date(tx.date) >= thirtyDaysAgo && tx.amount < 0
     );
-    
+
     const totalSpending = recentTransactions.reduce(
       (sum, tx) => sum + Math.abs(tx.amount),
       0
@@ -127,7 +164,7 @@ export function AIInsights({ className }: AIInsightsProps) {
       const percentage = ((topCategory[1] / totalSpending) * 100).toFixed(0);
       if (parseInt(percentage) > 35) {
         newInsights.push({
-          id: 'top-category',
+          id: 'local-top-category',
           type: 'spending',
           severity: 'warning',
           title: 'High Category Spending',
@@ -142,7 +179,7 @@ export function AIInsights({ className }: AIInsightsProps) {
     const savingsRate = liquidAssets > 0 ? (liquidAssets / (liquidAssets + totalSpending)) * 100 : 0;
     if (savingsRate < 20 && liquidAssets > 0) {
       newInsights.push({
-        id: 'savings-rate',
+        id: 'local-savings-rate',
         type: 'savings',
         severity: 'info',
         title: 'Build Your Savings',
@@ -152,7 +189,7 @@ export function AIInsights({ className }: AIInsightsProps) {
       });
     } else if (savingsRate >= 30) {
       newInsights.push({
-        id: 'savings-healthy',
+        id: 'local-savings-healthy',
         type: 'savings',
         severity: 'success',
         title: 'Healthy Savings',
@@ -166,7 +203,7 @@ export function AIInsights({ className }: AIInsightsProps) {
       const debtRatio = totalLiabilities / (netWorth + totalLiabilities);
       if (debtRatio > 0.3) {
         newInsights.push({
-          id: 'debt-ratio',
+          id: 'local-debt-ratio',
           type: 'debt',
           severity: 'warning',
           title: 'Debt Awareness',
@@ -189,7 +226,7 @@ export function AIInsights({ className }: AIInsightsProps) {
     if (upcomingBills.length > 0) {
       const totalDue = upcomingBills.reduce((sum, b) => sum + b.amount, 0);
       newInsights.push({
-        id: 'upcoming-bills',
+        id: 'local-upcoming-bills',
         type: 'bills',
         severity: upcomingBills.length > 3 ? 'warning' : 'info',
         title: 'Upcoming Bills',
@@ -204,7 +241,7 @@ export function AIInsights({ className }: AIInsightsProps) {
     if (subscriptions.length > 5) {
       const monthlyCost = subscriptions.reduce((sum, s) => sum + s.amount, 0);
       newInsights.push({
-        id: 'subscriptions',
+        id: 'local-subscriptions',
         type: 'subscriptions',
         severity: 'info',
         title: 'Subscription Review',
@@ -214,31 +251,56 @@ export function AIInsights({ className }: AIInsightsProps) {
       });
     }
 
-    // Net worth trend insight
-    if (netWorth > 0) {
-      newInsights.push({
-        id: 'net-worth',
-        type: 'general',
-        severity: 'success',
-        title: 'Net Worth Update',
-        message: `Your current net worth is ${formatCurrency(netWorth)}.`,
-        action: 'Keep tracking to see your progress over time.',
-        icon: TrendingUp,
-      });
+    // --- AI-POWERED INSIGHTS (from API) ---
+    if (userId) {
+      try {
+        const response = await fetch(`/api/finance/ai/insights?userId=${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          interface RawAPIInsight {
+            type: string;
+            severity: 'info' | 'warning' | 'urgent';
+            title: string;
+            message: string;
+            action?: string;
+            data?: Record<string, unknown>;
+          }
+          const apiInsights: Insight[] = (data.insights || []).map((insight: RawAPIInsight, idx: number) => ({
+            ...insight,
+            id: `api-${insight.type}-${idx}`,
+            icon: TYPE_ICONS[insight.type] || Sparkles,
+          }));
+
+          // Merge with local insights, avoiding duplicates by type
+          const localTypes = new Set(newInsights.map(i => i.type));
+          for (const apiInsight of apiInsights) {
+            if (!localTypes.has(apiInsight.type)) {
+              newInsights.push(apiInsight);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch AI insights:', err);
+        // Continue with local insights only
+      }
     }
+
+    // Sort by severity (urgent first)
+    const severityOrder: Record<string, number> = { urgent: 0, warning: 1, info: 2, success: 3 };
+    newInsights.sort((a, b) => (severityOrder[a.severity] || 99) - (severityOrder[b.severity] || 99));
 
     setInsights(newInsights);
     setIsLoading(false);
-  }, [transactions, recurring, netWorth, liquidAssets, totalLiabilities]);
+  }, [transactions, recurring, netWorth, liquidAssets, totalLiabilities, userId]);
 
   // Generate insights on mount
   useEffect(() => {
     generateInsights();
   }, [generateInsights]);
 
-  // Handle chat message send
+  // Handle chat message send - REAL AI
   const handleSendMessage = useCallback(async () => {
-    if (!inputMessage.trim() || isSending) return;
+    if (!inputMessage.trim() || isSending || !userId) return;
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -250,26 +312,73 @@ export function AIInsights({ className }: AIInsightsProps) {
     setChatMessages((prev) => [...prev, userMessage]);
     setInputMessage('');
     setIsSending(true);
+    setAiError(null);
 
-    // Simulate AI response (in production, this would call the AI API with finance tools)
-    setTimeout(() => {
+    try {
+      // Build conversation history for context
+      const conversationHistory = chatMessages.slice(-8).map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+      const response = await fetch('/api/finance/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          message: userMessage.content,
+          conversationHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
       const assistantMessage: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: 'assistant',
-        content: generateResponse(userMessage.content, {
-          netWorth,
-          liquidAssets,
-          totalLiabilities,
-          monthlySpending: transactions
-            .filter((tx) => tx.amount < 0 && new Date(tx.date) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
-            .reduce((sum, tx) => sum + Math.abs(tx.amount), 0),
-        }),
+        content: data.response || 'I apologize, I could not generate a response.',
+        timestamp: new Date(),
+        toolsUsed: data.toolsUsed || [],
+      };
+
+      setChatMessages((prev) => [...prev, assistantMessage]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setAiError('Failed to get AI response. Using local fallback.');
+
+      // Fallback to local response
+      const fallbackResponse = generateLocalResponse(userMessage.content, {
+        netWorth,
+        liquidAssets,
+        totalLiabilities,
+        monthlySpending: transactions
+          .filter((tx) => tx.amount < 0 && new Date(tx.date) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+          .reduce((sum, tx) => sum + Math.abs(tx.amount), 0),
+      });
+
+      const assistantMessage: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        role: 'assistant',
+        content: fallbackResponse,
         timestamp: new Date(),
       };
+
       setChatMessages((prev) => [...prev, assistantMessage]);
+    } finally {
       setIsSending(false);
-    }, 1000);
-  }, [inputMessage, isSending, netWorth, liquidAssets, totalLiabilities, transactions]);
+      inputRef.current?.focus();
+    }
+  }, [inputMessage, isSending, userId, chatMessages, netWorth, liquidAssets, totalLiabilities, transactions]);
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    setInputMessage(suggestion);
+    inputRef.current?.focus();
+  };
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -281,10 +390,10 @@ export function AIInsights({ className }: AIInsightsProps) {
             AI Financial Advisor
           </h3>
           <p className="text-sm text-white/60">
-            Personalized insights and advice
+            Personalized insights and advice powered by AI
           </p>
         </div>
-        
+
         {/* Tab switcher */}
         <div className="flex bg-glass-bg rounded-lg p-1">
           <button
@@ -334,8 +443,8 @@ export function AIInsights({ className }: AIInsightsProps) {
           <div className="grid gap-3">
             <AnimatePresence mode="popLayout">
               {insights.map((insight, index) => {
-                const SeverityIcon = SEVERITY_ICONS[insight.severity];
-                const TypeIcon = TYPE_ICONS[insight.type];
+                const SeverityIcon = SEVERITY_ICONS[insight.severity as keyof typeof SEVERITY_ICONS] || Lightbulb;
+                const TypeIcon = insight.icon || TYPE_ICONS[insight.type] || Sparkles;
 
                 return (
                   <motion.div
@@ -346,7 +455,7 @@ export function AIInsights({ className }: AIInsightsProps) {
                     transition={{ delay: index * 0.05 }}
                     className={cn(
                       'p-4 rounded-xl border',
-                      SEVERITY_COLORS[insight.severity]
+                      SEVERITY_COLORS[insight.severity as keyof typeof SEVERITY_COLORS] || SEVERITY_COLORS.info
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -357,6 +466,11 @@ export function AIInsights({ className }: AIInsightsProps) {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium">{insight.title}</span>
                           <SeverityIcon className="h-4 w-4" />
+                          {insight.id.startsWith('api-') && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-neon-primary/20 text-neon-primary">
+                              AI
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm opacity-90">{insight.message}</p>
                         {insight.action && (
@@ -378,6 +492,13 @@ export function AIInsights({ className }: AIInsightsProps) {
                 <p className="text-sm">Add more transactions to get personalized advice.</p>
               </div>
             )}
+
+            {isLoading && (
+              <div className="text-center py-8">
+                <RefreshCw className="h-8 w-8 mx-auto mb-2 text-neon-primary animate-spin" />
+                <p className="text-sm text-white/60">Analyzing your finances...</p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -385,23 +506,28 @@ export function AIInsights({ className }: AIInsightsProps) {
       {/* Chat Tab */}
       {activeTab === 'chat' && (
         <div className="flex flex-col h-[60vh]">
+          {/* AI Error banner */}
+          {aiError && (
+            <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
+              {aiError}
+            </div>
+          )}
+
           {/* Chat messages */}
-          <div className="flex-1 overflow-y-auto space-y-4 p-4 rounded-xl bg-glass-bg/30 border border-glass-border mb-4">
+          <div
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto space-y-4 p-4 rounded-xl bg-glass-bg/30 border border-glass-border mb-4"
+          >
             {chatMessages.length === 0 && (
               <div className="text-center py-8 text-white/50">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="mb-2">Ask me anything about your finances!</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    'Can I afford a $500 purchase?',
-                    'How much am I spending on food?',
-                    'What bills are coming up?',
-                    'How can I save more?',
-                  ].map((suggestion) => (
+                <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="mb-4">Ask me anything about your finances!</p>
+                <div className="flex flex-wrap gap-2 justify-center max-w-md mx-auto">
+                  {SUGGESTED_QUESTIONS.map((suggestion) => (
                     <button
                       key={suggestion}
-                      onClick={() => setInputMessage(suggestion)}
-                      className="text-xs px-3 py-1.5 rounded-full bg-glass-bg border border-glass-border hover:border-neon-primary/50 transition-all"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="text-xs px-3 py-1.5 rounded-full bg-glass-bg border border-glass-border hover:border-neon-primary/50 hover:bg-neon-primary/10 transition-all"
                     >
                       {suggestion}
                     </button>
@@ -416,16 +542,47 @@ export function AIInsights({ className }: AIInsightsProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(
-                  'max-w-[80%] p-3 rounded-2xl',
-                  msg.role === 'user'
-                    ? 'ml-auto bg-neon-primary/20 text-white rounded-br-sm'
-                    : 'bg-glass-bg border border-glass-border rounded-bl-sm'
+                  'max-w-[85%]',
+                  msg.role === 'user' ? 'ml-auto' : 'mr-auto'
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                <span className="text-xs opacity-50 mt-1 block">
-                  {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+                <div
+                  className={cn(
+                    'p-3 rounded-2xl',
+                    msg.role === 'user'
+                      ? 'bg-neon-primary/20 text-white rounded-br-sm'
+                      : 'bg-glass-bg border border-glass-border rounded-bl-sm'
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1 text-xs opacity-60">
+                    {msg.role === 'user' ? (
+                      <>
+                        <User className="h-3 w-3" />
+                        You
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="h-3 w-3" />
+                        Financial Advisor
+                      </>
+                    )}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+
+                  {/* Show tools used */}
+                  {msg.toolsUsed && msg.toolsUsed.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-1 text-xs text-white/40">
+                        <Wrench className="h-3 w-3" />
+                        <span>Used: {msg.toolsUsed.join(', ')}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <span className="text-xs opacity-50 mt-1 block">
+                    {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </motion.div>
             ))}
 
@@ -440,29 +597,53 @@ export function AIInsights({ className }: AIInsightsProps) {
                   <span className="w-2 h-2 rounded-full bg-neon-primary animate-bounce" style={{ animationDelay: '150ms' }} />
                   <span className="w-2 h-2 rounded-full bg-neon-primary animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-                <span className="text-sm">Thinking...</span>
+                <span className="text-sm">Analyzing your finances...</span>
               </motion.div>
             )}
           </div>
 
+          {/* Suggested follow-ups after conversation starts */}
+          {chatMessages.length > 0 && chatMessages.length < 6 && !isSending && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {SUGGESTED_QUESTIONS.slice(0, 3)
+                .filter((q) => !chatMessages.some((m) => m.content.includes(q)))
+                .map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="text-xs px-2 py-1 rounded-full bg-glass-bg/50 border border-glass-border hover:border-neon-primary/50 transition-all text-white/60 hover:text-white"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+            </div>
+          )}
+
           {/* Chat input */}
           <div className="flex gap-2">
             <Input
+              ref={inputRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Ask about your finances..."
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+              placeholder={userId ? "Ask about your finances..." : "Please sign in to use AI chat"}
               className="flex-1 bg-glass-bg border-glass-border"
-              disabled={isSending}
+              disabled={isSending || !userId}
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!inputMessage.trim() || isSending}
+              disabled={!inputMessage.trim() || isSending || !userId}
               className="bg-neon-primary hover:bg-neon-primary/90"
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
+
+          {!userId && (
+            <p className="text-xs text-white/40 mt-2 text-center">
+              Sign in to chat with your AI Financial Advisor
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -470,9 +651,9 @@ export function AIInsights({ className }: AIInsightsProps) {
 }
 
 /**
- * Generate a simple response (placeholder for real AI integration)
+ * Generate a local fallback response when AI API is unavailable
  */
-function generateResponse(
+function generateLocalResponse(
   question: string,
   context: {
     netWorth: number;
@@ -486,7 +667,7 @@ function generateResponse(
   if (q.includes('afford') || q.includes('buy') || q.includes('purchase')) {
     const match = question.match(/\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/);
     const amount = match && match[1] ? parseFloat(match[1].replace(',', '')) : 0;
-    
+
     if (amount > 0) {
       const safeAmount = context.liquidAssets * 0.3;
       if (amount <= safeAmount) {
@@ -500,7 +681,7 @@ function generateResponse(
   }
 
   if (q.includes('spend') || q.includes('spending')) {
-    return `Over the last 30 days, you have spent approximately ${formatCurrency(context.monthlySpending)}. To better understand where your money is going, check the Spending Breakdown in the Simulator tab.`;
+    return `Over the last 30 days, you have spent approximately ${formatCurrency(context.monthlySpending)}. To better understand where your money is going, check the Spending Breakdown tab.`;
   }
 
   if (q.includes('bill') || q.includes('due')) {
@@ -513,7 +694,7 @@ function generateResponse(
   }
 
   if (q.includes('net worth') || q.includes('worth')) {
-    return `Your current net worth is ${formatCurrency(context.netWorth)}, calculated as ${formatCurrency(context.liquidAssets + context.netWorth - context.liquidAssets)} in assets minus ${formatCurrency(context.totalLiabilities)} in liabilities. Track this over time to see your financial progress.`;
+    return `Your current net worth is ${formatCurrency(context.netWorth)}. This includes ${formatCurrency(context.liquidAssets)} in liquid assets minus ${formatCurrency(context.totalLiabilities)} in liabilities. Track this over time to see your financial progress.`;
   }
 
   if (q.includes('debt') || q.includes('owe')) {
@@ -523,7 +704,15 @@ function generateResponse(
     return `Great news! You currently have no recorded liabilities. Keep it up by avoiding high-interest debt and only borrowing when necessary.`;
   }
 
-  return `I understand you are asking about "${question}". Your current financial snapshot shows:\n\n• Net Worth: ${formatCurrency(context.netWorth)}\n• Liquid Assets: ${formatCurrency(context.liquidAssets)}\n• Monthly Spending: ${formatCurrency(context.monthlySpending)}\n\nHow else can I help you with your finances?`;
+  if (q.includes('cash flow') || q.includes('cashflow')) {
+    return `Your cash flow analysis shows ${formatCurrency(context.monthlySpending)} in expenses this month. Check the Cash Flow chart for a detailed breakdown of income vs. expenses over time.`;
+  }
+
+  if (q.includes('recurring') || q.includes('subscription')) {
+    return `To see all your recurring expenses and subscriptions, check the Recurring tab. You can manage and track your regular payments there.`;
+  }
+
+  return `I understand you are asking about "${question}". Your current financial snapshot shows:\n\n• Net Worth: ${formatCurrency(context.netWorth)}\n• Liquid Assets: ${formatCurrency(context.liquidAssets)}\n• Monthly Spending: ${formatCurrency(context.monthlySpending)}\n\nFor more detailed analysis, try asking specific questions like "Can I afford $X?" or "How much am I spending on food?"`;
 }
 
 AIInsights.displayName = 'AIInsights';

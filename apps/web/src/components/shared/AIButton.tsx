@@ -13,10 +13,8 @@ export function AIButton({ context, prompt, onClick }: AIButtonProps) {
   const handleClick = () => {
     if (onClick) {
       onClick();
-    } else if (prompt) {
-      // TODO: Send message to agent with context
-      console.log('AI Button clicked:', { prompt, context });
     }
+    // TODO: Send message to agent with context when prompt is provided
   };
 
   return (

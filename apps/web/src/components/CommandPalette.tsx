@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from 'next-themes';
 import {
   Search,
   MessageSquare,
@@ -54,9 +55,10 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { setTheme } = useTheme();
 
   // Define commands
-  const commands: CommandItem[] = [
+  const commands: CommandItem[] = useMemo(() => [
     // Actions
     {
       id: 'voice',
@@ -82,7 +84,7 @@ export function CommandPalette({
       description: 'Switch to dark mode',
       icon: Moon,
       category: 'actions',
-      action: () => console.log('Switch to dark'),
+      action: () => setTheme('dark'),
       keywords: ['night', 'dark mode'],
     },
     {
@@ -91,7 +93,7 @@ export function CommandPalette({
       description: 'Switch to light mode',
       icon: Sun,
       category: 'actions',
-      action: () => console.log('Switch to light'),
+      action: () => setTheme('light'),
       keywords: ['day', 'light mode'],
     },
 
@@ -181,7 +183,7 @@ export function CommandPalette({
       action: () => onSendMessage?.('What time is it?'),
       keywords: ['clock', 'date'],
     },
-  ];
+  ], [onOpenVoice, onOpenSettings, onSendMessage, setTheme]);
 
   // Filter commands based on query
   const filteredCommands = query

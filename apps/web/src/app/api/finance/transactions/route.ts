@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform snake_case to camelCase
-    const transactions = data.map((tx) => ({
+    const transformedTransactions = data.map((tx) => ({
       id: tx.id,
       userId: tx.user_id,
       accountId: tx.account_id,
@@ -75,9 +75,38 @@ export async function GET(request: NextRequest) {
       updatedAt: tx.updated_at,
     }));
 
+    // Deduplicate transactions by unique key (server-side safety)
+    // Key: account_id + date + abs(amount) + normalized_merchant
+    const seen = new Map<string, typeof transformedTransactions[0]>();
+    for (const tx of transformedTransactions) {
+      // Normalize merchant for comparison - keep only letters, first 12 chars
+      const merchantText = (tx.merchantName || tx.description || 'unknown').toLowerCase();
+      const merchantKey = merchantText
+        .replace(/[^a-z]/g, '') // Keep only letters
+        .substring(0, 12);
+      // Use absolute value to catch sign variations
+      const amountKey = Math.abs(tx.amount).toFixed(2);
+      const uniqueKey = `${tx.accountId}:${tx.date}:${amountKey}:${merchantKey}`;
+
+      const existing = seen.get(uniqueKey);
+      if (!existing) {
+        seen.set(uniqueKey, tx);
+      } else {
+        // Keep the one with earlier createdAt (original)
+        const existingTime = new Date(existing.createdAt).getTime();
+        const currentTime = new Date(tx.createdAt).getTime();
+        if (currentTime < existingTime) {
+          seen.set(uniqueKey, tx);
+        }
+      }
+    }
+
+    const transactions = Array.from(seen.values());
+
     return NextResponse.json({
       transactions,
-      total: count,
+      total: transactions.length,
+      originalCount: count,
       limit,
       offset,
     });

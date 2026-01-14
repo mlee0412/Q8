@@ -11,6 +11,7 @@ import {
   Wallet,
   X,
   Link,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { DailyBurnMeter } from './compact/DailyBurnMeter';
 import { AlertCarousel } from './compact/AlertCarousel';
 import { PrivacyToggle } from './shared/PrivacyToggle';
 import { LinkAccountModal } from './shared/LinkAccountModal';
+import { FinanceSettings } from './shared/FinanceSettings';
 import { UnifiedLedger } from './expanded/UnifiedLedger';
 import { RecurringManager } from './expanded/RecurringManager';
 import { WealthSimulator } from './expanded/WealthSimulator';
@@ -67,16 +69,19 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
   const {
     syncAccounts,
     fetchFinanceData,
+    cleanupAndRefresh,
   } = useFinanceHub();
 
   const [showLinkModal, setShowLinkModal] = useState(false);
-  
+  const [showSettings, setShowSettings] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+
   // TODO: Replace with actual user ID from auth
   const userId = 'demo-user';
 
-  // Fetch finance data on mount - use real API calls
+  // Fetch finance data on mount - cleanup duplicates and fetch fresh data
   useEffect(() => {
-    fetchFinanceData(userId);
+    cleanupAndRefresh(userId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,6 +91,7 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
     try {
       await syncAccounts(userId, true);
       setError(null);
+      setLastSyncTime(new Date());
     } catch (err) {
       setError('Sync failed');
     } finally {
@@ -93,6 +99,29 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  // Auto-sync twice daily at 6 AM and 6 PM
+  useEffect(() => {
+    const checkScheduledSync = () => {
+      const now = new Date();
+      const hour = now.getHours();
+
+      // Sync at 6 AM or 6 PM (with 5 minute window)
+      if ((hour === 6 || hour === 18) && now.getMinutes() < 5) {
+        if (!lastSyncTime || now.getTime() - lastSyncTime.getTime() > 60 * 60 * 1000) {
+          handleSync();
+        }
+      }
+    };
+
+    // Check every minute for scheduled sync
+    const intervalId = setInterval(checkScheduledSync, 60 * 1000);
+
+    // Initial check
+    checkScheduledSync();
+
+    return () => clearInterval(intervalId);
+  }, [handleSync, lastSyncTime]);
 
   // Handle link account
   const handleLinkAccount = useCallback(() => {
@@ -190,6 +219,17 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
               <Link className="h-3.5 w-3.5" />
             </Button>
 
+            {/* Settings button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setShowSettings(true)}
+              title="Finance settings"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+
             {/* Expand toggle */}
             <Button
               variant="ghost"
@@ -239,6 +279,16 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
           setShowLinkModal(false);
           handleSync();
         }}
+      />
+
+      {/* Finance Settings Modal */}
+      <FinanceSettings
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        userId={userId}
+        onSyncAll={handleSync}
+        lastSyncTime={lastSyncTime}
+        isSyncing={isSyncing}
       />
     </>
   );

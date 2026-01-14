@@ -222,7 +222,6 @@ export function useChat(options: UseChatOptions) {
 
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
-        console.log('Stream aborted');
         return;
       }
 

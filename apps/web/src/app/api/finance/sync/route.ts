@@ -24,6 +24,23 @@ const plaidConfiguration = new Configuration({
 const plaidClient = new PlaidApi(plaidConfiguration);
 
 /**
+ * Create a content-based key to detect duplicate transactions
+ * Plaid can send same transaction with different transaction_ids (pending vs posted)
+ */
+function createContentKey(tx: {
+  account_id: string;
+  date: string;
+  amount: number;
+  merchant_name: string | null | undefined;
+  name: string;
+}): string {
+  const merchantText = (tx.merchant_name || tx.name || 'unknown').toLowerCase();
+  const merchantKey = merchantText.replace(/[^a-z]/g, '').substring(0, 12);
+  const amountKey = Math.abs(tx.amount).toFixed(2);
+  return `${tx.account_id}:${tx.date}:${amountKey}:${merchantKey}`;
+}
+
+/**
  * POST /api/finance/sync
  * Sync all accounts and transactions for a user
  */
@@ -127,9 +144,64 @@ export async function POST(request: NextRequest) {
           dbAccounts?.map((a) => [a.plaid_account_id, a.id]) || []
         );
 
+        // Get existing transactions to check for content duplicates
+        const dbAccountIds = dbAccounts?.map(a => a.id) || [];
+        const { data: existingTransactions } = await supabase
+          .from('finance_transactions')
+          .select('id, account_id, date, amount, merchant_name, description, plaid_transaction_id')
+          .in('account_id', dbAccountIds)
+          .gte('date', startDate.toISOString().slice(0, 10));
+
+        // Create content-based map of existing transactions
+        const existingByContent = new Map<string, { id: string; plaid_transaction_id: string | null }>();
+        for (const tx of existingTransactions || []) {
+          const contentKey = `${tx.account_id}:${tx.date}:${Math.abs(parseFloat(tx.amount)).toFixed(2)}:${(tx.merchant_name || tx.description || 'unknown').toLowerCase().replace(/[^a-z]/g, '').substring(0, 12)}`;
+          existingByContent.set(contentKey, {
+            id: tx.id,
+            plaid_transaction_id: tx.plaid_transaction_id,
+          });
+        }
+
+        // Also track by plaid_transaction_id for direct matches
+        const existingByPlaidId = new Map<string, string>();
+        for (const tx of existingTransactions || []) {
+          if (tx.plaid_transaction_id) {
+            existingByPlaidId.set(tx.plaid_transaction_id, tx.id);
+          }
+        }
+
         for (const tx of txResponse.data.transactions) {
           const accountId = accountIdMap.get(tx.account_id);
           if (!accountId) continue;
+
+          // Check if this transaction already exists by content
+          const contentKey = createContentKey({
+            account_id: accountId,
+            date: tx.date,
+            amount: tx.amount,
+            merchant_name: tx.merchant_name,
+            name: tx.name,
+          });
+
+          const existingByContentMatch = existingByContent.get(contentKey);
+          const existingByPlaidIdMatch = existingByPlaidId.get(tx.transaction_id);
+
+          // Skip if we already have this exact content (prevents duplicates from pending/posted)
+          if (existingByContentMatch && !existingByPlaidIdMatch) {
+            // Content exists but with different plaid_transaction_id
+            // Update the existing record with the new plaid_transaction_id and status
+            const { error: updateError } = await supabase
+              .from('finance_transactions')
+              .update({
+                plaid_transaction_id: tx.transaction_id,
+                status: tx.pending ? 'pending' : 'posted',
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingByContentMatch.id);
+
+            if (!updateError) results.transactionsModified++;
+            continue;
+          }
 
           const txData = {
             user_id: userId,

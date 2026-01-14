@@ -2,29 +2,69 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useFinanceHubStore } from '@/lib/stores/financehub';
-import type { FinanceAccount, FinanceTransaction, RecurringItem, FinanceSnapshot } from '@/types/finance';
+import type { FinanceAccount, FinanceTransaction } from '@/types/finance';
 import { categorizeTransaction } from '@/types/finance';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Create a content-based key for a transaction
+ * Uses absolute value and normalized merchant to catch duplicates
+ */
+function createTransactionContentKey(tx: FinanceTransaction): string {
+  const merchantText = (tx.merchantName || tx.description || 'unknown').toLowerCase();
+  const merchantKey = merchantText.replace(/[^a-z]/g, '').substring(0, 12);
+  const amountKey = Math.abs(tx.amount).toFixed(2);
+  return `${tx.accountId}:${tx.date}:${amountKey}:${merchantKey}`;
+}
+
+/**
+ * Deduplicate transactions by content (account + date + amount + merchant)
+ * This catches duplicates even if they have different IDs
+ */
+function deduplicateTransactions(
+  transactions: FinanceTransaction[]
+): FinanceTransaction[] {
+  const seen = new Map<string, FinanceTransaction>();
+
+  // Sort by createdAt ascending to keep the oldest one
+  const sorted = [...transactions].sort((a, b) =>
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  for (const tx of sorted) {
+    const contentKey = createTransactionContentKey(tx);
+    const existing = seen.get(contentKey);
+    if (!existing) {
+      seen.set(contentKey, tx);
+    }
+    // If exists, keep the older one (already in map)
+  }
+
+  return Array.from(seen.values());
+}
+
+/**
  * Process transactions to apply auto-categorization for uncategorized items
  */
 function processTransactionsWithCategories(transactions: FinanceTransaction[]): FinanceTransaction[] {
-  return transactions.map((tx) => {
+  // First deduplicate, then categorize
+  const deduped = deduplicateTransactions(transactions);
+
+  return deduped.map((tx) => {
     // Only auto-categorize if category is empty, "Other", or "Uncategorized"
-    const needsCategorization = 
-      tx.category.length === 0 || 
-      tx.category[0] === 'Other' || 
+    const needsCategorization =
+      tx.category.length === 0 ||
+      tx.category[0] === 'Other' ||
       tx.category[0] === 'Uncategorized';
-    
+
     if (needsCategorization) {
       const suggestedCategory = categorizeTransaction(tx.merchantName, tx.description);
       if (suggestedCategory !== 'Other') {
         return { ...tx, category: [suggestedCategory] };
       }
     }
-    
+
     return tx;
   });
 }
@@ -305,6 +345,48 @@ export function useFinanceHub() {
     }
   }, []);
 
+  /**
+   * Clean up duplicate transactions and refresh data
+   */
+  const cleanupAndRefresh = useCallback(async (userId: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Clear localStorage cache to remove any stale duplicate data
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('financehub-storage');
+        console.log('Cleared financehub localStorage cache');
+      }
+
+      // Clean up duplicates in the database
+      const cleanupResponse = await fetch('/api/finance/transactions/cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, dryRun: false }),
+      });
+
+      if (!cleanupResponse.ok) {
+        const errorData = await cleanupResponse.json();
+        throw new Error(errorData.error || 'Cleanup failed');
+      }
+
+      const cleanupResult = await cleanupResponse.json();
+      console.log('Cleanup result:', cleanupResult);
+
+      // Fetch fresh data from API
+      await fetchFinanceData(userId);
+
+      return cleanupResult;
+    } catch (err) {
+      console.error('Cleanup error:', err);
+      setError(err instanceof Error ? err.message : 'Cleanup failed');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchFinanceData, setLoading, setError]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -333,6 +415,7 @@ export function useFinanceHub() {
     addManualAccount,
     startPeriodicSync,
     stopPeriodicSync,
+    cleanupAndRefresh,
   };
 }
 

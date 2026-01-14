@@ -122,7 +122,6 @@ export function OfflineIndicator({
     try {
       // TODO: Implement manual sync trigger
       // await db.sync();
-      console.log('Retrying sync...');
     } catch (error) {
       console.error('Sync retry failed:', error);
     }

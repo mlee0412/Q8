@@ -234,21 +234,9 @@ export function useContentHub() {
     item: ContentItem,
     haEntityId: string = 'media_player.living_room'
   ) => {
-    console.log('castToDevice called with:', { item, haEntityId });
-    
     try {
       const mediaUrl = item.playbackUrl || item.deepLinkUrl;
-      console.log('Media URL for cast:', mediaUrl);
-      
-      if (!mediaUrl) {
-        console.log('No media URL found in item');
-        // For Spotify items, try to construct URL from sourceMetadata
-        if (item.source === 'spotify' && item.sourceMetadata?.uri) {
-          const uri = item.sourceMetadata.uri as string;
-          console.log('Using Spotify URI:', uri);
-        }
-      }
-      
+
       // Step 1: Use Home Assistant to launch the app on Apple TV
       const requestBody = {
         mediaUrl: mediaUrl || '',
@@ -257,15 +245,12 @@ export function useContentHub() {
         source: item.source,
         entityId: haEntityId,
       };
-      console.log('Sending cast request:', requestBody);
-      
+
       const castResponse = await fetch('/api/contenthub/cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
-      
-      console.log('Cast response status:', castResponse.status);
 
       const castData = await castResponse.json();
 

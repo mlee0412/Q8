@@ -389,8 +389,8 @@ function getFollowUpSuggestions(recentTopics: string[]): ProactiveSuggestion[] {
  * Mark a suggestion as dismissed
  */
 export function dismissSuggestion(suggestionId: string): void {
-  // In production, this would update a database
-  console.log(`Dismissed suggestion: ${suggestionId}`);
+  // TODO: In production, this would update a database to persist dismissal
+  void suggestionId; // Acknowledge parameter until persistence is implemented
 }
 
 /**

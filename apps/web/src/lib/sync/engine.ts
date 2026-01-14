@@ -97,7 +97,6 @@ export class SyncEngine {
     if (this.isRunning) return;
 
     this.isRunning = true;
-    console.log('[SyncEngine] Starting...');
 
     // Subscribe to realtime changes
     await this.setupRealtimeSubscriptions();
@@ -111,8 +110,6 @@ export class SyncEngine {
     this.syncTimer = setInterval(() => {
       this.sync();
     }, this.syncInterval);
-
-    console.log('[SyncEngine] Started');
   }
 
   /**
@@ -134,8 +131,6 @@ export class SyncEngine {
       await this.supabase.removeChannel(channel);
     }
     this.realtimeChannels.clear();
-
-    console.log('[SyncEngine] Stopped');
   }
 
   /**
@@ -144,13 +139,11 @@ export class SyncEngine {
   async sync(): Promise<void> {
     // Check circuit breaker
     if (this.isCircuitOpen()) {
-      console.log('[SyncEngine] Circuit breaker open, skipping sync');
       return;
     }
 
     // Check online status
     if (!this.healthManager.getCurrentHealth().isOnline) {
-      console.log('[SyncEngine] Offline, skipping sync');
       return;
     }
 

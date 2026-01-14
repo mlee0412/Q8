@@ -229,9 +229,7 @@ async function processHomeAgentRequest(
   for (const toolCall of toolCalls) {
     const functionName = toolCall.function.name;
     const functionArgs = JSON.parse(toolCall.function.arguments);
-    
-    console.log(`Executing tool: ${functionName}`, functionArgs);
-    
+
     const result = await executeHomeAssistantTool(functionName, functionArgs);
     toolResults.push({ tool: functionName, result });
   }

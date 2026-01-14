@@ -24,6 +24,7 @@ import {
 } from '@/lib/stores/financehub';
 import { AmountDisplay } from '../shared/AmountDisplay';
 import { AddTransactionForm } from './AddTransactionForm';
+import { TransactionCategoryModal } from './TransactionCategoryModal';
 import type { FinanceTransaction, TransactionFilters } from '@/types/finance';
 import { getCategoryIcon, formatCurrency } from '@/types/finance';
 
@@ -59,6 +60,10 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingTransaction, setEditingTransaction] = useState<FinanceTransaction | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [categoryTransaction, setCategoryTransaction] = useState<FinanceTransaction | null>(null);
+
+  // TODO: Replace with actual user ID from auth
+  const userId = 'demo-user';
 
   // Filter state
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
@@ -398,12 +403,17 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
               </div>
 
               {/* Category */}
-              <div className="col-span-2 flex items-center gap-1">
+              <button
+                onClick={() => setCategoryTransaction(tx)}
+                className="col-span-2 flex items-center gap-1 hover:bg-white/10 rounded-md px-1 py-0.5 -mx-1 transition-colors group/cat"
+                title="Click to change category"
+              >
                 <span className="text-sm">{getCategoryIcon(tx.category[0] || 'Other')}</span>
-                <span className="text-xs text-white/70 truncate">
+                <span className="text-xs text-white/70 truncate group-hover/cat:text-white">
                   {tx.category[0] || 'Other'}
                 </span>
-              </div>
+                <Edit2 className="h-3 w-3 text-white/0 group-hover/cat:text-white/50 transition-colors" />
+              </button>
 
               {/* Account */}
               <div className="col-span-2 text-xs text-white/60 truncate">
@@ -483,6 +493,14 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
           setEditingTransaction(null);
         }}
         editTransaction={editingTransaction}
+      />
+
+      {/* Category Change Modal */}
+      <TransactionCategoryModal
+        isOpen={!!categoryTransaction}
+        onClose={() => setCategoryTransaction(null)}
+        transaction={categoryTransaction}
+        userId={userId}
       />
     </div>
   );

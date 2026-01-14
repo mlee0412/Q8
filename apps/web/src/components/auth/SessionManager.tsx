@@ -90,8 +90,6 @@ export function SessionManager({ children }: SessionManagerProps) {
     // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
-
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -112,7 +110,7 @@ export function SessionManager({ children }: SessionManagerProps) {
         }
 
         if (event === 'TOKEN_REFRESHED') {
-          console.log('Session token refreshed');
+          // Session token refreshed successfully
         }
       }
     );
@@ -182,7 +180,7 @@ async function syncUserToRxDB(user: User) {
     //   updated_at: new Date().toISOString(),
     // });
 
-    console.log('User synced to RxDB (placeholder)');
+    // User synced to RxDB (placeholder)
   } catch (error) {
     console.error('Failed to sync user to RxDB:', error);
   }
@@ -194,7 +192,6 @@ async function startReplication(session: Session) {
     const db = await getDatabase();
 
     // Start background sync with Supabase
-    console.log('Starting RxDB replication...');
 
     // Pull initial data from Supabase
     const { pullAllCollections } = await import('@/lib/sync/pull');
@@ -218,8 +215,6 @@ async function startReplication(session: Session) {
 
     // Store interval ID for cleanup
     (window as any).__rxdbSyncInterval = syncInterval;
-
-    console.log('RxDB replication started successfully');
   } catch (error) {
     console.error('Failed to start replication:', error);
   }
@@ -228,16 +223,12 @@ async function startReplication(session: Session) {
 // Helper: Stop RxDB replication
 async function stopReplication() {
   try {
-    console.log('Stopping RxDB replication...');
-
     // Clear sync interval
     const syncInterval = (window as any).__rxdbSyncInterval;
     if (syncInterval) {
       clearInterval(syncInterval);
       delete (window as any).__rxdbSyncInterval;
     }
-
-    console.log('RxDB replication stopped');
   } catch (error) {
     console.error('Failed to stop replication:', error);
   }
@@ -246,13 +237,9 @@ async function stopReplication() {
 // Helper: Clear RxDB data on logout
 async function clearRxDBData() {
   try {
-    console.log('Clearing RxDB data (placeholder)...');
-
     // TODO: Clear user-specific data, not entire database
     // const db = await getDatabase();
     // await db.collections.users.remove();
-
-    console.log('RxDB data cleared');
   } catch (error) {
     console.error('Failed to clear RxDB data:', error);
   }

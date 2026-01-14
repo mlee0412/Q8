@@ -1142,6 +1142,8 @@ export interface FinanceAccount {
   balanceAvailable?: number;
   balanceLimit?: number;
   currency: string;
+  // Interest/APR for credit accounts
+  apr?: number;
   // Plaid fields
   plaidItemId?: string;
   plaidAccountId?: string;
@@ -1252,6 +1254,31 @@ export interface FinanceBudget {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Category Rule - User-defined categorization rules
+export type CategoryRuleMatchType = 'exact' | 'contains' | 'starts_with' | 'regex';
+
+export interface CategoryRule {
+  id: string;
+  userId: string;
+  merchantPattern: string;
+  normalizedPattern: string;
+  matchType: CategoryRuleMatchType;
+  category: string;
+  sourceTransactionId?: string;
+  hitCount: number;
+  isActive: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryRuleCreateInput {
+  merchantPattern: string;
+  matchType?: CategoryRuleMatchType;
+  category: string;
+  applyToExisting?: boolean;
 }
 
 // ============================================================
