@@ -248,9 +248,10 @@ export function ChatInput({
                 onClick={() =>
                   setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
                 }
-                className="text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
+                aria-label={`Remove ${file.name}`}
+                className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
               >
-                ×
+                <span aria-hidden="true">×</span>
               </button>
             </div>
           ))}
@@ -328,7 +329,8 @@ export function ChatInput({
         <button
           onClick={handleSend}
           disabled={disabled || (!message.trim() && selectedFiles.length === 0)}
-          className="flex-shrink-0 h-9 w-9 rounded-lg bg-neon-primary hover:bg-neon-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors focus-ring"
+          aria-label={disabled ? 'Sending message' : 'Send message'}
+          className="flex-shrink-0 h-10 w-10 rounded-lg bg-neon-primary hover:bg-neon-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors focus-ring"
         >
           {disabled ? (
             <Loader2 className="h-4 w-4 animate-spin text-white" />

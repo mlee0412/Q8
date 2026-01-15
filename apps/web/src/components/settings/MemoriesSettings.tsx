@@ -6,7 +6,6 @@ import {
   Brain,
   Trash2,
   Search,
-  Filter,
   Plus,
   Loader2,
   AlertCircle,
@@ -23,25 +22,25 @@ interface MemoriesSettingsProps {
   userId: string;
 }
 
-const MEMORY_TYPE_LABELS: Record<MemoryType, { label: string; color: string; icon: typeof Brain }> = {
-  fact: { label: 'Fact', color: 'text-blue-400', icon: Brain },
-  preference: { label: 'Preference', color: 'text-purple-400', icon: Star },
-  task: { label: 'Task', color: 'text-yellow-400', icon: Clock },
-  event: { label: 'Event', color: 'text-green-400', icon: Clock },
-  relationship: { label: 'Relationship', color: 'text-pink-400', icon: Brain },
+const MEMORY_TYPE_LABELS: Record<MemoryType, { label: string; colorClass: string; icon: typeof Brain }> = {
+  fact: { label: 'Fact', colorClass: 'badge-info', icon: Brain },
+  preference: { label: 'Preference', colorClass: 'badge-accent', icon: Star },
+  task: { label: 'Task', colorClass: 'badge-warning', icon: Clock },
+  event: { label: 'Event', colorClass: 'badge-success', icon: Clock },
+  relationship: { label: 'Relationship', colorClass: 'badge', icon: Brain },
 };
 
-const IMPORTANCE_LABELS: Record<MemoryImportance, { label: string; color: string }> = {
-  low: { label: 'Low', color: 'text-gray-400' },
-  medium: { label: 'Medium', color: 'text-blue-400' },
-  high: { label: 'High', color: 'text-yellow-400' },
-  critical: { label: 'Critical', color: 'text-danger' },
+const IMPORTANCE_LABELS: Record<MemoryImportance, { label: string; className: string }> = {
+  low: { label: 'Low', className: 'text-text-muted' },
+  medium: { label: 'Medium', className: 'text-text-secondary' },
+  high: { label: 'High', className: 'text-warning' },
+  critical: { label: 'Critical', className: 'text-danger' },
 };
 
 /**
  * MemoriesSettings Component
- * 
- * Displays and manages user's agent memories
+ *
+ * Displays and manages user's agent memories with design system styling.
  */
 export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +64,7 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
 
   // Filter memories by search and type
   const filteredMemories = memories.filter((memory) => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       memory.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       memory.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesType = filterType === 'all' || memory.memory_type === filterType;
@@ -78,7 +77,7 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
 
     const tags = newMemory.tags.split(',').map(t => t.trim()).filter(Boolean);
     await createMemory(newMemory.content, newMemory.type, newMemory.importance, tags);
-    
+
     setNewMemory({ content: '', type: 'fact', importance: 'medium', tags: '' });
     setShowAddForm(false);
   };
@@ -95,8 +94,8 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
       {/* Header with Stats */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-medium">Agent Memories</h3>
-          <p className="text-xs text-text-muted mt-1">
+          <h3 className="text-heading">Agent Memories</h3>
+          <p className="text-caption mt-1">
             {memoryStats.total} memories stored
           </p>
         </div>
@@ -125,14 +124,14 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
                 value={newMemory.content}
                 onChange={(e) => setNewMemory(prev => ({ ...prev, content: e.target.value }))}
                 placeholder="What should I remember?"
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none resize-none"
+                className="input-field resize-none"
                 rows={3}
               />
               <div className="flex gap-2">
                 <select
                   value={newMemory.type}
                   onChange={(e) => setNewMemory(prev => ({ ...prev, type: e.target.value as MemoryType }))}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
+                  className="input-field flex-1"
                 >
                   {Object.entries(MEMORY_TYPE_LABELS).map(([key, { label }]) => (
                     <option key={key} value={key}>{label}</option>
@@ -141,7 +140,7 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
                 <select
                   value={newMemory.importance}
                   onChange={(e) => setNewMemory(prev => ({ ...prev, importance: e.target.value as MemoryImportance }))}
-                  className="flex-1 px-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
+                  className="input-field flex-1"
                 >
                   {Object.entries(IMPORTANCE_LABELS).map(([key, { label }]) => (
                     <option key={key} value={key}>{label}</option>
@@ -153,7 +152,7 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
                 value={newMemory.tags}
                 onChange={(e) => setNewMemory(prev => ({ ...prev, tags: e.target.value }))}
                 placeholder="Tags (comma-separated)"
-                className="w-full px-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
+                className="input-field"
               />
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setShowAddForm(false)}>
@@ -177,13 +176,13 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
             placeholder="Search memories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
+            className="input-field pl-9"
           />
         </div>
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value as MemoryType | 'all')}
-          className="px-3 py-2 text-sm rounded-lg bg-surface-3 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
+          className="input-field w-auto"
         >
           <option value="all">All Types</option>
           {Object.entries(MEMORY_TYPE_LABELS).map(([key, { label }]) => (
@@ -197,38 +196,38 @@ export function MemoriesSettings({ userId }: MemoriesSettingsProps) {
         {Object.entries(memoryStats.byType).map(([type, count]) => {
           const typeInfo = MEMORY_TYPE_LABELS[type as MemoryType];
           return (
-            <div
-              key={type}
-              className={cn(
-                'px-2 py-1 rounded-full text-xs flex items-center gap-1',
-                'bg-surface-3 border border-border-subtle'
-              )}
-            >
-              <span className={typeInfo.color}>{typeInfo.label}</span>
-              <span className="text-text-muted">{count}</span>
-            </div>
+            <span key={type} className={cn('badge', typeInfo.colorClass)}>
+              {typeInfo.label}: {count}
+            </span>
           );
         })}
       </div>
 
       {/* Memories List */}
-      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+      <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
+          <div className="empty-state">
+            <Loader2 className="empty-state-icon animate-spin" />
+            <p className="text-caption">Loading memories...</p>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center gap-2 py-8 text-danger">
-            <AlertCircle className="h-5 w-5" />
-            <span className="text-sm">{error}</span>
+          <div className="empty-state">
+            <AlertCircle className="empty-state-icon text-danger" />
+            <p className="empty-state-title text-danger">Error loading memories</p>
+            <p className="empty-state-description">{error}</p>
           </div>
         ) : filteredMemories.length === 0 ? (
-          <div className="text-center py-8 text-text-muted">
-            <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">
-              {searchQuery || filterType !== 'all' 
-                ? 'No memories match your search' 
+          <div className="empty-state">
+            <Brain className="empty-state-icon" />
+            <p className="empty-state-title">
+              {searchQuery || filterType !== 'all'
+                ? 'No memories match your search'
                 : 'No memories yet'}
+            </p>
+            <p className="empty-state-description">
+              {searchQuery || filterType !== 'all'
+                ? 'Try adjusting your search or filter criteria'
+                : 'Add memories to help Q8 remember important information about you'}
             </p>
           </div>
         ) : (
@@ -262,40 +261,36 @@ function MemoryItem({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-3 rounded-lg bg-surface-3 border border-border-subtle group hover:border-border-subtle/50 transition-colors"
+      className="card-item group"
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm">{memory.content}</p>
+          <p className="text-sm text-text-primary">{memory.content}</p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className={cn('text-xs px-2 py-0.5 rounded-full bg-surface-3', typeInfo.color)}>
+            <span className={cn('badge', typeInfo.colorClass)}>
               {typeInfo.label}
             </span>
-            <span className={cn('text-xs', importanceInfo.color)}>
+            <span className={cn('text-xs font-medium', importanceInfo.className)}>
               {importanceInfo.label}
             </span>
             {memory.tags && memory.tags.length > 0 && (
               <div className="flex items-center gap-1">
                 <Tag className="h-3 w-3 text-text-muted" />
-                {memory.tags.slice(0, 3).map((tag, i) => (
-                  <span key={i} className="text-xs text-text-muted">
-                    {tag}{i < Math.min(memory.tags.length, 3) - 1 ? ',' : ''}
-                  </span>
-                ))}
-                {memory.tags.length > 3 && (
-                  <span className="text-xs text-text-muted">+{memory.tags.length - 3}</span>
-                )}
+                <span className="text-xs text-text-muted">
+                  {memory.tags.slice(0, 3).join(', ')}
+                  {memory.tags.length > 3 && ` +${memory.tags.length - 3}`}
+                </span>
               </div>
             )}
           </div>
-          <p className="text-xs text-text-muted mt-1">
+          <p className="text-caption mt-2">
             {new Date(memory.created_at).toLocaleDateString()}
             {memory.access_count > 0 && ` · Used ${memory.access_count} times`}
           </p>
         </div>
         <button
           onClick={onDelete}
-          className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-3 transition-all"
+          className="btn-icon-sm opacity-0 group-hover:opacity-100 hover:bg-danger/10 transition-all"
           title="Delete memory"
         >
           <Trash2 className="h-4 w-4 text-danger" />

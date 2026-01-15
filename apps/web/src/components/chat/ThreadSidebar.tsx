@@ -120,7 +120,7 @@ export function ThreadSidebar({
       </div>
 
       {/* Thread List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin" role="list" aria-label="Conversation threads">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
@@ -260,8 +260,11 @@ function ThreadItem({
             e.stopPropagation();
             onMenuToggle();
           }}
+          aria-label="Thread options"
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
           className={cn(
-            'absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded focus-ring',
+            'absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded focus-ring',
             'opacity-0 group-hover:opacity-100 transition-opacity',
             'hover:bg-surface-3',
             menuOpen && 'opacity-100'
@@ -278,9 +281,12 @@ function ThreadItem({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
+            role="menu"
+            aria-label="Thread actions"
             className="absolute right-2 top-full mt-1 z-50 surface-matte rounded-lg shadow-lg py-1 min-w-[140px]"
           >
             <button
+              role="menuitem"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditStart();
@@ -288,27 +294,29 @@ function ThreadItem({
               }}
               className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-text-primary focus-ring"
             >
-              <Edit3 className="h-4 w-4" />
+              <Edit3 className="h-4 w-4" aria-hidden="true" />
               Rename
             </button>
             <button
+              role="menuitem"
               onClick={(e) => {
                 e.stopPropagation();
                 onArchive();
               }}
               className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-text-primary focus-ring"
             >
-              <Archive className="h-4 w-4" />
+              <Archive className="h-4 w-4" aria-hidden="true" />
               Archive
             </button>
             <button
+              role="menuitem"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
               }}
               className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-danger focus-ring"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
               Delete
             </button>
           </motion.div>
