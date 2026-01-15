@@ -219,7 +219,7 @@ export function StreamingMessage({
         {isBot && (
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium">{agentConfig.name}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-text-muted">
               {formatTimestamp(timestamp)}
             </span>
             {isStreaming && (
@@ -253,8 +253,8 @@ export function StreamingMessage({
           className={cn(
             'rounded-2xl px-4 py-3 relative',
             isUser
-              ? 'glass-panel bg-neon-primary/10 border border-neon-primary/20'
-              : 'glass-panel'
+              ? 'surface-matte bg-neon-primary/10 border border-neon-primary/20'
+              : 'surface-matte'
           )}
         >
           {/* Message Content */}
@@ -262,9 +262,9 @@ export function StreamingMessage({
             className={cn(
               'prose prose-sm max-w-none',
               isUser && 'text-right',
-              'prose-p:text-foreground prose-headings:text-foreground',
-              'prose-code:text-neon-accent prose-code:bg-glass-bg',
-              'prose-pre:glass-panel prose-pre:p-0'
+              'prose-p:text-text-primary prose-headings:text-text-primary',
+              'prose-code:text-neon-accent prose-code:bg-surface-3',
+              'prose-pre:surface-matte prose-pre:p-0'
             )}
           >
             {content ? (
@@ -277,7 +277,7 @@ export function StreamingMessage({
                     return !inline ? (
                       <div className="relative group/code">
                         {language && (
-                          <div className="absolute top-2 right-2 z-10 px-2 py-1 glass-panel rounded text-xs text-muted-foreground">
+                          <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-surface-3 border border-border-subtle rounded text-xs text-text-muted">
                             {language}
                           </div>
                         )}
@@ -302,7 +302,7 @@ export function StreamingMessage({
                 {content}
               </ReactMarkdown>
             ) : isStreaming ? (
-              <span className="text-muted-foreground">Thinking...</span>
+              <span className="text-text-muted">Thinking...</span>
             ) : null}
 
             {/* Streaming cursor */}
@@ -322,38 +322,38 @@ export function StreamingMessage({
               >
                 <button
                   onClick={handleCopy}
-                  className="p-1.5 rounded-lg hover:bg-glass-bg transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-surface-3 transition-colors focus-ring"
                   title="Copy"
                 >
                   {isCopied ? (
-                    <Check className="h-4 w-4 text-green-400" />
+                    <Check className="h-4 w-4 text-neon-accent" />
                   ) : (
-                    <Copy className="h-4 w-4 text-muted-foreground" />
+                    <Copy className="h-4 w-4 text-text-muted" />
                   )}
                 </button>
 
                 <button
                   onClick={() => onAction?.('regenerate', id)}
-                  className="p-1.5 rounded-lg hover:bg-glass-bg transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-surface-3 transition-colors focus-ring"
                   title="Regenerate"
                 >
-                  <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  <RefreshCw className="h-4 w-4 text-text-muted" />
                 </button>
 
                 <button
                   onClick={() => onAction?.('thumbsUp', id)}
-                  className="p-1.5 rounded-lg hover:bg-glass-bg transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-surface-3 transition-colors focus-ring"
                   title="Good response"
                 >
-                  <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+                  <ThumbsUp className="h-4 w-4 text-text-muted" />
                 </button>
 
                 <button
                   onClick={() => onAction?.('thumbsDown', id)}
-                  className="p-1.5 rounded-lg hover:bg-glass-bg transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-surface-3 transition-colors focus-ring"
                   title="Bad response"
                 >
-                  <ThumbsDown className="h-4 w-4 text-muted-foreground" />
+                  <ThumbsDown className="h-4 w-4 text-text-muted" />
                 </button>
               </motion.div>
             )}
@@ -362,7 +362,7 @@ export function StreamingMessage({
 
         {/* Timestamp (user messages) */}
         {isUser && (
-          <span className="text-xs text-muted-foreground mt-1">
+          <span className="text-xs text-text-muted mt-1">
             {formatTimestamp(timestamp)}
           </span>
         )}

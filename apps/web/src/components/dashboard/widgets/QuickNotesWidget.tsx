@@ -16,7 +16,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { useNotes } from '@/hooks/useNotes';
 import { NotesPanel } from '@/components/notes';
 
@@ -142,91 +141,84 @@ export function QuickNotesWidget({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className={cn(
-          'glass-panel rounded-xl p-4 flex flex-col overflow-hidden w-full',
+          'surface-matte p-4 flex flex-col overflow-hidden w-full',
           colSpanClasses[colSpan],
           rowSpanClasses[rowSpan],
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+        <div className="widget-header mb-3">
+          <div className="widget-header-title">
             <StickyNote className="h-4 w-4 text-neon-primary" />
-            <h3 className="font-semibold text-sm">Quick Notes</h3>
+            <h3 className="text-heading text-sm">Quick Notes</h3>
           </div>
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            <button
+              className="btn-icon btn-icon-sm focus-ring"
               onClick={handleOpenDailyNote}
-              title="Today's Note"
+              aria-label="Today's note"
             >
               <Calendar className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            </button>
+            <button
+              className="btn-icon btn-icon-sm focus-ring"
               onClick={() => setIsPanelOpen(true)}
-              title="Expand Notes"
+              aria-label="Expand notes"
             >
               <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            </button>
+            <button
+              className="btn-icon btn-icon-sm focus-ring"
               onClick={handleNewNote}
-              title="New Note"
+              aria-label="New note"
             >
               <Plus className="h-4 w-4" />
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* Notes List - Compact */}
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-1 scrollbar-thin">
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-neon-primary border-t-transparent" />
+              <div className="h-6 w-6 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin" />
             </div>
           ) : displayNotes.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <StickyNote className="h-10 w-10 text-muted-foreground opacity-50 mb-2" />
-              <p className="text-sm text-muted-foreground">No notes yet</p>
-              <Button
-                variant="ghost"
-                size="sm"
+            <div className="empty-state">
+              <StickyNote className="empty-state-icon" />
+              <p className="empty-state-title">No notes yet</p>
+              <button
                 onClick={handleNewNote}
-                className="mt-2"
+                className="btn-ghost mt-2 text-sm"
               >
                 <Plus className="h-3 w-3 mr-1" />
                 Create note
-              </Button>
+              </button>
             </div>
           ) : (
             <AnimatePresence>
               {displayNotes.map((note, index) => (
                 <motion.div
                   key={note.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ delay: index * 0.03 }}
                   className={cn(
-                    'rounded-lg overflow-hidden transition-all',
+                    'rounded-md overflow-hidden transition-all',
                     note.is_pinned && 'ring-1 ring-neon-primary/30',
-                    expandedNoteId === note.id ? 'glass-panel' : 'hover:bg-white/5'
+                    expandedNoteId === note.id ? 'bg-surface-3' : 'hover:bg-surface-3/50'
                   )}
                 >
                   {/* Compact View - Title + Timestamp */}
                   <button
                     onClick={() => toggleExpand(note.id)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-left"
+                    className="w-full flex items-center justify-between px-3 py-2 text-left focus-ring rounded-md"
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {note.is_pinned && (
@@ -235,18 +227,18 @@ export function QuickNotesWidget({
                       {note.is_daily && (
                         <Calendar className="h-3 w-3 text-neon-primary flex-shrink-0" />
                       )}
-                      <span className="text-sm font-medium truncate text-white">
+                      <span className="text-body text-sm font-medium truncate">
                         {note.title || 'Untitled'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-xs text-white/50">
+                      <span className="text-xs text-text-muted">
                         {formatRelativeTime(note.updated_at)}
                       </span>
                       {expandedNoteId === note.id ? (
-                        <ChevronUp className="h-3.5 w-3.5 text-white/50" />
+                        <ChevronUp className="h-3.5 w-3.5 text-text-muted" />
                       ) : (
-                        <ChevronDown className="h-3.5 w-3.5 text-white/50" />
+                        <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
                       )}
                     </div>
                   </button>
@@ -263,12 +255,12 @@ export function QuickNotesWidget({
                       >
                         <div className="px-3 pb-3 space-y-3">
                           {/* AI Summary */}
-                          <div className="p-2 rounded-lg bg-white/5 border border-white/10">
+                          <div className="p-2 rounded-md bg-surface-2 border border-border-subtle">
                             <div className="flex items-center gap-1.5 text-xs text-neon-primary mb-1">
                               <Sparkles className="h-3 w-3" />
                               <span>Summary</span>
                             </div>
-                            <p className="text-xs text-white/70 line-clamp-3">
+                            <p className="text-xs text-text-secondary line-clamp-3">
                               {note.ai_summary || getQuickSummary(note.content)}
                             </p>
                           </div>
@@ -281,7 +273,7 @@ export function QuickNotesWidget({
                                 onChange={(e) => setQuickCommentText(e.target.value)}
                                 placeholder="Add a quick comment..."
                                 autoFocus
-                                className="w-full px-2 py-1.5 text-xs bg-white/5 rounded-lg border border-white/10 focus:ring-1 focus:ring-neon-primary resize-none"
+                                className="w-full px-2 py-1.5 text-xs bg-surface-2 border border-border-subtle rounded-md text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-neon-primary/50 focus:outline-none resize-none"
                                 rows={2}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' && e.metaKey) {
@@ -294,56 +286,46 @@ export function QuickNotesWidget({
                                 }}
                               />
                               <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-xs"
+                                <button
+                                  className="btn-ghost h-6 text-xs"
                                   onClick={() => {
                                     setQuickCommentNoteId(null);
                                     setQuickCommentText('');
                                   }}
                                 >
                                   Cancel
-                                </Button>
-                                <Button
-                                  variant="neon"
-                                  size="sm"
-                                  className="h-6 text-xs"
+                                </button>
+                                <button
+                                  className="h-6 px-2 text-xs font-medium bg-neon-primary text-white rounded-md hover:bg-neon-primary/90 transition-colors focus-ring"
                                   onClick={() => handleQuickComment(note.id)}
                                 >
                                   Add
-                                </Button>
+                                </button>
                               </div>
                             </div>
                           ) : (
                             /* Action Buttons */
                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs flex-1"
+                              <button
+                                className="btn-ghost h-7 text-xs flex-1"
                                 onClick={() => handleEditNote(note.id)}
                               >
                                 <Pencil className="h-3 w-3 mr-1" />
                                 Edit
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs flex-1"
+                              </button>
+                              <button
+                                className="btn-ghost h-7 text-xs flex-1"
                                 onClick={() => setQuickCommentNoteId(note.id)}
                               >
                                 <MessageSquarePlus className="h-3 w-3 mr-1" />
                                 Comment
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              </button>
+                              <button
+                                className="btn-ghost h-7 text-xs text-danger hover:bg-danger/10"
                                 onClick={() => handleDeleteNote(note.id)}
                               >
                                 <Trash2 className="h-3 w-3" />
-                              </Button>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -360,7 +342,7 @@ export function QuickNotesWidget({
         {displayNotes.length > 0 && (
           <button
             onClick={() => setIsPanelOpen(true)}
-            className="mt-2 text-xs text-center text-muted-foreground hover:text-foreground transition-colors"
+            className="mt-2 text-xs text-center text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
           >
             View all notes →
           </button>

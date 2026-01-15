@@ -338,7 +338,7 @@ export function AudioVisualizer({
 
       {/* Frequency labels */}
       {showFrequencyLabels && isActive && (
-        <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+        <div className="flex justify-between mt-2 text-xs text-text-muted">
           <span>{frequencyRange[0]} Hz</span>
           <span>{Math.floor((frequencyRange[0] + frequencyRange[1]) / 2)} Hz</span>
           <span>{frequencyRange[1]} Hz</span>
@@ -353,7 +353,7 @@ export function AudioVisualizer({
           className="absolute inset-0 flex items-center justify-center"
         >
           <div className="text-center">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-text-muted">
               Start recording to see audio visualization
             </p>
           </div>

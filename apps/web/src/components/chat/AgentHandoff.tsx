@@ -146,7 +146,7 @@ export function AgentHandoff({
               animate={{ x: [0, 5, 0] }}
               transition={{ duration: 1, repeat: Infinity }}
             >
-              <ArrowRight className="h-5 w-5 text-muted-foreground" />
+              <ArrowRight className="h-5 w-5 text-text-muted" />
             </motion.div>
           </motion.div>
 
@@ -181,7 +181,7 @@ export function AgentHandoff({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-center text-xs text-muted-foreground mt-1"
+          className="text-center text-xs text-text-muted mt-1"
         >
           {reason}
         </motion.p>

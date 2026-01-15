@@ -144,7 +144,7 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
         layout
         className={cn(
           'relative overflow-hidden rounded-2xl',
-          'bg-glass-bg backdrop-blur-glass border border-glass-border',
+          'bg-surface-3 backdrop-blur-glass border border-border-subtle',
           'shadow-glass transition-all duration-300',
           className
         )}
@@ -181,12 +181,12 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
         </AnimatePresence>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-glass-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
           <div className="flex items-center gap-2">
             <Wallet className="h-4 w-4 text-neon-primary" />
             <span className="text-sm font-medium">FinanceHub</span>
             {accounts.length > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-text-muted">
                 ({accounts.length} accounts)
               </span>
             )}
@@ -247,13 +247,13 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
         <NetWorthCard />
 
         {/* Divider */}
-        <div className="border-t border-glass-border" />
+        <div className="border-t border-border-subtle" />
 
         {/* Daily Burn Meter */}
         <DailyBurnMeter />
 
         {/* Divider */}
-        <div className="border-t border-glass-border" />
+        <div className="border-t border-border-subtle" />
 
         {/* Alert Carousel */}
         <AlertCarousel />
@@ -369,7 +369,7 @@ function FinanceCommandCenter({ onClose }: FinanceCommandCenterProps) {
           </div>
 
           {/* Tab Navigation */}
-          <div className="flex gap-2 mb-6 border-b border-white/10 pb-2">
+          <div className="flex gap-2 mb-6 border-b border-border-subtle pb-2">
             {(['ledger', 'recurring', 'simulator', 'insights'] as const).map((tab) => (
               <Button
                 key={tab}
@@ -389,7 +389,7 @@ function FinanceCommandCenter({ onClose }: FinanceCommandCenterProps) {
           </div>
 
           {/* Tab Content */}
-          <div className="rounded-2xl bg-glass-bg/50 backdrop-blur-sm border border-glass-border p-6 min-h-[60vh]">
+          <div className="rounded-2xl bg-surface-3/50 backdrop-blur-sm border border-border-subtle p-6 min-h-[60vh]">
             {activeTab === 'ledger' && <UnifiedLedger />}
             {activeTab === 'recurring' && <RecurringManager />}
             {activeTab === 'simulator' && (

@@ -76,7 +76,7 @@ export function SyncStatus({
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
         className={cn(
-          'glass-panel inline-flex items-center gap-2 rounded-full',
+          'surface-matte inline-flex items-center gap-2 rounded-full',
           variant === 'badge' && 'px-2 py-1',
           variant === 'compact' && 'px-3 py-1.5',
           variant === 'detailed' && 'px-4 py-2',
@@ -106,7 +106,7 @@ export function SyncStatus({
 
             {/* Pending changes indicator */}
             {pendingChanges > 0 && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-text-muted">
                 {pendingChanges} pending
               </span>
             )}
@@ -115,7 +115,7 @@ export function SyncStatus({
 
         {/* Timestamp (detailed only) */}
         {variant === 'detailed' && shouldShowTimestamp && lastSync && (
-          <span className="text-xs text-muted-foreground ml-auto">
+          <span className="text-xs text-text-muted ml-auto">
             {formatTimestamp(lastSync)}
           </span>
         )}

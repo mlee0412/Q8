@@ -214,7 +214,7 @@ export function VoiceConversation({
             </div>
             <div>
               <h1 className="text-lg font-semibold">Voice Mode</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-text-muted">
                 {currentAgent ? `Talking to ${currentAgent}` : 'Q8 is listening'}
               </p>
             </div>
@@ -263,7 +263,7 @@ export function VoiceConversation({
               exit={{ opacity: 0, height: 0 }}
               className="px-6 pb-4"
             >
-              <div className="glass-panel rounded-xl p-4">
+              <div className="surface-matte rounded-xl p-4">
                 <h3 className="text-sm font-medium mb-3">Voice Settings</h3>
                 <div className="flex flex-wrap gap-2">
                   {voiceOptions.map((option) => (
@@ -274,7 +274,7 @@ export function VoiceConversation({
                         'px-3 py-1.5 rounded-full text-sm transition-colors',
                         selectedVoice === option.value
                           ? 'bg-neon-primary text-white'
-                          : 'bg-glass-bg hover:bg-glass-border'
+                          : 'bg-surface-3 hover:bg-border-subtle'
                       )}
                     >
                       {option.label}
@@ -301,7 +301,7 @@ export function VoiceConversation({
                     'mb-4 p-3 rounded-xl',
                     entry.role === 'user'
                       ? 'bg-neon-primary/20 ml-8'
-                      : 'bg-glass-bg mr-8'
+                      : 'bg-surface-3 mr-8'
                   )}
                 >
                   <p className="text-sm">{entry.content}</p>
@@ -405,7 +405,7 @@ export function VoiceConversation({
           </motion.p>
 
           {/* Hint */}
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-text-muted">
             Press ESC to close
           </p>
         </div>

@@ -216,14 +216,14 @@ export function DebtManagementPanel({ className }: DebtManagementPanelProps) {
 
       {/* Overall Summary */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-4 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">Total Debt</div>
           <div className="text-xl font-semibold text-red-400">
             {privacyMode ? '••••••' : formatCurrency(debtSummary.totalDebt)}
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-4 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">Credit Utilization</div>
           <div className={cn('text-xl font-semibold', getUtilizationColor(debtSummary.creditUtilization))}>
             {privacyMode ? '••%' : `${debtSummary.creditUtilization.toFixed(1)}%`}
@@ -244,7 +244,7 @@ export function DebtManagementPanel({ className }: DebtManagementPanelProps) {
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-4 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">Min Monthly Payment</div>
           <div className="text-xl font-semibold text-white">
             {privacyMode ? '••••••' : formatCurrency(debtSummary.totalMinimumPayment)}
@@ -385,7 +385,7 @@ export function DebtManagementPanel({ className }: DebtManagementPanelProps) {
 
       {/* Payoff Calculator */}
       {debtAccounts.length > 0 && (
-        <div className="space-y-4 p-4 rounded-xl bg-glass-bg/50 border border-glass-border">
+        <div className="space-y-4 p-4 rounded-xl bg-surface-3/50 border border-border-subtle">
           <div className="flex items-center gap-2">
             <Calculator className="h-4 w-4 text-neon-primary" />
             <h4 className="text-sm font-medium text-white">Payoff Calculator</h4>

@@ -12,7 +12,6 @@ import {
   Moon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface TimeZone {
   id: string;
@@ -27,8 +26,8 @@ const DEFAULT_TIMEZONES: TimeZone[] = [
   { id: 'seoul', label: 'SEL', timezone: 'Asia/Seoul', city: 'Seoul' },
 ];
 
-const POMODORO_WORK = 25 * 60; // 25 minutes
-const POMODORO_BREAK = 5 * 60; // 5 minutes
+const POMODORO_WORK = 25 * 60;
+const POMODORO_BREAK = 5 * 60;
 
 const TIMER_PRESETS = [
   { label: '5m', seconds: 5 * 60 },
@@ -38,47 +37,18 @@ const TIMER_PRESETS = [
 ];
 
 interface ClockWidgetProps {
-  /**
-   * Custom timezones to display
-   */
   timezones?: TimeZone[];
-
-  /**
-   * Show pomodoro timer
-   * @default true
-   */
   showPomodoro?: boolean;
-
-  /**
-   * Bento grid column span
-   * @default 2
-   */
   colSpan?: 1 | 2 | 3 | 4;
-
-  /**
-   * Bento grid row span
-   * @default 1
-   */
   rowSpan?: 1 | 2 | 3 | 4;
-
-  /**
-   * Additional CSS classes
-   */
   className?: string;
 }
 
 /**
- * Clock Widget
+ * Clock Widget v2.0
  *
- * Displays world clocks for multiple timezones with an integrated
- * pomodoro timer for productivity tracking.
- *
- * Features:
- * - Multiple timezone clocks
- * - Day/night indicator
- * - Pomodoro timer with work/break modes
- * - Completed pomodoro counter
- * - Visual progress ring
+ * World clocks with pomodoro timer using Q8 Design System.
+ * Matte surfaces, reduced neon density.
  */
 export function ClockWidget({
   timezones = DEFAULT_TIMEZONES,
@@ -94,22 +64,17 @@ export function ClockWidget({
   const [pomodoroMode, setPomodoroMode] = useState<'work' | 'break'>('work');
   const [completedPomodoros, setCompletedPomodoros] = useState(0);
 
-  // Update clock every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Pomodoro timer
   useEffect(() => {
     if (!isPomodoroRunning) return;
 
     const timer = setInterval(() => {
       setPomodoroTime((prev) => {
         if (prev <= 1) {
-          // Timer complete
           if (pomodoroMode === 'work') {
             setCompletedPomodoros((c) => c + 1);
             setPomodoroMode('break');
@@ -170,7 +135,6 @@ export function ClockWidget({
       ? ((customDuration - pomodoroTime) / customDuration) * 100
       : ((POMODORO_BREAK - pomodoroTime) / POMODORO_BREAK) * 100;
 
-  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
   const colSpanClasses: Record<number, string> = {
     1: 'col-span-1',
     2: 'col-span-1 md:col-span-2',
@@ -178,7 +142,6 @@ export function ClockWidget({
     4: 'col-span-1 md:col-span-4',
   };
 
-  // Map rowSpan to Tailwind classes
   const rowSpanClasses: Record<number, string> = {
     1: 'row-span-1',
     2: 'row-span-2',
@@ -188,10 +151,11 @@ export function ClockWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl p-3 flex flex-col overflow-hidden w-full',
+        'surface-matte p-3 flex flex-col overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
@@ -201,9 +165,9 @@ export function ClockWidget({
       <div className="flex items-center justify-between mb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-neon-primary" />
-          <h3 className="font-semibold text-sm">World Clock</h3>
+          <h3 className="text-heading text-sm">World Clock</h3>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-caption">
           {currentTime.toLocaleDateString('en-US', {
             weekday: 'short',
             month: 'short',
@@ -214,25 +178,25 @@ export function ClockWidget({
 
       <div className="flex-1 flex gap-3 min-h-0">
         {/* Timezone Clocks */}
-        <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto">
+        <div className="flex-1 flex flex-col gap-1.5 overflow-y-auto scrollbar-thin">
           {timezones.map((tz) => {
             const timeOfDay = getTimeOfDay(currentTime, tz.timezone);
             return (
               <motion.div
                 key={tz.id}
-                initial={{ opacity: 0, x: -10 }}
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="flex items-center justify-between glass-panel rounded-lg px-3 py-1.5 flex-shrink-0"
+                className="list-row px-3 py-1.5 flex-shrink-0"
               >
                 <div className="flex items-center gap-2">
                   {timeOfDay === 'day' ? (
-                    <Sun className="h-3.5 w-3.5 text-yellow-400" />
+                    <Sun className="h-3.5 w-3.5 text-warning" />
                   ) : (
-                    <Moon className="h-3.5 w-3.5 text-blue-400" />
+                    <Moon className="h-3.5 w-3.5 text-info" />
                   )}
-                  <p className="text-xs">{tz.city}</p>
+                  <p className="text-label text-xs">{tz.city}</p>
                 </div>
-                <p className="text-base font-mono font-semibold">
+                <p className="text-base font-mono font-semibold text-text-primary ml-auto">
                   {formatTimeForZone(currentTime, tz.timezone)}
                 </p>
               </motion.div>
@@ -242,10 +206,10 @@ export function ClockWidget({
 
         {/* Pomodoro Timer */}
         {showPomodoro && (
-          <div className="w-[140px] glass-panel rounded-lg p-2 flex flex-col items-center justify-center flex-shrink-0">
+          <div className="w-[140px] card-item p-2 flex flex-col items-center justify-center flex-shrink-0">
             <div className="flex items-center gap-1 mb-1">
               <Timer className="h-3 w-3 text-neon-primary" />
-              <span className="text-xs font-medium">Timer</span>
+              <span className="text-label text-xs">Timer</span>
             </div>
 
             {/* Circular Progress */}
@@ -258,7 +222,7 @@ export function ClockWidget({
                   stroke="currentColor"
                   strokeWidth="3"
                   fill="none"
-                  className="text-glass-border"
+                  className="text-border-subtle"
                 />
                 <motion.circle
                   cx="28"
@@ -268,15 +232,13 @@ export function ClockWidget({
                   strokeWidth="3"
                   fill="none"
                   strokeLinecap="round"
-                  className={
-                    pomodoroMode === 'work' ? 'text-neon-primary' : 'text-green-400'
-                  }
+                  className={pomodoroMode === 'work' ? 'text-neon-primary' : 'text-success'}
                   strokeDasharray={150.8}
                   strokeDashoffset={150.8 - (pomodoroProgress / 100) * 150.8}
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-xs font-mono font-bold">
+                <span className="text-xs font-mono font-bold text-text-primary">
                   {formatPomodoro(pomodoroTime)}
                 </span>
               </div>
@@ -284,50 +246,48 @@ export function ClockWidget({
 
             {/* Controls */}
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
+              <button
+                className="btn-icon btn-icon-sm focus-ring"
                 onClick={() => setIsPomodoroRunning(!isPomodoroRunning)}
+                aria-label={isPomodoroRunning ? 'Pause timer' : 'Start timer'}
               >
                 {isPomodoroRunning ? (
                   <Pause className="h-3 w-3" />
                 ) : (
                   <Play className="h-3 w-3" />
                 )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
+              </button>
+              <button
+                className="btn-icon btn-icon-sm focus-ring"
                 onClick={resetPomodoro}
+                aria-label="Reset timer"
               >
                 <RotateCcw className="h-3 w-3" />
-              </Button>
+              </button>
             </div>
 
             {/* Preset Durations */}
             <div className="flex items-center gap-0.5 mt-1">
               {TIMER_PRESETS.map((preset) => (
-                <Button
+                <button
                   key={preset.label}
-                  variant="ghost"
-                  size="icon"
                   className={cn(
-                    'h-5 w-7 text-[9px] font-medium',
-                    customDuration === preset.seconds && 'bg-neon-primary/20 text-neon-primary'
+                    'h-5 w-7 text-[9px] font-medium rounded focus-ring transition-colors',
+                    customDuration === preset.seconds
+                      ? 'bg-neon-primary/20 text-neon-primary'
+                      : 'text-text-muted hover:text-text-secondary hover:bg-surface-4'
                   )}
                   onClick={() => setPresetDuration(preset.seconds)}
                 >
                   {preset.label}
-                </Button>
+                </button>
               ))}
             </div>
 
             {/* Completed Count */}
             {completedPomodoros > 0 && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                🍅 {completedPomodoros} done
+              <p className="text-caption mt-0.5">
+                {completedPomodoros} completed
               </p>
             )}
           </div>

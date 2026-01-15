@@ -71,7 +71,7 @@ export function AlertCarousel({
         : bill.daysUntilDue === 1 
         ? 'Due tomorrow'
         : `Due in ${bill.daysUntilDue} days`,
-      color: bill.daysUntilDue <= 1 ? 'text-red-400' : 'text-yellow-400',
+      color: bill.daysUntilDue <= 1 ? 'text-danger' : 'text-yellow-400',
       amount: bill.amount,
     })),
     // Map active alerts
@@ -84,8 +84,8 @@ export function AlertCarousel({
         : Bell,
       title: alert.title,
       subtitle: alert.message,
-      color: alert.severity === 'error' ? 'text-red-400' 
-        : alert.severity === 'warning' ? 'text-yellow-400' 
+      color: alert.severity === 'error' ? 'text-danger'
+        : alert.severity === 'warning' ? 'text-yellow-400'
         : 'text-blue-400',
     })),
   ];
@@ -121,8 +121,8 @@ export function AlertCarousel({
     return (
       <div className={cn('p-3 flex items-center justify-center', className)}>
         <div className="text-center">
-          <Bell className="h-5 w-5 text-muted-foreground mx-auto mb-1 opacity-50" />
-          <p className="text-xs text-muted-foreground">No alerts</p>
+          <Bell className="h-5 w-5 text-text-muted mx-auto mb-1 opacity-50" />
+          <p className="text-xs text-text-muted">No alerts</p>
         </div>
       </div>
     );
@@ -168,7 +168,7 @@ export function AlertCarousel({
             transition={{ duration: 0.2 }}
             className="flex items-center gap-3"
           >
-            <div className={cn('p-2 rounded-lg bg-glass-bg', currentItem.color)}>
+            <div className={cn('p-2 rounded-lg bg-surface-3', currentItem.color)}>
               <Icon className="h-4 w-4" />
             </div>
             
@@ -186,7 +186,7 @@ export function AlertCarousel({
                   <span className="text-sm font-semibold blur-sm">$•••</span>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-text-muted truncate">
                 {currentItem.subtitle}
               </p>
             </div>
@@ -203,8 +203,8 @@ export function AlertCarousel({
               className={cn(
                 'h-1 rounded-full transition-all',
                 i === currentIndex 
-                  ? 'w-3 bg-neon-primary' 
-                  : 'w-1 bg-glass-border hover:bg-muted-foreground'
+                  ? 'w-3 bg-neon-primary'
+                  : 'w-1 bg-border-subtle hover:bg-text-muted'
               )}
               onClick={() => setCurrentIndex(i)}
             />

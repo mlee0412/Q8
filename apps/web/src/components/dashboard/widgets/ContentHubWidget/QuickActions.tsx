@@ -69,7 +69,7 @@ export function QuickActions({
                 'transition-all whitespace-nowrap',
                 isActive
                   ? 'bg-neon-primary text-white shadow-lg shadow-neon-primary/30'
-                  : 'bg-glass-bg text-muted-foreground hover:text-foreground hover:bg-glass-border'
+                  : 'bg-surface-3 text-text-muted hover:text-foreground hover:bg-border-subtle'
               )}
             >
               <Icon className="h-3 w-3" />
@@ -86,7 +86,7 @@ export function QuickActions({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-neon-primary"
+            className="h-8 text-xs gap-1.5 text-text-muted hover:text-neon-primary"
             onClick={onAIDiscover}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -99,7 +99,7 @@ export function QuickActions({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-neon-accent hover:bg-neon-accent/10"
+            className="h-8 text-xs gap-1.5 text-text-muted hover:text-neon-accent hover:bg-neon-accent/10"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -117,7 +117,7 @@ export function QuickActions({
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+            className="h-8 text-xs gap-1.5 text-text-muted hover:text-foreground"
             onClick={onVoice}
           >
             <Mic className="h-3.5 w-3.5" />
@@ -151,7 +151,7 @@ export function ModeIndicator({
       onClick={onClick}
       className={cn(
         'flex items-center gap-1 px-2 py-1 rounded-full text-[10px]',
-        'bg-glass-bg border border-glass-border',
+        'bg-surface-3 border border-border-subtle',
         'hover:border-neon-primary/50 transition-colors',
         className
       )}

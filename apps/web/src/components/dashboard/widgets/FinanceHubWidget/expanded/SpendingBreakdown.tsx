@@ -262,7 +262,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
     const percentage = ((data.value / totalSpending) * 100).toFixed(1);
 
     return (
-      <div className="bg-glass-bg backdrop-blur-sm border border-glass-border rounded-lg px-3 py-2">
+      <div className="bg-surface-3 backdrop-blur-sm border border-border-subtle rounded-lg px-3 py-2">
         <div className="flex items-center gap-2 mb-1">
           {'icon' in data && <span>{data.icon}</span>}
           <span className="font-medium text-white">{data.name}</span>
@@ -321,7 +321,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
 
         <div className="flex items-center gap-2">
           {/* Time range selector */}
-          <div className="flex bg-glass-bg rounded-lg p-1">
+          <div className="flex bg-surface-3 rounded-lg p-1">
             {(['7d', '30d', '90d', 'all'] as TimeRange[]).map((range) => (
               <button
                 key={range}
@@ -345,7 +345,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
 
           {/* Chart type selector */}
           {drillLevel === 'category' && (
-            <div className="flex bg-glass-bg rounded-lg p-1">
+            <div className="flex bg-surface-3 rounded-lg p-1">
               <button
                 onClick={() => setChartView('pie')}
                 className={cn(
@@ -452,7 +452,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
           >
             {/* Chart (only for category level or if not too many merchants) */}
             {(drillLevel === 'category' || merchantData.length <= 8) && (
-              <div className="rounded-xl bg-glass-bg/30 border border-glass-border p-4">
+              <div className="rounded-xl bg-surface-3/30 border border-border-subtle p-4">
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     {chartView === 'pie' ? (
@@ -592,7 +592,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
                           handleMerchantClick(item.name);
                         }
                       }}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-glass-bg/50 border border-glass-border hover:bg-white/10 transition-colors text-left group"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-surface-3/50 border border-border-subtle hover:bg-white/10 transition-colors text-left group"
                     >
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -634,7 +634,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
                             </span>
                           </div>
                         </div>
-                        <div className="mt-1 h-1.5 bg-glass-bg rounded-full overflow-hidden">
+                        <div className="mt-1 h-1.5 bg-surface-3 rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${percentage}%` }}
@@ -663,7 +663,7 @@ export function SpendingBreakdown({ className }: SpendingBreakdownProps) {
             </div>
           </motion.div>
         ) : (
-          <div className="text-center py-16 rounded-xl bg-glass-bg/30 border border-glass-border">
+          <div className="text-center py-16 rounded-xl bg-surface-3/30 border border-border-subtle">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-white/30" />
             <p className="text-white/50">No spending data for this period</p>
           </div>

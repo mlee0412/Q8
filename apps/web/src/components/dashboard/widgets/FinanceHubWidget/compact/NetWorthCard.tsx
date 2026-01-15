@@ -74,13 +74,13 @@ export function NetWorthCard({ className }: NetWorthCardProps) {
   const sparklineRange = sparklineMax - sparklineMin || 1;
 
   const TrendIcon = trend > 0 ? TrendingUp : trend < 0 ? TrendingDown : Minus;
-  const trendColor = trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-muted-foreground';
+  const trendColor = trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-text-muted';
 
   return (
     <div className={cn('p-4', className)}>
       {/* Label */}
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-muted-foreground uppercase tracking-wider">
+        <span className="text-xs text-text-muted uppercase tracking-wider">
           Net Worth
         </span>
         {snapshots.length > 1 && (
@@ -123,7 +123,7 @@ export function NetWorthCard({ className }: NetWorthCardProps) {
                 transition={{ delay: i * 0.02, duration: 0.3 }}
                 className={cn(
                   'flex-1 rounded-t-sm',
-                  isLast ? 'bg-neon-primary' : 'bg-glass-border'
+                  isLast ? 'bg-neon-primary' : 'bg-border-subtle'
                 )}
               />
             );
@@ -137,7 +137,7 @@ export function NetWorthCard({ className }: NetWorthCardProps) {
           {Array.from({ length: 14 }).map((_, i) => (
             <div
               key={i}
-              className="flex-1 rounded-t-sm bg-glass-border"
+              className="flex-1 rounded-t-sm bg-border-subtle"
               style={{ height: `${30 + Math.random() * 50}%` }}
             />
           ))}
@@ -145,7 +145,7 @@ export function NetWorthCard({ className }: NetWorthCardProps) {
       )}
 
       {/* Sub-stats */}
-      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="mt-3 flex items-center gap-4 text-xs text-text-muted">
         <span
           className={cn(privacyMode && 'blur-sm')}
           data-privacy={privacyMode ? 'blur' : undefined}
@@ -153,7 +153,7 @@ export function NetWorthCard({ className }: NetWorthCardProps) {
           {privacyMode ? '••••' : formatCompactCurrency(netWorth)} total
         </span>
         {snapshots.length > 0 && (
-          <span className="text-muted-foreground/50">
+          <span className="text-text-muted/50">
             {snapshots.length} day history
           </span>
         )}

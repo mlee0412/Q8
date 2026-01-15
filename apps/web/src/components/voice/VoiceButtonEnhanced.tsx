@@ -283,7 +283,7 @@ export function VoiceButtonEnhanced({
           animate={{ opacity: 1, y: 0 }}
           className={cn(
             'text-sm text-center max-w-[200px]',
-            status === 'error' ? 'text-red-400' : 'text-muted-foreground'
+            status === 'error' ? 'text-red-400' : 'text-text-muted'
           )}
         >
           {statusText[status]}
@@ -295,7 +295,7 @@ export function VoiceButtonEnhanced({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-muted-foreground text-center max-w-[200px] truncate"
+          className="text-xs text-text-muted text-center max-w-[200px] truncate"
         >
           &ldquo;{transcript}&rdquo;
         </motion.div>

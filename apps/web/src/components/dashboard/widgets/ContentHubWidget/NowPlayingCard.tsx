@@ -137,9 +137,9 @@ export function NowPlayingCard({
         )}
       >
         <div>
-          <ListMusic className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-          <p className="text-sm text-muted-foreground">Nothing playing</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
+          <ListMusic className="h-12 w-12 text-text-muted mx-auto mb-2 opacity-50" />
+          <p className="text-sm text-text-muted">Nothing playing</p>
+          <p className="text-xs text-text-muted/70 mt-1">
             Search or browse to start
           </p>
         </div>

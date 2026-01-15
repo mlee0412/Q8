@@ -198,8 +198,8 @@ export function DataTable<T extends Record<string, any>>({
   // Loading state
   if (isFetching) {
     return (
-      <div className={cn('glass-panel rounded-xl p-8 text-center', className)}>
-        <p className="text-muted-foreground">{loadingMessage}</p>
+      <div className={cn('surface-matte rounded-xl p-8 text-center', className)}>
+        <p className="text-text-muted">{loadingMessage}</p>
       </div>
     );
   }
@@ -207,8 +207,8 @@ export function DataTable<T extends Record<string, any>>({
   // Empty state
   if (!paginatedData || paginatedData.length === 0) {
     return (
-      <div className={cn('glass-panel rounded-xl p-8 text-center', className)}>
-        <p className="text-muted-foreground">{emptyMessage}</p>
+      <div className={cn('surface-matte rounded-xl p-8 text-center', className)}>
+        <p className="text-text-muted">{emptyMessage}</p>
       </div>
     );
   }
@@ -218,23 +218,23 @@ export function DataTable<T extends Record<string, any>>({
       {/* Search bar */}
       {searchable && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" aria-hidden="true" />
           <input
             type="text"
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
+            className="w-full pl-10 pr-4 py-2 surface-matte rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
             aria-label={searchPlaceholder}
           />
         </div>
       )}
 
       {/* Table */}
-      <div className="glass-panel rounded-xl overflow-hidden">
+      <div className="surface-matte rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="border-b border-glass-border">
+            <thead className="border-b border-border-subtle">
               <tr>
                 {showIndex && (
                   <th className="px-4 py-3 text-left text-sm font-semibold">#</th>
@@ -296,8 +296,8 @@ export function DataTable<T extends Record<string, any>>({
                   transition={{ delay: rowIndex * 0.05 }}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    'border-b border-glass-border last:border-0',
-                    onRowClick && 'cursor-pointer hover:bg-glass-bg'
+                    'border-b border-border-subtle last:border-0',
+                    onRowClick && 'cursor-pointer hover:bg-surface-3'
                   )}
                   role={onRowClick ? 'button' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
@@ -309,7 +309,7 @@ export function DataTable<T extends Record<string, any>>({
                   }}
                 >
                   {showIndex && (
-                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                    <td className="px-4 py-3 text-sm text-text-muted">
                       {(currentPage - 1) * pageSize + rowIndex + 1}
                     </td>
                   )}
@@ -335,8 +335,8 @@ export function DataTable<T extends Record<string, any>>({
 
         {/* Pagination */}
         {paginate && totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-glass-border">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle">
+            <p className="text-sm text-text-muted">
               Page {currentPage} of {totalPages}
             </p>
             <div className="flex gap-2">

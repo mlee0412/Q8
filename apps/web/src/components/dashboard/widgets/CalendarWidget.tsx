@@ -25,60 +25,17 @@ interface CalendarEvent {
 }
 
 interface CalendarWidgetProps {
-  /**
-   * Maximum number of events to display
-   * @default 5
-   */
   maxItems?: number;
-
-  /**
-   * Show only today's events
-   * @default false
-   */
   todayOnly?: boolean;
-
-  /**
-   * Bento grid column span
-   * @default 2
-   */
   colSpan?: 1 | 2 | 3 | 4;
-
-  /**
-   * Bento grid row span
-   * @default 2
-   */
   rowSpan?: 1 | 2 | 3 | 4;
-
-  /**
-   * Additional CSS classes
-   */
   className?: string;
 }
 
 /**
- * Google Calendar Widget
+ * Calendar Widget v2.0
  *
- * Displays upcoming events from Google Calendar with time indicators,
- * meeting links, and quick actions.
- *
- * Features:
- * - Real-time event tracking
- * - "Happening now" indicator
- * - Meeting link integration
- * - Location and attendee display
- * - Color-coded calendar events
- *
- * @example
- * ```tsx
- * // All upcoming events
- * <CalendarWidget />
- *
- * // Today only
- * <CalendarWidget todayOnly maxItems={10} />
- *
- * // Custom sizing
- * <CalendarWidget colSpan={2} rowSpan={3} />
- * ```
+ * Uses Q8 Design System with matte surfaces and reduced neon.
  */
 export function CalendarWidget({
   maxItems = 5,
@@ -87,7 +44,6 @@ export function CalendarWidget({
   rowSpan = 2,
   className,
 }: CalendarWidgetProps) {
-  // Fetch events from RxDB
   const { data: events, isLoading: isFetching } = useRxQuery<CalendarEvent>(
     'calendar_events',
     (collection) => {
@@ -104,11 +60,9 @@ export function CalendarWidget({
     }
   );
 
-  // Get next event (happening now or soon)
   const nextEvent = events?.[0];
   const isHappeningNow = nextEvent && new Date(nextEvent.start_time) <= new Date();
 
-  // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
   const colSpanClasses: Record<number, string> = {
     1: 'col-span-1',
     2: 'col-span-1 md:col-span-2',
@@ -116,7 +70,6 @@ export function CalendarWidget({
     4: 'col-span-1 md:col-span-4',
   };
 
-  // Map rowSpan to Tailwind classes
   const rowSpanClasses: Record<number, string> = {
     1: 'row-span-1',
     2: 'row-span-2',
@@ -126,25 +79,22 @@ export function CalendarWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl p-6 flex flex-col overflow-hidden w-full',
+        'surface-matte p-4 flex flex-col overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-neon-primary" />
-          <h3 className="font-semibold">Calendar</h3>
-        </div>
+      <div className="widget-header-title mb-4">
+        <Calendar className="h-4 w-4 text-neon-primary" />
+        <h3 className="text-heading text-sm">Calendar</h3>
         {events && events.length > 0 && (
-          <span className="text-xs text-muted-foreground">
-            {events.length} upcoming
-          </span>
+          <span className="text-caption ml-auto">{events.length} upcoming</span>
         )}
       </div>
 
@@ -152,27 +102,28 @@ export function CalendarWidget({
       {isFetching && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="h-8 w-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Loading events...</p>
+            <div className="h-8 w-8 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-caption">Loading events...</p>
           </div>
         </div>
       )}
 
       {/* Empty State */}
       {!isFetching && (!events || events.length === 0) && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-sm text-muted-foreground">
-              {todayOnly ? 'No events today' : 'No upcoming events'}
-            </p>
-          </div>
+        <div className="empty-state">
+          <Calendar className="empty-state-icon" />
+          <p className="empty-state-title">
+            {todayOnly ? 'No events today' : 'No upcoming events'}
+          </p>
+          <p className="empty-state-description">
+            Your schedule is clear
+          </p>
         </div>
       )}
 
       {/* Event List */}
       {!isFetching && events && events.length > 0 && (
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
           {events.map((event, index) => {
             const startTime = new Date(event.start_time);
             const endTime = new Date(event.end_time);
@@ -181,18 +132,18 @@ export function CalendarWidget({
             return (
               <motion.div
                 key={event.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={cn(
-                  'glass-panel p-3 rounded-lg relative overflow-hidden',
-                  isNow && 'ring-2 ring-neon-accent'
+                  'card-item relative overflow-hidden',
+                  isNow && 'ring-1 ring-success'
                 )}
               >
                 {/* Color Indicator */}
                 {event.color && (
                   <div
-                    className="absolute left-0 top-0 bottom-0 w-1"
+                    className="absolute left-0 top-0 bottom-0 w-1 rounded-l"
                     style={{ backgroundColor: event.color }}
                   />
                 )}
@@ -200,28 +151,24 @@ export function CalendarWidget({
                 <div className="pl-2">
                   {/* Time & Status */}
                   <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3 text-text-muted" />
+                    <span className="text-caption">
                       {formatTime(startTime)} - {formatTime(endTime)}
                     </span>
                     {isNow && (
-                      <motion.span
-                        animate={{ opacity: [1, 0.5, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="text-xs font-medium text-neon-accent"
-                      >
-                        Happening now
-                      </motion.span>
+                      <span className="badge badge-success text-[10px]">
+                        Now
+                      </span>
                     )}
                   </div>
 
                   {/* Title */}
-                  <h4 className="text-sm font-medium mb-2 line-clamp-2">
+                  <h4 className="text-body text-sm font-medium mb-2 line-clamp-2">
                     {event.title}
                   </h4>
 
                   {/* Metadata */}
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-3 text-caption">
                     {event.location && (
                       <div className="flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
@@ -241,7 +188,7 @@ export function CalendarWidget({
                         href={event.meeting_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-neon-primary hover:text-neon-accent transition-colors"
+                        className="flex items-center gap-1 text-neon-primary hover:text-neon-accent transition-colors focus-ring rounded"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Video className="h-3 w-3" />
@@ -262,7 +209,6 @@ export function CalendarWidget({
 
 CalendarWidget.displayName = 'CalendarWidget';
 
-// Helper: Format time
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',

@@ -135,7 +135,7 @@ export function StreamingChatPanel({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header with current agent */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-glass-border">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle">
         <div className="flex items-center gap-2">
           {showSidebarToggle && (
             <Button
@@ -149,8 +149,8 @@ export function StreamingChatPanel({
             </Button>
           )}
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Chat</span>
+            <MessageSquare className="h-4 w-4 text-text-muted" />
+            <span className="text-sm font-medium text-text-primary">Chat</span>
           </div>
           {currentAgent && (
             <AgentBadge agent={currentAgent} isActive={isStreaming} />
@@ -181,8 +181,8 @@ export function StreamingChatPanel({
               <div className="h-12 w-12 rounded-full bg-neon-primary/20 flex items-center justify-center mx-auto mb-3">
                 <Bot className="h-6 w-6 text-neon-primary" />
               </div>
-              <h3 className="text-base font-medium mb-1">Start a conversation</h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <h3 className="text-base font-medium text-text-primary mb-1">Start a conversation</h3>
+              <p className="text-xs text-text-muted mb-4">
                 Ask Q8 anything!
               </p>
               <div className="flex flex-wrap justify-center gap-1.5">
@@ -230,7 +230,7 @@ export function StreamingChatPanel({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center gap-2 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400"
+            className="flex items-center justify-center gap-2 p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger"
           >
             <span className="text-sm">{error}</span>
             <Button
@@ -249,12 +249,12 @@ export function StreamingChatPanel({
       </div>
 
       {/* Input Area */}
-      <div className="p-3 border-t border-glass-border">
+      <div className="p-3 border-t border-border-subtle">
         {isStreaming && (
           <div className="flex items-center justify-center mb-2">
             <button
               onClick={cancelStream}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors focus-ring rounded"
             >
               <Loader2 className="h-3 w-3 animate-spin" />
               Stop
@@ -285,7 +285,7 @@ function SuggestionChip({
   return (
     <button
       onClick={onClick}
-      className="px-2.5 py-1 rounded-full text-xs bg-glass-bg/50 border border-glass-border/50 hover:bg-neon-primary/10 hover:border-neon-primary/30 transition-colors"
+      className="px-2.5 py-1 rounded-full text-xs bg-surface-3 border border-border-subtle hover:bg-neon-primary/10 hover:border-neon-primary/30 transition-colors focus-ring"
     >
       {children}
     </button>

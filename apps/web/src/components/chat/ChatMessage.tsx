@@ -189,11 +189,11 @@ export function ChatMessage({
         {isBot && (
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium">{agentName || agentConfig.name}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-text-muted">
               {formatTimestamp(timestamp)}
             </span>
             {status === 'sending' && (
-              <span className="text-xs text-muted-foreground">Sending...</span>
+              <span className="text-xs text-text-muted">Sending...</span>
             )}
           </div>
         )}
@@ -203,9 +203,9 @@ export function ChatMessage({
           className={cn(
             'rounded-2xl px-4 py-3 relative',
             isUser
-              ? 'glass-panel bg-neon-primary/10 border border-neon-primary/20'
-              : 'glass-panel',
-            status === 'error' && 'border-red-500/50 bg-red-500/10'
+              ? 'surface-matte bg-neon-primary/10 border border-neon-primary/20'
+              : 'surface-matte',
+            status === 'error' && 'border-danger/50 bg-danger/10'
           )}
         >
           {/* Message Content (Markdown Support) */}
@@ -213,9 +213,9 @@ export function ChatMessage({
             className={cn(
               'prose prose-sm max-w-none',
               isUser && 'text-right',
-              'prose-p:text-foreground prose-headings:text-foreground',
-              'prose-code:text-neon-accent prose-code:bg-glass-bg',
-              'prose-pre:glass-panel prose-pre:p-0'
+              'prose-p:text-text-primary prose-headings:text-text-primary',
+              'prose-code:text-neon-accent prose-code:bg-surface-3',
+              'prose-pre:surface-matte prose-pre:p-0'
             )}
           >
             <ReactMarkdown
@@ -228,7 +228,7 @@ export function ChatMessage({
                     <div className="relative group/code">
                       {/* Language Label */}
                       {language && (
-                        <div className="absolute top-2 right-2 z-10 px-2 py-1 glass-panel rounded text-xs text-muted-foreground">
+                        <div className="absolute top-2 right-2 z-10 px-2 py-1 bg-surface-3 border border-border-subtle rounded text-xs text-text-muted">
                           {language}
                         </div>
                       )}
@@ -251,7 +251,7 @@ export function ChatMessage({
                           setIsCopied(true);
                           setTimeout(() => setIsCopied(false), 2000);
                         }}
-                        className="absolute top-2 left-2 z-10 px-2 py-1 glass-panel rounded opacity-0 group-hover/code:opacity-100 transition-opacity"
+                        className="absolute top-2 left-2 z-10 px-2 py-1 bg-surface-3 border border-border-subtle rounded opacity-0 group-hover/code:opacity-100 transition-opacity focus-ring"
                       >
                         {isCopied ? (
                           <Check className="h-4 w-4 text-neon-accent" />
@@ -274,7 +274,7 @@ export function ChatMessage({
 
           {/* Status Indicator */}
           {status === 'error' && (
-            <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
+            <div className="flex items-center gap-2 mt-2 text-xs text-danger">
               <span>Failed to send</span>
             </div>
           )}
@@ -295,7 +295,7 @@ export function ChatMessage({
 
         {/* Timestamp (user messages) */}
         {isUser && (
-          <span className="text-xs text-muted-foreground mt-1">
+          <span className="text-xs text-text-muted mt-1">
             {formatTimestamp(timestamp)}
           </span>
         )}

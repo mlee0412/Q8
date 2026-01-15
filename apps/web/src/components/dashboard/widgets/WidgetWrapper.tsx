@@ -9,9 +9,9 @@ import {
   X,
   Maximize2,
   Minimize2,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { WidgetSkeleton } from './WidgetSkeleton';
 
 interface WidgetWrapperProps {
@@ -23,7 +23,7 @@ interface WidgetWrapperProps {
   /**
    * Icon component to display in header
    */
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: LucideIcon;
 
   /**
    * Loading state
@@ -91,6 +91,11 @@ interface WidgetWrapperProps {
   rowSpan?: 1 | 2 | 3 | 4;
 
   /**
+   * Use glass surface (sparingly) vs matte default
+   */
+  variant?: 'matte' | 'glass';
+
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -102,15 +107,19 @@ interface WidgetWrapperProps {
 }
 
 /**
- * Widget Wrapper
+ * Widget Wrapper v2.0
  *
- * Provides common UI patterns for all widgets:
- * - Header with title and icon
+ * Unified widget chrome with consistent design tokens.
+ * Uses matte surfaces by default, glass sparingly for accent.
+ *
+ * Features:
+ * - Header with icon (16px) and title (14px semibold)
  * - Refresh button with timestamp
  * - Settings panel
- * - Loading skeleton
+ * - Loading skeleton (unified style)
  * - Error state with retry
  * - Expand functionality
+ * - A11y: Focus rings, keyboard navigation
  */
 export function WidgetWrapper({
   title,
@@ -128,6 +137,7 @@ export function WidgetWrapper({
   headerExtra,
   colSpan = 1,
   rowSpan = 1,
+  variant = 'matte',
   className,
   children,
 }: WidgetWrapperProps) {
@@ -167,28 +177,35 @@ export function WidgetWrapper({
     4: 'row-span-4',
   };
 
+  // Surface class based on variant
+  const surfaceClass = variant === 'glass' ? 'glass-panel' : 'surface-matte';
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl flex flex-col overflow-hidden relative w-full',
-        isExpanded ? 'col-span-1 md:col-span-4 row-span-4 z-50' : cn(colSpanClasses[colSpan], rowSpanClasses[rowSpan]),
+        surfaceClass,
+        'flex flex-col overflow-hidden relative w-full',
+        isExpanded
+          ? 'col-span-1 md:col-span-4 row-span-4 z-50'
+          : cn(colSpanClasses[colSpan], rowSpanClasses[rowSpan]),
         className
       )}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-glass-border">
-        <div className="flex items-center gap-2">
+      {/* Header - Widget Chrome */}
+      <div className="widget-header">
+        <div className="widget-header-title">
           {Icon && <Icon className="h-4 w-4 text-neon-primary" />}
-          <h3 className="font-semibold text-sm">{title}</h3>
+          <h3 className="text-heading text-sm">{title}</h3>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="widget-header-actions">
           {/* Last updated indicator */}
           {lastUpdated && !isLoading && (
-            <span className="text-xs text-muted-foreground mr-2">
+            <span className="text-caption mr-2">
               {formatLastUpdated(lastUpdated)}
             </span>
           )}
@@ -198,48 +215,47 @@ export function WidgetWrapper({
 
           {/* Refresh button */}
           {onRefresh && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            <button
               onClick={onRefresh}
               disabled={isRefreshing}
               title="Refresh"
+              className="btn-icon btn-icon-sm focus-ring"
+              aria-label="Refresh widget"
             >
               <RefreshCw
                 className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')}
               />
-            </Button>
+            </button>
           )}
 
           {/* Settings button */}
           {settingsContent && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            <button
               onClick={() => setShowSettings(!showSettings)}
               title="Settings"
+              className="btn-icon btn-icon-sm focus-ring"
+              aria-label="Widget settings"
+              aria-expanded={showSettings}
             >
               <Settings className="h-3.5 w-3.5" />
-            </Button>
+            </button>
           )}
 
           {/* Expand button */}
           {expandable && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
+            <button
               onClick={handleExpand}
               title={isExpanded ? 'Minimize' : 'Expand'}
+              className="btn-icon btn-icon-sm focus-ring"
+              aria-label={isExpanded ? 'Minimize widget' : 'Expand widget'}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? (
                 <Minimize2 className="h-3.5 w-3.5" />
               ) : (
                 <Maximize2 className="h-3.5 w-3.5" />
               )}
-            </Button>
+            </button>
           )}
         </div>
       </div>
@@ -251,14 +267,15 @@ export function WidgetWrapper({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-b border-glass-border bg-glass-bg/50"
+            className="border-b border-border-subtle bg-surface-3/50"
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium">Settings</span>
+                <span className="text-label">Settings</span>
                 <button
                   onClick={() => setShowSettings(false)}
-                  className="p-1 rounded hover:bg-glass-bg"
+                  className="btn-icon btn-icon-sm focus-ring"
+                  aria-label="Close settings"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -270,7 +287,7 @@ export function WidgetWrapper({
       </AnimatePresence>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="widget-content">
         {/* Loading State */}
         {isLoading && (
           <WidgetSkeleton variant={skeletonVariant} className="h-full" />
@@ -278,14 +295,18 @@ export function WidgetWrapper({
 
         {/* Error State */}
         {error && !isLoading && (
-          <div className="h-full flex flex-col items-center justify-center gap-3 p-4">
-            <AlertTriangle className="h-10 w-10 text-yellow-500" />
-            <p className="text-sm text-muted-foreground text-center">{error}</p>
+          <div className="empty-state">
+            <AlertTriangle className="empty-state-icon text-warning" />
+            <p className="empty-state-title">Something went wrong</p>
+            <p className="empty-state-description">{error}</p>
             {onRetry && (
-              <Button variant="ghost" size="sm" onClick={onRetry}>
-                <RefreshCw className="h-3 w-3 mr-2" />
+              <button
+                onClick={onRetry}
+                className="btn-ghost focus-ring mt-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-2" />
                 Try again
-              </Button>
+              </button>
             )}
           </div>
         )}

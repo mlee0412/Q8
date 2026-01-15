@@ -144,7 +144,7 @@ export function UserProfile({
 
   if (isLoading) {
     return (
-      <div className="h-10 w-10 rounded-full glass-panel animate-pulse" />
+      <div className="h-10 w-10 rounded-full surface-matte animate-pulse" />
     );
   }
 
@@ -158,7 +158,7 @@ export function UserProfile({
       <button
         onClick={() => showMenu && setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center gap-3 rounded-full glass-panel hover:bg-glass-bg transition-colors',
+          'flex items-center gap-3 rounded-full surface-matte hover:bg-surface-3 transition-colors',
           variant === 'avatar' && 'p-1',
           variant === 'compact' && 'py-2 px-3',
           variant === 'full' && 'py-2 px-4',
@@ -195,7 +195,7 @@ export function UserProfile({
           <div className="text-left">
             <p className="text-sm font-medium">{displayName}</p>
             {variant === 'full' && (
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-text-muted">{user.email}</p>
             )}
           </div>
         )}
@@ -204,7 +204,7 @@ export function UserProfile({
         {showMenu && variant !== 'avatar' && (
           <ChevronDown
             className={cn(
-              'h-4 w-4 text-muted-foreground transition-transform',
+              'h-4 w-4 text-text-muted transition-transform',
               isOpen && 'rotate-180'
             )}
             aria-hidden="true"
@@ -220,13 +220,13 @@ export function UserProfile({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 mt-2 w-64 glass-panel rounded-xl shadow-lg overflow-hidden z-50"
+            className="absolute right-0 mt-2 w-64 surface-matte rounded-xl shadow-lg overflow-hidden z-50"
             role="menu"
           >
             {/* User Info Header */}
-            <div className="p-4 border-b border-glass-border">
+            <div className="p-4 border-b border-border-subtle">
               <p className="font-medium">{displayName}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+              <p className="text-sm text-text-muted">{user.email}</p>
             </div>
 
             {/* Menu Items */}
@@ -238,7 +238,7 @@ export function UserProfile({
                     router.push('/settings');
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-glass-bg transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-3 transition-colors"
                   role="menuitem"
                 >
                   <Settings className="h-4 w-4" aria-hidden="true" />
@@ -250,7 +250,7 @@ export function UserProfile({
               {showThemeToggle && (
                 <button
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-glass-bg transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-surface-3 transition-colors"
                   role="menuitem"
                 >
                   {theme === 'dark' ? (
@@ -265,7 +265,7 @@ export function UserProfile({
               )}
 
               {/* Divider */}
-              <div className="my-2 border-t border-glass-border" />
+              <div className="my-2 border-t border-border-subtle" />
 
               {/* Logout */}
               <button

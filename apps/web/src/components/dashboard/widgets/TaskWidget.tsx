@@ -11,7 +11,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { OptimisticAction } from '@/components/shared/OptimisticAction';
 
 interface Task {
@@ -167,35 +166,35 @@ export function TaskWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl p-6 flex flex-col overflow-hidden w-full',
+        'surface-matte p-4 flex flex-col overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <CheckSquare className="h-5 w-5 text-neon-primary" />
-          <h3 className="font-semibold">Tasks</h3>
+      <div className="widget-header mb-4">
+        <div className="widget-header-title">
+          <CheckSquare className="h-4 w-4 text-neon-primary" />
+          <h3 className="text-heading text-sm">Tasks</h3>
         </div>
         <div className="flex items-center gap-2">
           {incompleteTasks.length > 0 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-caption">
               {incompleteTasks.length} pending
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+          <button
+            className="btn-icon btn-icon-sm focus-ring"
             onClick={() => setIsAddingTask(true)}
+            aria-label="Add task"
           >
             <Plus className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -219,15 +218,14 @@ export function TaskWidget({
                 }}
                 placeholder="Enter task..."
                 autoFocus
-                className="flex-1 px-3 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary text-sm"
+                className="flex-1 px-3 py-2 bg-surface-2 border border-border-subtle rounded-md text-sm text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-neon-primary/50 focus:outline-none"
               />
-              <Button
-                variant="neon"
-                size="sm"
+              <button
+                className="px-3 py-1.5 bg-neon-primary text-white text-sm font-medium rounded-md hover:bg-neon-primary/90 transition-colors focus-ring"
                 onClick={handleAddTask}
               >
                 Add
-              </Button>
+              </button>
             </div>
           </motion.div>
         )}
@@ -236,32 +234,28 @@ export function TaskWidget({
       {/* Loading State */}
       {isFetching && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="h-8 w-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin" />
         </div>
       )}
 
       {/* Empty State */}
       {!isFetching && (!tasks || tasks.length === 0) && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-sm text-muted-foreground">No tasks</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsAddingTask(true)}
-              className="mt-2"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add your first task
-            </Button>
-          </div>
+        <div className="empty-state">
+          <CheckSquare className="empty-state-icon" />
+          <p className="empty-state-title">No tasks</p>
+          <button
+            onClick={() => setIsAddingTask(true)}
+            className="btn-ghost mt-2 text-sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add your first task
+          </button>
         </div>
       )}
 
       {/* Task List */}
       {!isFetching && tasks && tasks.length > 0 && (
-        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
           {tasks.map((task, index) => (
             <OptimisticAction
               key={task.id}
@@ -278,22 +272,23 @@ export function TaskWidget({
             >
               {(optimisticTask, triggerToggle) => (
                 <motion.div
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
+                  exit={{ opacity: 0, x: 8 }}
                   transition={{ delay: index * 0.05 }}
-                  className="glass-panel p-3 rounded-lg group hover:bg-glass-bg transition-colors"
+                  className="card-item group"
                 >
                   <div className="flex items-start gap-3">
                     {/* Checkbox */}
                     <button
                       onClick={triggerToggle}
-                      className="flex-shrink-0 mt-0.5"
+                      className="flex-shrink-0 mt-0.5 focus-ring rounded"
+                      aria-label={optimisticTask.completed ? 'Mark incomplete' : 'Mark complete'}
                     >
                       {optimisticTask.completed ? (
-                        <CheckSquare className="h-5 w-5 text-neon-accent" />
+                        <CheckSquare className="h-5 w-5 text-success" />
                       ) : (
-                        <Square className="h-5 w-5 text-muted-foreground hover:text-neon-primary" />
+                        <Square className="h-5 w-5 text-text-muted hover:text-neon-primary transition-colors" />
                       )}
                     </button>
 
@@ -301,9 +296,9 @@ export function TaskWidget({
                     <div className="flex-1 min-w-0">
                       <p
                         className={cn(
-                          'text-sm',
+                          'text-body text-sm',
                           optimisticTask.completed &&
-                            'line-through text-muted-foreground'
+                            'line-through text-text-muted'
                         )}
                       >
                         {optimisticTask.text}
@@ -314,14 +309,14 @@ export function TaskWidget({
                         <div
                           className={cn(
                             'h-2 w-2 rounded-full',
-                            optimisticTask.priority === 'high' && 'bg-red-500',
+                            optimisticTask.priority === 'high' && 'bg-danger',
                             optimisticTask.priority === 'medium' &&
-                              'bg-yellow-500',
-                            optimisticTask.priority === 'low' && 'bg-green-500'
+                              'bg-warning',
+                            optimisticTask.priority === 'low' && 'bg-success'
                           )}
                         />
                         {optimisticTask.due_date && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1 text-caption">
                             <Clock className="h-3 w-3" />
                             <span>{formatDate(optimisticTask.due_date)}</span>
                           </div>
@@ -332,9 +327,10 @@ export function TaskWidget({
                     {/* Delete Button */}
                     <button
                       onClick={() => handleDeleteTask(optimisticTask.id)}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity focus-ring rounded p-1"
+                      aria-label="Delete task"
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                      <Trash2 className="h-4 w-4 text-text-muted hover:text-danger transition-colors" />
                     </button>
                   </div>
                 </motion.div>

@@ -94,14 +94,14 @@ export function ArtifactRenderer({ artifact, className, onExpand }: ArtifactRend
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'glass-panel rounded-xl overflow-hidden',
+        'surface-matte rounded-xl overflow-hidden',
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-glass-border bg-glass-bg/50">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle bg-surface-3/50">
         <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+          <Icon className="h-4 w-4 text-text-muted" />
           <span className="text-sm font-medium">
             {artifact.title || artifact.type.charAt(0).toUpperCase() + artifact.type.slice(1)}
           </span>
@@ -115,31 +115,31 @@ export function ArtifactRenderer({ artifact, className, onExpand }: ArtifactRend
         <div className="flex items-center gap-1">
           <button
             onClick={handleCopy}
-            className="p-1.5 rounded hover:bg-glass-bg transition-colors"
+            className="p-1.5 rounded hover:bg-surface-3 transition-colors"
             title="Copy"
           >
             {isCopied ? (
               <Check className="h-4 w-4 text-green-400" />
             ) : (
-              <Copy className="h-4 w-4 text-muted-foreground" />
+              <Copy className="h-4 w-4 text-text-muted" />
             )}
           </button>
 
           <button
             onClick={handleDownload}
-            className="p-1.5 rounded hover:bg-glass-bg transition-colors"
+            className="p-1.5 rounded hover:bg-surface-3 transition-colors"
             title="Download"
           >
-            <Download className="h-4 w-4 text-muted-foreground" />
+            <Download className="h-4 w-4 text-text-muted" />
           </button>
 
           {onExpand && (
             <button
               onClick={onExpand}
-              className="p-1.5 rounded hover:bg-glass-bg transition-colors"
+              className="p-1.5 rounded hover:bg-surface-3 transition-colors"
               title="Expand"
             >
-              <Maximize2 className="h-4 w-4 text-muted-foreground" />
+              <Maximize2 className="h-4 w-4 text-text-muted" />
             </button>
           )}
         </div>
@@ -232,7 +232,7 @@ function TableArtifact({ content }: { content: string }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-glass-border bg-glass-bg/30">
+          <tr className="border-b border-border-subtle bg-surface-3/30">
             {headers.map((header, i) => (
               <th key={i} className="px-4 py-2 text-left font-medium">
                 {header}
@@ -242,7 +242,7 @@ function TableArtifact({ content }: { content: string }) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-glass-border/50 hover:bg-glass-bg/20">
+            <tr key={i} className="border-b border-border-subtle/50 hover:bg-surface-3/20">
               {row.map((cell, j) => (
                 <td key={j} className="px-4 py-2">
                   {cell}
@@ -299,7 +299,7 @@ function LinkArtifact({
       href={content}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 p-4 hover:bg-glass-bg/50 transition-colors"
+      className="flex items-center gap-3 p-4 hover:bg-surface-3/50 transition-colors"
     >
       <div className="h-10 w-10 rounded-lg bg-neon-primary/20 flex items-center justify-center">
         <ExternalLink className="h-5 w-5 text-neon-primary" />
@@ -308,7 +308,7 @@ function LinkArtifact({
         <p className="text-sm font-medium truncate">
           {(metadata?.title as string) || content}
         </p>
-        <p className="text-xs text-muted-foreground truncate">{content}</p>
+        <p className="text-xs text-text-muted truncate">{content}</p>
       </div>
     </a>
   );
@@ -365,10 +365,10 @@ function ChartArtifact({ content }: { content: string }) {
     <div className="p-4 space-y-2">
       {data.map((item, i) => (
         <div key={i} className="flex items-center gap-3">
-          <span className="text-xs w-20 truncate text-muted-foreground">
+          <span className="text-xs w-20 truncate text-text-muted">
             {item.label}
           </span>
-          <div className="flex-1 h-6 bg-glass-bg rounded-full overflow-hidden">
+          <div className="flex-1 h-6 bg-surface-3 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(item.value / maxValue) * 100}%` }}

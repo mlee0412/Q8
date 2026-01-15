@@ -127,7 +127,7 @@ export function OptimisticAction<T>({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             className={cn(
-              'absolute z-10 glass-panel rounded-full p-2',
+              'absolute z-10 surface-matte rounded-full p-2',
               statusPosition === 'top-left' && 'top-2 left-2',
               statusPosition === 'top-right' && 'top-2 right-2',
               statusPosition === 'bottom-left' && 'bottom-2 left-2',

@@ -230,7 +230,7 @@ export function VoiceButton({
   const variantClasses = {
     filled: 'bg-neon-primary text-white hover:bg-neon-primary/90',
     outlined: 'border-2 border-neon-primary text-neon-primary hover:bg-neon-primary/10',
-    glass: 'glass-panel border border-neon-primary/30 text-neon-primary hover:bg-neon-primary/10',
+    glass: 'surface-matte border border-neon-primary/30 text-neon-primary hover:bg-neon-primary/10',
   };
 
   // Status colors
@@ -372,9 +372,9 @@ export function VoiceButton({
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-xs text-muted-foreground text-center"
+          className="text-xs text-text-muted text-center"
         >
-          Hold <kbd className="px-2 py-1 bg-glass-bg rounded border border-glass-border">Space</kbd> to talk
+          Hold <kbd className="px-2 py-1 bg-surface-3 rounded border border-border-subtle">Space</kbd> to talk
         </motion.p>
       )}
     </div>

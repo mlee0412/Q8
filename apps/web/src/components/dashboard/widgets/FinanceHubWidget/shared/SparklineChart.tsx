@@ -57,7 +57,7 @@ export function SparklineChart({
   if (data.length === 0) {
     return (
       <div 
-        className={cn('flex items-center justify-center text-muted-foreground text-xs', className)}
+        className={cn('flex items-center justify-center text-text-muted text-xs', className)}
         style={{ height }}
       >
         No data
@@ -82,8 +82,8 @@ export function SparklineChart({
                 if (!active || !payload?.[0]) return null;
                 const data = payload[0].payload;
                 return (
-                  <div className="bg-glass-bg backdrop-blur-sm border border-glass-border rounded-lg px-2 py-1 text-xs">
-                    <div className="text-muted-foreground">{data.label}</div>
+                  <div className="bg-surface-3 backdrop-blur-sm border border-border-subtle rounded-lg px-2 py-1 text-xs">
+                    <div className="text-text-muted">{data.label}</div>
                     <div className="font-medium">{formatCurrency(data.value)}</div>
                   </div>
                 );

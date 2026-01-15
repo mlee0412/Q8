@@ -192,7 +192,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
           <div className="text-xs text-red-400 mb-1">Expenses</div>
           <AmountDisplay amount={-summaryStats.expenses} size="lg" className="text-red-400" />
         </div>
-        <div className="p-4 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-4 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">Net</div>
           <AmountDisplay amount={summaryStats.net} size="lg" colorize />
         </div>
@@ -208,13 +208,13 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
               placeholder="Search transactions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-glass-bg border-glass-border"
+              className="pl-9 bg-surface-3 border-border-subtle"
             />
           </div>
           <Button
             variant="ghost"
             onClick={() => setShowFilters(!showFilters)}
-            className={cn('border border-glass-border text-white', showFilters && 'bg-neon-primary/20 border-neon-primary/30')}
+            className={cn('border border-border-subtle text-white', showFilters && 'bg-neon-primary/20 border-neon-primary/30')}
           >
             <Filter className="h-4 w-4 mr-1" />
             Filters
@@ -232,7 +232,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="p-4 rounded-xl bg-glass-bg/50 border border-glass-border space-y-4"
+            className="p-4 rounded-xl bg-surface-3/50 border border-border-subtle space-y-4"
           >
             <div className="grid grid-cols-2 gap-4">
               {/* Accounts */}
@@ -253,7 +253,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
                         'px-2 py-1 text-xs rounded-md transition-all',
                         selectedAccounts.includes(acc.id)
                           ? 'bg-neon-primary/20 text-neon-primary border border-neon-primary/30'
-                          : 'bg-glass-bg text-white/60 border border-glass-border'
+                          : 'bg-surface-3 text-white/60 border border-border-subtle'
                       )}
                     >
                       {acc.name}
@@ -280,7 +280,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
                         'px-2 py-1 text-xs rounded-md transition-all',
                         selectedCategories.includes(cat)
                           ? 'bg-neon-primary/20 text-neon-primary border border-neon-primary/30'
-                          : 'bg-glass-bg text-white/60 border border-glass-border'
+                          : 'bg-surface-3 text-white/60 border border-border-subtle'
                       )}
                     >
                       {cat}
@@ -298,7 +298,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="bg-glass-bg border-glass-border"
+                  className="bg-surface-3 border-border-subtle"
                 />
               </div>
               <div>
@@ -307,7 +307,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="bg-glass-bg border-glass-border"
+                  className="bg-surface-3 border-border-subtle"
                 />
               </div>
             </div>
@@ -325,7 +325,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
       </div>
 
       {/* Table Header */}
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-white/50 font-medium border-b border-glass-border">
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs text-white/50 font-medium border-b border-border-subtle">
         <button
           className="col-span-2 flex items-center gap-1 hover:text-foreground"
           onClick={() => handleSort('date')}
@@ -368,7 +368,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.02 }}
-              className="group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg hover:bg-glass-bg/50 transition-colors"
+              className="group grid grid-cols-12 gap-4 px-4 py-3 rounded-lg hover:bg-surface-3/50 transition-colors"
             >
               {/* Date */}
               <div className="col-span-2 text-sm text-white/80">
@@ -396,7 +396,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
                   )}
                 </div>
                 {tx.isManual && (
-                  <span className="text-[10px] text-muted-foreground bg-glass-bg px-1.5 py-0.5 rounded flex-shrink-0">
+                  <span className="text-[10px] text-text-muted bg-surface-3 px-1.5 py-0.5 rounded flex-shrink-0">
                     Manual
                   </span>
                 )}
@@ -460,7 +460,7 @@ export function UnifiedLedger({ className }: UnifiedLedgerProps) {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-glass-border">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle">
           <span className="text-sm text-white/50">
             Page {currentPage} of {totalPages}
           </span>

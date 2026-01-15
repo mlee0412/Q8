@@ -216,7 +216,7 @@ export function TranscriptionDisplay({
   };
 
   return (
-    <div className={cn('relative glass-panel rounded-xl p-4', className)}>
+    <div className={cn('relative surface-matte rounded-xl p-4', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium">Live Transcription</h3>
@@ -257,16 +257,16 @@ export function TranscriptionDisplay({
               </Button>
 
               {/* Export dropdown */}
-              <div className="absolute right-0 top-full mt-1 glass-panel rounded-lg shadow-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+              <div className="absolute right-0 top-full mt-1 surface-matte rounded-lg shadow-lg p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                 <button
                   onClick={() => handleExport('txt')}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-glass-bg rounded transition-colors"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-surface-3 rounded transition-colors"
                 >
                   Export as TXT
                 </button>
                 <button
                   onClick={() => handleExport('json')}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-glass-bg rounded transition-colors"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-surface-3 rounded transition-colors"
                 >
                   Export as JSON
                 </button>
@@ -287,7 +287,7 @@ export function TranscriptionDisplay({
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center py-8 text-muted-foreground"
+              className="text-center py-8 text-text-muted"
             >
               <p className="text-sm">Start speaking to see transcription</p>
             </motion.div>
@@ -301,9 +301,9 @@ export function TranscriptionDisplay({
                 className={cn(
                   'p-3 rounded-lg transition-colors cursor-pointer',
                   segment.isFinal
-                    ? 'bg-glass-bg hover:bg-glass-bg/80'
-                    : 'bg-glass-bg/50 border border-neon-primary/30',
-                  onSegmentClick && 'hover:bg-glass-bg/60'
+                    ? 'bg-surface-3 hover:bg-surface-3/80'
+                    : 'bg-surface-3/50 border border-neon-primary/30',
+                  onSegmentClick && 'hover:bg-surface-3/60'
                 )}
                 onClick={() => onSegmentClick?.(segment)}
               >
@@ -312,7 +312,7 @@ export function TranscriptionDisplay({
                   <div className="flex items-center gap-2">
                     {/* Speaker */}
                     {showSpeakers && segment.speaker && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 text-xs text-text-muted">
                         <User className="h-3 w-3" />
                         <span>{segment.speaker}</span>
                       </div>
@@ -320,7 +320,7 @@ export function TranscriptionDisplay({
 
                     {/* Timestamp */}
                     {showTimestamps && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-text-muted">
                         {formatTimestamp(segment.timestamp)}
                       </span>
                     )}
@@ -349,7 +349,7 @@ export function TranscriptionDisplay({
                 <p
                   className={cn(
                     'text-sm',
-                    segment.isFinal ? 'text-foreground' : 'text-muted-foreground italic'
+                    segment.isFinal ? 'text-foreground' : 'text-text-muted italic'
                   )}
                 >
                   {segment.text}
@@ -358,10 +358,10 @@ export function TranscriptionDisplay({
                 {/* Confidence bar */}
                 {showConfidence && segment.isFinal && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-text-muted">
                       Confidence:
                     </span>
-                    <div className="flex-1 h-1.5 bg-glass-border rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-border-subtle rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${segment.confidence * 100}%` }}
@@ -371,7 +371,7 @@ export function TranscriptionDisplay({
                         )}
                       />
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-text-muted">
                       {Math.round(segment.confidence * 100)}%
                     </span>
                   </div>
@@ -384,7 +384,7 @@ export function TranscriptionDisplay({
 
       {/* Stats footer */}
       {segments.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-glass-border flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mt-4 pt-4 border-t border-border-subtle flex items-center justify-between text-xs text-text-muted">
           <div>
             {segments.filter((s) => s.isFinal).length} final segments
             {showInterim && ` • ${segments.filter((s) => !s.isFinal).length} interim`}

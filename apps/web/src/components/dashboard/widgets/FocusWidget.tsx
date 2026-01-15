@@ -16,7 +16,6 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface FocusSession {
   id: string;
@@ -248,28 +247,29 @@ export function FocusWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl p-3 flex flex-col overflow-hidden w-full',
+        'surface-matte p-3 flex flex-col overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="widget-header mb-2 flex-shrink-0">
+        <div className="widget-header-title">
           <Target className="h-4 w-4 text-neon-primary" />
-          <h3 className="font-semibold text-sm">Focus</h3>
+          <h3 className="text-heading text-sm">Focus</h3>
         </div>
         {isRunning && (
           <motion.div
             animate={{ opacity: [1, 0.5, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="flex items-center gap-1 text-xs text-neon-accent"
+            className="flex items-center gap-1 text-xs text-success"
           >
-            <div className="h-2 w-2 rounded-full bg-neon-accent" />
+            <div className="h-2 w-2 rounded-full bg-success" />
             <span>In Focus</span>
           </motion.div>
         )}
@@ -288,7 +288,7 @@ export function FocusWidget({
                   onChange={(e) => setEditValue(e.target.value)}
                   placeholder="What are you focusing on?"
                   autoFocus
-                  className="flex-1 px-2 py-1.5 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary text-sm bg-transparent"
+                  className="flex-1 px-2 py-1.5 bg-surface-2 border border-border-subtle rounded-md text-sm text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-neon-primary/50 focus:outline-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleTaskSubmit();
                     if (e.key === 'Escape') {
@@ -297,25 +297,23 @@ export function FocusWidget({
                     }
                   }}
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
+                <button
+                  className="btn-icon btn-icon-sm focus-ring"
                   onClick={handleTaskSubmit}
+                  aria-label="Confirm task"
                 >
                   <Check className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
+                </button>
+                <button
+                  className="btn-icon btn-icon-sm focus-ring"
                   onClick={() => {
                     setIsEditing(false);
                     setEditValue('');
                   }}
+                  aria-label="Cancel"
                 >
                   <X className="h-3 w-3" />
-                </Button>
+                </button>
               </div>
             ) : (
               <div
@@ -326,21 +324,21 @@ export function FocusWidget({
                   }
                 }}
                 className={cn(
-                  'flex items-center gap-2 px-2 py-1 rounded-lg text-center',
-                  !isRunning && 'cursor-pointer hover:bg-glass-bg'
+                  'flex items-center gap-2 px-2 py-1 rounded-md text-center',
+                  !isRunning && 'cursor-pointer hover:bg-surface-3 transition-colors'
                 )}
               >
                 {currentTask ? (
                   <>
-                    <span className="text-sm font-medium truncate flex-1">
+                    <span className="text-body text-sm font-medium truncate flex-1">
                       {currentTask}
                     </span>
                     {!isRunning && (
-                      <Edit3 className="h-3 w-3 text-muted-foreground" />
+                      <Edit3 className="h-3 w-3 text-text-muted" />
                     )}
                   </>
                 ) : (
-                  <span className="text-sm text-muted-foreground flex-1">
+                  <span className="text-sm text-text-muted flex-1">
                     Click to set focus task...
                   </span>
                 )}
@@ -358,7 +356,7 @@ export function FocusWidget({
                 stroke="currentColor"
                 strokeWidth="3"
                 fill="none"
-                className="text-glass-border"
+                className="text-border-subtle"
               />
               <motion.circle
                 cx="32"
@@ -374,7 +372,7 @@ export function FocusWidget({
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-sm font-mono font-bold">
+              <span className="text-sm font-mono font-bold text-text-primary">
                 {formatTime(elapsedTime)}
               </span>
             </div>
@@ -383,69 +381,65 @@ export function FocusWidget({
           {/* Controls */}
           <div className="flex items-center gap-2">
             {!isRunning ? (
-              <Button
-                variant="neon"
-                size="sm"
+              <button
                 onClick={startSession}
-                className="gap-1 h-7 text-xs"
+                className="flex items-center gap-1 h-7 px-3 text-xs font-medium bg-neon-primary text-white rounded-md hover:bg-neon-primary/90 transition-colors focus-ring"
               >
                 <Play className="h-3 w-3" />
                 Start
-              </Button>
+              </button>
             ) : (
               <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
+                <button
+                  className="btn-icon btn-icon-sm focus-ring"
                   onClick={pauseSession}
+                  aria-label="Pause"
                 >
                   <Pause className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
+                </button>
+                <button
+                  className="btn-icon btn-icon-sm focus-ring"
                   onClick={stopSession}
+                  aria-label="Stop"
                 >
                   <Square className="h-3 w-3" />
-                </Button>
+                </button>
               </>
             )}
           </div>
         </div>
 
         {/* Stats Section - Compact vertical layout */}
-        <div className="w-[100px] flex flex-col gap-1.5 overflow-y-auto">
-          <div className="glass-panel rounded-lg p-2 text-center flex-shrink-0">
+        <div className="w-[100px] flex flex-col gap-1.5 overflow-y-auto scrollbar-thin">
+          <div className="card-item text-center flex-shrink-0">
             <div className="flex items-center justify-center gap-1">
               <Clock className="h-3 w-3 text-neon-primary" />
-              <span className="text-[10px] text-muted-foreground">Today</span>
+              <span className="text-[10px] text-text-muted">Today</span>
             </div>
-            <p className="text-sm font-bold">
+            <p className="text-sm font-bold text-text-primary">
               {formatMinutes(stats.todayMinutes)}
             </p>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[10px] text-text-muted">
               {stats.sessionsToday} sessions
             </p>
           </div>
 
-          <div className="glass-panel rounded-lg p-2 text-center flex-shrink-0">
+          <div className="card-item text-center flex-shrink-0">
             <div className="flex items-center justify-center gap-1">
-              <Calendar className="h-3 w-3 text-blue-400" />
-              <span className="text-[10px] text-muted-foreground">Week</span>
+              <Calendar className="h-3 w-3 text-info" />
+              <span className="text-[10px] text-text-muted">Week</span>
             </div>
-            <p className="text-sm font-bold">
+            <p className="text-sm font-bold text-text-primary">
               {formatMinutes(stats.weekMinutes)}
             </p>
           </div>
 
-          <div className="glass-panel rounded-lg p-2 text-center flex-shrink-0">
+          <div className="card-item text-center flex-shrink-0">
             <div className="flex items-center justify-center gap-1">
-              <Zap className="h-3 w-3 text-yellow-400" />
-              <span className="text-[10px] text-muted-foreground">Streak</span>
+              <Zap className="h-3 w-3 text-warning" />
+              <span className="text-[10px] text-text-muted">Streak</span>
             </div>
-            <p className="text-sm font-bold">{stats.streak}d</p>
+            <p className="text-sm font-bold text-text-primary">{stats.streak}d</p>
           </div>
         </div>
       </div>

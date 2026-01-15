@@ -15,7 +15,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface GitHubPR {
   id: string;
@@ -177,69 +176,68 @@ export function GitHubPRWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl p-3 flex flex-col overflow-hidden w-full',
+        'surface-matte p-3 flex flex-col overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="widget-header mb-3">
+        <div className="widget-header-title">
           <GitPullRequest className="h-4 w-4 text-neon-primary" />
-          <h3 className="font-semibold text-sm">Pull Requests</h3>
+          <h3 className="text-heading text-sm">Pull Requests</h3>
         </div>
         <div className="flex items-center gap-2">
           {prs.length > 0 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-caption">
               {prs.length} open
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
+          <button
+            className="btn-icon btn-icon-sm focus-ring"
             onClick={fetchPRs}
+            aria-label="Refresh PRs"
           >
-            <RefreshCw className={cn('h-3 w-3', isLoading && 'animate-spin')} />
-          </Button>
+            <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
+          </button>
         </div>
       </div>
 
       {/* Loading State */}
       {isLoading && prs.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
-          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <div className="h-8 w-8 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin" />
         </div>
       )}
 
       {/* Error State */}
       {error && !isLoading && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-2">
-          <AlertCircle className="h-8 w-8 text-yellow-500" />
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <Button variant="ghost" size="sm" onClick={fetchPRs}>
+        <div className="empty-state">
+          <AlertCircle className="empty-state-icon text-warning" />
+          <p className="empty-state-title">Unable to load PRs</p>
+          <p className="empty-state-description">{error}</p>
+          <button className="btn-ghost mt-2" onClick={fetchPRs}>
             Try again
-          </Button>
+          </button>
         </div>
       )}
 
       {/* Empty State */}
       {!isLoading && !error && prs.length === 0 && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <GitPullRequest className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-sm text-muted-foreground">No open pull requests</p>
-          </div>
+        <div className="empty-state">
+          <GitPullRequest className="empty-state-icon" />
+          <p className="empty-state-title">No open pull requests</p>
         </div>
       )}
 
       {/* PR List */}
       {!isLoading && !error && prs.length > 0 && (
-        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin">
           <AnimatePresence>
             {prs.map((pr, index) => {
               const statusConfig = getStatusConfig(pr.status);
@@ -249,10 +247,10 @@ export function GitHubPRWidget({
               return (
                 <motion.div
                   key={pr.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="glass-panel p-2.5 rounded-lg hover:bg-glass-bg transition-colors cursor-pointer"
+                  className="card-item cursor-pointer"
                   onClick={() => setExpandedPR(isExpanded ? null : pr.id)}
                 >
                   {/* PR Header */}
@@ -270,7 +268,7 @@ export function GitHubPRWidget({
                     {/* PR Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-0.5">
-                        <h4 className="text-xs font-medium truncate leading-tight">
+                        <h4 className="text-body text-xs font-medium truncate leading-tight">
                           {pr.title}
                         </h4>
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -283,7 +281,7 @@ export function GitHubPRWidget({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1 text-[10px] text-text-muted">
                         <span>#{pr.number}</span>
                         <span>•</span>
                         <span className="truncate">{pr.repository}</span>
@@ -300,13 +298,13 @@ export function GitHubPRWidget({
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="mt-2 pt-2 border-t border-glass-border space-y-2"
+                        className="mt-2 pt-2 border-t border-border-subtle space-y-2"
                       >
                         {/* Branch info */}
-                        <div className="text-xs text-muted-foreground">
-                          <code className="bg-glass-bg px-1 rounded">{pr.headBranch}</code>
+                        <div className="text-xs text-text-muted">
+                          <code className="bg-surface-3 px-1 rounded">{pr.headBranch}</code>
                           <span className="mx-1">→</span>
-                          <code className="bg-glass-bg px-1 rounded">{pr.baseBranch}</code>
+                          <code className="bg-surface-3 px-1 rounded">{pr.baseBranch}</code>
                         </div>
 
                         {/* Actions */}
@@ -315,7 +313,7 @@ export function GitHubPRWidget({
                             href={pr.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 glass-panel rounded-lg hover:bg-glass-bg text-xs transition-colors"
+                            className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 bg-surface-3 rounded-md hover:bg-surface-4 text-xs text-text-secondary hover:text-text-primary transition-colors focus-ring"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <ExternalLink className="h-3 w-3" />

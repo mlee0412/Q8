@@ -194,10 +194,10 @@ export function ChatHistory({
               {/* Date Separator */}
               <div className="relative flex items-center justify-center mb-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-glass-border" />
+                  <div className="w-full border-t border-border-subtle" />
                 </div>
-                <div className="relative px-4 glass-panel rounded-full">
-                  <span className="text-xs text-muted-foreground">
+                <div className="relative px-4 surface-matte rounded-full">
+                  <span className="text-xs text-text-muted">
                     {formatDate(new Date(date))}
                   </span>
                 </div>
@@ -230,7 +230,7 @@ export function ChatHistory({
                 <Bot className="h-8 w-8 text-neon-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-text-muted">
                 Ask Q8 anything, and I&apos;ll route your request to the best specialized agent.
               </p>
             </div>

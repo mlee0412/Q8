@@ -82,7 +82,7 @@ export function AgentIndicator({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className={cn('flex items-center gap-3 glass-panel rounded-xl p-4', className)}
+      className={cn('flex items-center gap-3 surface-matte rounded-xl p-4', className)}
     >
       {/* Agent Icon */}
       <div className={cn('h-10 w-10 rounded-full flex items-center justify-center', agentConfig.bgColor)}>
@@ -95,13 +95,13 @@ export function AgentIndicator({
           <span className="text-sm font-medium">
             {agentName || agentConfig.name}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-text-muted">
             ({agentConfig.model})
           </span>
         </div>
 
         {task && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">
+          <p className="text-xs text-text-muted truncate mt-0.5">
             {task}
           </p>
         )}

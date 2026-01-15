@@ -181,7 +181,7 @@ export function AuthForm({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('glass-panel rounded-2xl p-8 max-w-md w-full', className)}
+      className={cn('surface-matte rounded-2xl p-8 max-w-md w-full', className)}
     >
       {/* Logo/Branding */}
       {logo && <div className="mb-6 text-center">{logo}</div>}
@@ -269,10 +269,10 @@ export function AuthForm({
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-glass-border" />
+              <div className="w-full border-t border-border-subtle" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
+              <span className="bg-background px-2 text-text-muted">Or</span>
             </div>
           </div>
         </div>
@@ -287,14 +287,14 @@ export function AuthForm({
               Full Name
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" aria-hidden="true" />
               <input
                 id="fullName"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="John Doe"
-                className="w-full pl-10 pr-4 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
+                className="w-full pl-10 pr-4 py-2 surface-matte rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
                 required
               />
             </div>
@@ -307,14 +307,14 @@ export function AuthForm({
             Email
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" aria-hidden="true" />
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full pl-10 pr-4 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
+              className="w-full pl-10 pr-4 py-2 surface-matte rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
               required
             />
           </div>
@@ -327,14 +327,14 @@ export function AuthForm({
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" aria-hidden="true" />
               <input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
+                className="w-full pl-10 pr-4 py-2 surface-matte rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
                 required
                 minLength={8}
               />
@@ -349,14 +349,14 @@ export function AuthForm({
               Confirm Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" aria-hidden="true" />
               <input
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2 glass-panel rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
+                className="w-full pl-10 pr-4 py-2 surface-matte rounded-lg border-0 focus:ring-2 focus:ring-neon-primary"
                 required
                 minLength={8}
               />
@@ -383,7 +383,7 @@ export function AuthForm({
       <div className="mt-6 space-y-2 text-center text-sm">
         {mode === 'login' && (
           <>
-            <p className="text-muted-foreground">
+            <p className="text-text-muted">
               Don&apos;t have an account?{' '}
               <button
                 type="button"
@@ -394,7 +394,7 @@ export function AuthForm({
               </button>
             </p>
             {allowMagicLink && (
-              <p className="text-muted-foreground">
+              <p className="text-text-muted">
                 <button
                   type="button"
                   onClick={() => setMode('magic-link')}
@@ -404,7 +404,7 @@ export function AuthForm({
                 </button>
               </p>
             )}
-            <p className="text-muted-foreground">
+            <p className="text-text-muted">
               <button
                 type="button"
                 onClick={() => setMode('reset-password')}
@@ -417,7 +417,7 @@ export function AuthForm({
         )}
 
         {mode === 'signup' && (
-          <p className="text-muted-foreground">
+          <p className="text-text-muted">
             Already have an account?{' '}
             <button
               type="button"
@@ -430,7 +430,7 @@ export function AuthForm({
         )}
 
         {(mode === 'magic-link' || mode === 'reset-password') && (
-          <p className="text-muted-foreground">
+          <p className="text-text-muted">
             <button
               type="button"
               onClick={() => setMode('login')}

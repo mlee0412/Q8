@@ -236,7 +236,7 @@ export function NotesPanel({
             <header className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black/30 backdrop-blur-sm">
               <button
                 onClick={onClose}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-muted hover:text-foreground hover:bg-white/5 transition-all"
               >
                 <ChevronLeft className="h-5 w-5" />
                 <span className="text-sm font-medium">Back to Dashboard</span>
@@ -283,13 +283,13 @@ export function NotesPanel({
                     <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Menu</span>
                   </div>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search..."
-                      className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 rounded-lg border border-white/10 focus:ring-2 focus:ring-neon-primary/50 transition-all placeholder:text-muted-foreground/50"
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-white/5 rounded-lg border border-white/10 focus:ring-2 focus:ring-neon-primary/50 transition-all placeholder:text-text-muted/50"
                     />
                   </div>
                 </div>
@@ -442,8 +442,8 @@ export function NotesPanel({
                     </div>
                   ) : sortedNotes.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-40 text-center px-6">
-                      <FileText className="h-12 w-12 text-muted-foreground/30 mb-3" />
-                      <p className="text-sm text-muted-foreground mb-3">No notes yet</p>
+                      <FileText className="h-12 w-12 text-text-muted/30 mb-3" />
+                      <p className="text-sm text-text-muted mb-3">No notes yet</p>
                       <Button variant="ghost" size="sm" onClick={handleCreateNote}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create note
@@ -550,10 +550,10 @@ export function NotesPanel({
                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-neon-primary/20 to-purple-500/20 flex items-center justify-center mb-6">
                       <FileText className="h-12 w-12 text-neon-primary/50" />
                     </div>
-                    <h3 className="text-xl font-semibold text-muted-foreground mb-2">
+                    <h3 className="text-xl font-semibold text-text-muted mb-2">
                       No note selected
                     </h3>
-                    <p className="text-sm text-muted-foreground/70 mb-6 max-w-sm">
+                    <p className="text-sm text-text-muted/70 mb-6 max-w-sm">
                       Select a note from the list to start editing, or create a new one
                     </p>
                     <div className="flex gap-3">

@@ -97,10 +97,10 @@ export function ThreadSidebar({
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
-      <div className="p-3 border-b border-glass-border space-y-2">
+      <div className="p-3 border-b border-border-subtle space-y-2">
         <button
           onClick={handleNewThread}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-neon-primary/90 hover:bg-neon-primary text-white text-sm font-medium transition-colors"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-neon-primary/90 hover:bg-neon-primary text-white text-sm font-medium transition-colors focus-ring"
         >
           <Plus className="h-4 w-4" />
           New Chat
@@ -108,13 +108,13 @@ export function ThreadSidebar({
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
           <input
             type="text"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-glass-bg/50 border border-glass-border/50 focus:border-neon-primary/50 focus:outline-none transition-colors placeholder:text-muted-foreground/70"
+            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-surface-2 border border-border-subtle focus:border-neon-primary/50 focus:outline-none transition-colors placeholder:text-text-muted/70"
           />
         </div>
       </div>
@@ -123,12 +123,12 @@ export function ThreadSidebar({
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
           </div>
         ) : filteredThreads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-            <MessageCircle className="h-6 w-6 text-muted-foreground/50 mb-2" />
-            <p className="text-xs text-muted-foreground">
+            <MessageCircle className="h-6 w-6 text-text-muted/50 mb-2" />
+            <p className="text-xs text-text-muted">
               {searchQuery ? 'No matches' : 'No conversations'}
             </p>
           </div>
@@ -136,7 +136,7 @@ export function ThreadSidebar({
           <div className="py-2">
             {Object.entries(groupedThreads).map(([group, groupThreads]) => (
               <div key={group}>
-                <div className="px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="px-4 py-2 text-xs font-medium text-text-muted uppercase tracking-wider">
                   {group}
                 </div>
                 {groupThreads.map((thread) => (
@@ -209,8 +209,8 @@ function ThreadItem({
       <button
         onClick={onSelect}
         className={cn(
-          'w-full px-4 py-3 text-left transition-colors',
-          'hover:bg-glass-bg',
+          'w-full px-4 py-3 text-left transition-colors focus-ring',
+          'hover:bg-surface-3',
           isActive && 'bg-neon-primary/10 border-r-2 border-neon-primary'
         )}
       >
@@ -224,28 +224,28 @@ function ThreadItem({
                 if (e.key === 'Enter') onEditSave();
                 if (e.key === 'Escape') onEditCancel();
               }}
-              className="flex-1 px-2 py-1 text-sm rounded bg-glass-bg border border-glass-border focus:border-neon-primary/50 focus:outline-none"
+              className="flex-1 px-2 py-1 text-sm rounded bg-surface-2 border border-border-subtle focus:border-neon-primary/50 focus:outline-none text-text-primary"
               autoFocus
             />
-            <button onClick={onEditSave} className="p-1 hover:text-neon-accent">
+            <button onClick={onEditSave} className="p-1 hover:text-neon-accent focus-ring rounded">
               <Check className="h-4 w-4" />
             </button>
-            <button onClick={onEditCancel} className="p-1 hover:text-red-400">
+            <button onClick={onEditCancel} className="p-1 hover:text-danger focus-ring rounded">
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium truncate pr-2">
+              <span className="text-sm font-medium truncate pr-2 text-text-primary">
                 {thread.title || 'New Conversation'}
               </span>
-              <span className="text-xs text-muted-foreground flex-shrink-0">
+              <span className="text-xs text-text-muted flex-shrink-0">
                 {formatRelativeTime(thread.last_message_at)}
               </span>
             </div>
             {thread.last_message_preview && (
-              <p className="text-xs text-muted-foreground truncate mt-1">
+              <p className="text-xs text-text-muted truncate mt-1">
                 {thread.last_message_preview}
               </p>
             )}
@@ -261,13 +261,13 @@ function ThreadItem({
             onMenuToggle();
           }}
           className={cn(
-            'absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded',
+            'absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded focus-ring',
             'opacity-0 group-hover:opacity-100 transition-opacity',
-            'hover:bg-glass-bg',
+            'hover:bg-surface-3',
             menuOpen && 'opacity-100'
           )}
         >
-          <MoreHorizontal className="h-4 w-4" />
+          <MoreHorizontal className="h-4 w-4 text-text-muted" />
         </button>
       )}
 
@@ -278,7 +278,7 @@ function ThreadItem({
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute right-2 top-full mt-1 z-50 glass-panel rounded-lg shadow-lg py-1 min-w-[140px]"
+            className="absolute right-2 top-full mt-1 z-50 surface-matte rounded-lg shadow-lg py-1 min-w-[140px]"
           >
             <button
               onClick={(e) => {
@@ -286,7 +286,7 @@ function ThreadItem({
                 onEditStart();
                 onMenuToggle();
               }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-text-primary focus-ring"
             >
               <Edit3 className="h-4 w-4" />
               Rename
@@ -296,7 +296,7 @@ function ThreadItem({
                 e.stopPropagation();
                 onArchive();
               }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-text-primary focus-ring"
             >
               <Archive className="h-4 w-4" />
               Archive
@@ -306,7 +306,7 @@ function ThreadItem({
                 e.stopPropagation();
                 onDelete();
               }}
-              className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2 text-red-400"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-danger focus-ring"
             >
               <Trash2 className="h-4 w-4" />
               Delete

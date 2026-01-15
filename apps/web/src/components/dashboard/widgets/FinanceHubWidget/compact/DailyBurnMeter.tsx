@@ -63,7 +63,7 @@ export function DailyBurnMeter({ className }: DailyBurnMeterProps) {
             fill="none"
             stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-glass-border"
+            className="text-border-subtle"
           />
           {/* Progress circle */}
           <motion.circle
@@ -99,7 +99,7 @@ export function DailyBurnMeter({ className }: DailyBurnMeterProps) {
 
       {/* Stats */}
       <div className="flex-1 min-w-0">
-        <div className="text-xs text-muted-foreground mb-1">Daily Spending</div>
+        <div className="text-xs text-text-muted mb-1">Daily Spending</div>
         
         <div className="flex items-baseline gap-2">
           <span
@@ -112,7 +112,7 @@ export function DailyBurnMeter({ className }: DailyBurnMeterProps) {
           >
             {privacyMode ? '$••' : formatCurrency(dailySpent)}
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-text-muted">
             / {privacyMode ? '$•••' : formatCurrency(dailyBudget)}
           </span>
         </div>
@@ -122,7 +122,7 @@ export function DailyBurnMeter({ className }: DailyBurnMeterProps) {
             {colors.label}
           </span>
           {!isOverBudget && !privacyMode && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-text-muted">
               • {formatCurrency(remaining)} left
             </span>
           )}

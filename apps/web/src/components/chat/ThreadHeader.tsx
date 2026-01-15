@@ -45,8 +45,8 @@ export function ThreadHeader({
 
   if (!thread) {
     return (
-      <div className={cn('px-4 py-3 border-b border-glass-border', className)}>
-        <h2 className="text-lg font-semibold text-muted-foreground">New Conversation</h2>
+      <div className={cn('px-4 py-3 border-b border-border-subtle', className)}>
+        <h2 className="text-lg font-semibold text-text-muted">New Conversation</h2>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function ThreadHeader({
   };
 
   return (
-    <div className={cn('flex items-center justify-between px-4 py-3 border-b border-glass-border', className)}>
+    <div className={cn('flex items-center justify-between px-4 py-3 border-b border-border-subtle', className)}>
       {/* Title */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {isEditing ? (
@@ -92,14 +92,14 @@ export function ThreadHeader({
                 if (e.key === 'Enter') handleSaveEdit();
                 if (e.key === 'Escape') handleCancelEdit();
               }}
-              className="flex-1 px-3 py-1.5 text-lg font-semibold rounded-lg bg-glass-bg border border-glass-border focus:border-neon-primary/50 focus:outline-none"
+              className="flex-1 px-3 py-1.5 text-lg font-semibold rounded-lg bg-surface-2 border border-border-subtle focus:border-neon-primary/50 focus:outline-none"
               autoFocus
             />
             <Button variant="ghost" size="sm" onClick={handleSaveEdit}>
               <Check className="h-4 w-4 text-neon-accent" />
             </Button>
             <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-              <X className="h-4 w-4 text-red-400" />
+              <X className="h-4 w-4 text-danger" />
             </Button>
           </div>
         ) : (
@@ -152,14 +152,14 @@ export function ThreadHeader({
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute right-0 top-full mt-1 z-50 glass-panel rounded-lg shadow-lg py-1 min-w-[160px]"
+              className="absolute right-0 top-full mt-1 z-50 surface-matte rounded-lg shadow-lg py-1 min-w-[160px]"
             >
               <button
                 onClick={() => {
                   handleStartEdit();
                   setShowMenu(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2"
               >
                 <Edit3 className="h-4 w-4" />
                 Rename
@@ -167,13 +167,13 @@ export function ThreadHeader({
               <button
                 onClick={handleRegenerateTitle}
                 disabled={isRegenerating}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2 disabled:opacity-50"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 disabled:opacity-50"
               >
                 <RefreshCw className={cn('h-4 w-4', isRegenerating && 'animate-spin')} />
                 Regenerate Title
               </button>
               <button
-                className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2"
                 onClick={() => {
                   // Copy share link (placeholder)
                   navigator.clipboard.writeText(`${window.location.origin}/chat/${thread.id}`);
@@ -183,13 +183,13 @@ export function ThreadHeader({
                 <Share2 className="h-4 w-4" />
                 Copy Link
               </button>
-              <div className="my-1 border-t border-glass-border" />
+              <div className="my-1 border-t border-border-subtle" />
               <button
                 onClick={() => {
                   onArchive();
                   setShowMenu(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2"
               >
                 <Archive className="h-4 w-4" />
                 Archive
@@ -199,7 +199,7 @@ export function ThreadHeader({
                   onDelete();
                   setShowMenu(false);
                 }}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-glass-bg flex items-center gap-2 text-red-400"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-surface-3 flex items-center gap-2 text-danger"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete

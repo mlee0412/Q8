@@ -73,9 +73,9 @@ function getSuggestionIcon(type: ProactiveSuggestion['type']) {
  */
 function getPriorityColor(priority: ProactiveSuggestion['priority']) {
   const colors = {
-    high: 'border-red-500/30 bg-red-500/10',
-    medium: 'border-yellow-500/30 bg-yellow-500/10',
-    low: 'border-blue-500/30 bg-blue-500/10',
+    high: 'border-danger/30 bg-danger/10',
+    medium: 'border-warning/30 bg-warning/10',
+    low: 'border-info/30 bg-info/10',
   };
   return colors[priority];
 }
@@ -175,7 +175,7 @@ export function SuggestionsWidget({
             <button
               key={index}
               onClick={() => handleQuickAction(action)}
-              className="px-2 py-1 text-xs rounded-full bg-glass-bg hover:bg-neon-primary/20 transition-colors"
+              className="px-2 py-1 text-xs rounded-full bg-surface-2 hover:bg-neon-primary/20 transition-colors focus-ring"
             >
               {action.slice(0, 20)}...
             </button>
@@ -191,7 +191,7 @@ export function SuggestionsWidget({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className={cn(
-                'flex items-center gap-2 p-2 rounded-lg border cursor-pointer',
+                'flex items-center gap-2 p-2 rounded-lg border cursor-pointer focus-ring',
                 getPriorityColor(topSuggestion.priority)
               )}
               onClick={() => handleClick(topSuggestion)}
@@ -208,17 +208,17 @@ export function SuggestionsWidget({
   }
 
   return (
-    <div className={cn('glass-panel rounded-xl p-3 flex flex-col h-full overflow-hidden', className)}>
+    <div className={cn('surface-matte p-3 flex flex-col h-full overflow-hidden', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-2 flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="widget-header mb-2 flex-shrink-0">
+        <div className="widget-header-title">
           <Sparkles className="h-4 w-4 text-neon-primary" />
-          <h3 className="font-semibold text-sm">Suggestions</h3>
+          <h3 className="text-heading text-sm">Suggestions</h3>
         </div>
         <button
           onClick={fetchSuggestions}
-          className="p-1 rounded-lg hover:bg-glass-bg transition-colors"
-          title="Refresh"
+          className="btn-icon btn-icon-sm focus-ring"
+          aria-label="Refresh suggestions"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
         </button>
@@ -227,13 +227,13 @@ export function SuggestionsWidget({
       {/* Quick Actions */}
       {quickActions.length > 0 && (
         <div className="mb-2 flex-shrink-0">
-          <p className="text-[10px] text-muted-foreground mb-1">Quick Actions</p>
+          <p className="text-[10px] text-text-muted mb-1">Quick Actions</p>
           <div className="flex flex-wrap gap-1">
             {quickActions.slice(0, 2).map((action, index) => (
               <button
                 key={index}
                 onClick={() => handleQuickAction(action)}
-                className="px-2 py-1 text-xs rounded-full bg-glass-bg hover:bg-neon-primary/20 border border-glass-border hover:border-neon-primary/30 transition-colors truncate max-w-[120px]"
+                className="px-2 py-1 text-xs rounded-full bg-surface-2 hover:bg-neon-primary/20 border border-border-subtle hover:border-neon-primary/30 transition-colors truncate max-w-[120px] focus-ring"
               >
                 {action}
               </button>
@@ -243,11 +243,11 @@ export function SuggestionsWidget({
       )}
 
       {/* Suggestions List */}
-      <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0">
+      <div className="flex-1 overflow-y-auto space-y-1.5 min-h-0 scrollbar-thin">
         <AnimatePresence>
           {visibleSuggestions.slice(0, 3).map((suggestion) => {
             const Icon = getSuggestionIcon(suggestion.type);
-            
+
             return (
               <motion.div
                 key={suggestion.id}
@@ -256,24 +256,25 @@ export function SuggestionsWidget({
                 exit={{ opacity: 0, x: 10 }}
                 className={cn(
                   'flex items-start gap-2 p-2 rounded-lg border cursor-pointer group',
-                  'hover:bg-glass-bg/50 transition-colors',
+                  'hover:bg-surface-3/50 transition-colors',
                   getPriorityColor(suggestion.priority)
                 )}
                 onClick={() => handleClick(suggestion)}
               >
                 <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <h4 className="font-medium text-xs truncate">{suggestion.title}</h4>
+                    <h4 className="text-body text-xs font-medium truncate">{suggestion.title}</h4>
                     <button
                       onClick={(e) => handleDismiss(suggestion.id, e)}
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-glass-bg transition-all flex-shrink-0"
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-surface-3 transition-all flex-shrink-0 focus-ring"
+                      aria-label="Dismiss suggestion"
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground line-clamp-1">
+                  <p className="text-[10px] text-text-muted line-clamp-1">
                     {suggestion.description}
                   </p>
                 </div>
@@ -284,15 +285,15 @@ export function SuggestionsWidget({
 
         {/* Empty state */}
         {visibleSuggestions.length === 0 && !isLoading && (
-          <div className="text-center py-2 text-xs text-muted-foreground">
-            No suggestions right now
+          <div className="empty-state py-4">
+            <p className="empty-state-title">No suggestions right now</p>
           </div>
         )}
 
         {/* Loading state */}
         {isLoading && suggestions.length === 0 && (
           <div className="text-center py-2">
-            <RefreshCw className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
+            <RefreshCw className="h-4 w-4 animate-spin mx-auto text-text-muted" />
           </div>
         )}
       </div>

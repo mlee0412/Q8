@@ -77,7 +77,7 @@ export default function DashboardPage() {
             {/* Command Palette Button */}
             <button
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-glass-bg hover:bg-glass-border transition-colors border border-glass-border"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
               title="Command Palette (⌘K)"
             >
               <Command className="h-4 w-4" />
@@ -97,7 +97,7 @@ export default function DashboardPage() {
             {/* Settings Button */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-xl hover:bg-glass-bg transition-colors"
+              className="p-2 rounded-xl hover:bg-surface-3 transition-colors"
               title="Settings (⌘.)"
             >
               <Settings className="h-5 w-5" />
@@ -188,7 +188,7 @@ export default function DashboardPage() {
 
           {/* Right Column - Chat Interface */}
           <div className="lg:col-span-1">
-            <div className="glass-panel rounded-2xl h-[calc(100vh-12rem)] overflow-hidden">
+            <div className="surface-matte rounded-2xl h-[calc(100vh-12rem)] overflow-hidden">
               <ChatWithThreads
                 userId={USER_ID}
                 userProfile={{

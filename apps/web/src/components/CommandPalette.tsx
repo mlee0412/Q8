@@ -276,12 +276,12 @@ export function CommandPalette({
           initial={{ opacity: 0, scale: 0.95, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
-          className="glass-panel rounded-xl w-full max-w-lg overflow-hidden shadow-2xl"
+          className="surface-matte rounded-xl w-full max-w-lg overflow-hidden shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Search Input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-glass-border">
-            <Search className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
+            <Search className="h-5 w-5 text-text-muted" />
             <input
               ref={inputRef}
               type="text"
@@ -289,9 +289,9 @@ export function CommandPalette({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a command or search..."
-              className="flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent text-base outline-none placeholder:text-text-muted"
             />
-            <kbd className="px-2 py-1 text-xs rounded bg-glass-bg border border-glass-border">
+            <kbd className="px-2 py-1 text-xs rounded bg-surface-3 border border-border-subtle">
               esc
             </kbd>
           </div>
@@ -300,7 +300,7 @@ export function CommandPalette({
           <div className="max-h-[50vh] overflow-y-auto p-2">
             {Object.entries(groupedCommands).map(([category, commands]) => (
               <div key={category} className="mb-3">
-                <div className="px-3 py-1 text-xs font-medium text-muted-foreground">
+                <div className="px-3 py-1 text-xs font-medium text-text-muted">
                   {categoryLabels[category] || category}
                 </div>
                 {commands.map((cmd) => {
@@ -313,14 +313,14 @@ export function CommandPalette({
                         'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors',
                         isSelected
                           ? 'bg-neon-primary/20 text-neon-primary'
-                          : 'hover:bg-glass-bg'
+                          : 'hover:bg-surface-3'
                       )}
                     >
                       <cmd.icon className="h-5 w-5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">{cmd.title}</div>
                         {cmd.description && (
-                          <div className="text-xs text-muted-foreground truncate">
+                          <div className="text-xs text-text-muted truncate">
                             {cmd.description}
                           </div>
                         )}
@@ -332,7 +332,7 @@ export function CommandPalette({
             ))}
 
             {filteredCommands.length === 0 && (
-              <div className="py-8 text-center text-muted-foreground">
+              <div className="py-8 text-center text-text-muted">
                 <Command className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No commands found</p>
               </div>
@@ -340,17 +340,17 @@ export function CommandPalette({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-4 py-2 border-t border-glass-border text-xs text-muted-foreground">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border-subtle text-xs text-text-muted">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 rounded bg-glass-bg">↑↓</kbd> navigate
+                <kbd className="px-1 py-0.5 rounded bg-surface-3">↑↓</kbd> navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 rounded bg-glass-bg">↵</kbd> select
+                <kbd className="px-1 py-0.5 rounded bg-surface-3">↵</kbd> select
               </span>
             </div>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-glass-bg">⌘K</kbd> to open
+              <kbd className="px-1 py-0.5 rounded bg-surface-3">⌘K</kbd> to open
             </span>
           </div>
         </motion.div>

@@ -139,7 +139,7 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       className={cn(
         'pointer-events-auto min-w-[300px] max-w-md rounded-xl border p-4',
-        'glass-panel shadow-lg',
+        'surface-matte shadow-lg',
         colors[toast.type]
       )}
     >

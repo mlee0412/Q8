@@ -143,7 +143,7 @@ export function ProtectedRoute({
             className="text-center"
           >
             <Loader2 className="h-8 w-8 animate-spin text-neon-primary mx-auto mb-4" aria-hidden="true" />
-            <p className="text-muted-foreground" role="status" aria-live="polite">
+            <p className="text-text-muted" role="status" aria-live="polite">
               Verifying authentication...
             </p>
           </motion.div>
@@ -160,16 +160,16 @@ export function ProtectedRoute({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-panel rounded-2xl p-8 max-w-md text-center"
+            className="surface-matte rounded-2xl p-8 max-w-md text-center"
           >
             <Lock className="h-12 w-12 text-red-500 mx-auto mb-4" aria-hidden="true" />
             <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-text-muted mb-6">
               You don&apos;t have permission to access this page.
             </p>
             <button
               onClick={() => router.back()}
-              className="glass-panel px-4 py-2 rounded-lg hover:bg-glass-bg"
+              className="surface-matte px-4 py-2 rounded-lg hover:bg-surface-3"
             >
               Go back
             </button>

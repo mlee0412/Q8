@@ -199,7 +199,7 @@ function RecurringItemCard({
   const getStatusColor = () => {
     if (isOverdue) return 'border-red-500/30 bg-red-500/5';
     if (isDueSoon) return 'border-yellow-500/30 bg-yellow-500/5';
-    return 'border-glass-border bg-glass-bg/50';
+    return 'border-border-subtle bg-surface-3/50';
   };
 
   const getStatusIcon = () => {
@@ -233,7 +233,7 @@ function RecurringItemCard({
         <div className="flex items-center gap-2">
           <span className="font-medium truncate">{item.name}</span>
           {item.category[0] && (
-            <span className="text-xs text-white/60 bg-glass-bg px-2 py-0.5 rounded">
+            <span className="text-xs text-white/60 bg-surface-3 px-2 py-0.5 rounded">
               {item.category[0]}
             </span>
           )}
@@ -368,11 +368,11 @@ function RecurringFormModal({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-md mx-4 bg-[#1a1a2e]/95 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md mx-4 bg-[#1a1a2e]/95 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <h2 className="text-lg font-semibold">
             {editItem ? 'Edit Recurring' : 'Add Recurring'}
           </h2>
@@ -383,7 +383,7 @@ function RecurringFormModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-danger text-sm">
               {error}
             </div>
           )}
@@ -397,7 +397,7 @@ function RecurringFormModal({
                 'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all',
                 !isIncome
                   ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-glass-bg text-white/60 border border-glass-border'
+                  : 'bg-surface-3 text-white/60 border border-border-subtle'
               )}
             >
               Bill / Expense
@@ -409,7 +409,7 @@ function RecurringFormModal({
                 'flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all',
                 isIncome
                   ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                  : 'bg-glass-bg text-white/60 border border-glass-border'
+                  : 'bg-surface-3 text-white/60 border border-border-subtle'
               )}
             >
               Income
@@ -424,7 +424,7 @@ function RecurringFormModal({
               placeholder="e.g., Rent, Netflix, Salary"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-glass-bg border-glass-border"
+              className="bg-surface-3 border-border-subtle"
               autoFocus
             />
           </div>
@@ -442,7 +442,7 @@ function RecurringFormModal({
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="pl-9 bg-glass-bg border-glass-border"
+                  className="pl-9 bg-surface-3 border-border-subtle"
                 />
               </div>
             </div>
@@ -451,7 +451,7 @@ function RecurringFormModal({
               <select
                 value={frequency}
                 onChange={(e) => setFrequency(e.target.value as RecurringFrequency)}
-                className="w-full h-10 px-3 rounded-md bg-glass-bg border border-glass-border text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
+                className="w-full h-10 px-3 rounded-md bg-surface-3 border border-border-subtle text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
               >
                 {FREQUENCY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -470,7 +470,7 @@ function RecurringFormModal({
                 type="date"
                 value={nextDueDate}
                 onChange={(e) => setNextDueDate(e.target.value)}
-                className="bg-glass-bg border-glass-border"
+                className="bg-surface-3 border-border-subtle"
               />
             </div>
             <div>
@@ -480,7 +480,7 @@ function RecurringFormModal({
                 placeholder="e.g., Rent, Subscription"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="bg-glass-bg border-glass-border"
+                className="bg-surface-3 border-border-subtle"
               />
             </div>
           </div>
@@ -494,7 +494,7 @@ function RecurringFormModal({
               <select
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                className="w-full h-10 px-3 rounded-md bg-glass-bg border border-glass-border text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
+                className="w-full h-10 px-3 rounded-md bg-surface-3 border border-border-subtle text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
               >
                 <option value="">No specific account</option>
                 {accounts.map((acc) => (
@@ -512,7 +512,7 @@ function RecurringFormModal({
               type="checkbox"
               checked={autoConfirm}
               onChange={(e) => setAutoConfirm(e.target.checked)}
-              className="w-4 h-4 rounded border-glass-border bg-glass-bg"
+              className="w-4 h-4 rounded border-border-subtle bg-surface-3"
             />
             <span className="text-sm text-white/60">
               Auto-confirm on due date (for automatic payments)

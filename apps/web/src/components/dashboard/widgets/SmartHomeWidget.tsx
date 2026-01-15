@@ -50,7 +50,6 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 // ============ Light Control Types & Presets ============
 interface LightControlConfig {
@@ -836,38 +835,38 @@ export function SmartHomeWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={cn('glass-panel rounded-xl overflow-hidden flex flex-col w-full', colSpanClasses[colSpan], rowSpanClasses[rowSpan], className)}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className={cn('surface-matte overflow-hidden flex flex-col w-full', colSpanClasses[colSpan], rowSpanClasses[rowSpan], className)}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-glass-border">
-        <div className="flex items-center gap-2">
+      <div className="widget-header px-4 py-3 border-b border-border-subtle">
+        <div className="widget-header-title">
           <Home className="h-4 w-4 text-neon-primary" />
-          <h3 className="font-semibold text-sm">Smart Home</h3>
+          <h3 className="text-heading text-sm">Smart Home</h3>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7"
+        <button
+          className="btn-icon btn-icon-sm focus-ring"
           onClick={fetchStates}
           disabled={isRefreshing}
+          aria-label="Refresh states"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
-        </Button>
+        </button>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-glass-border">
+      <div className="flex border-b border-border-subtle">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors',
+              'flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors focus-ring',
               activeTab === tab.id
                 ? 'text-neon-primary border-b-2 border-neon-primary'
-                : 'text-muted-foreground hover:text-white'
+                : 'text-text-muted hover:text-text-primary'
             )}
           >
             <tab.icon className="h-3.5 w-3.5" />
@@ -877,18 +876,18 @@ export function SmartHomeWidget({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            <RefreshCw className="h-8 w-8 animate-spin text-text-muted" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-full gap-2">
-            <AlertTriangle className="h-8 w-8 text-yellow-500" />
-            <p className="text-sm text-muted-foreground">{error}</p>
-            <Button variant="ghost" size="sm" onClick={fetchStates}>
+            <AlertTriangle className="h-8 w-8 text-warning" />
+            <p className="text-sm text-text-muted">{error}</p>
+            <button className="btn-ghost text-sm focus-ring" onClick={fetchStates}>
               Retry
-            </Button>
+            </button>
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -1054,34 +1053,35 @@ function HomeTab({ isOn, activateScene, toggleEntity, sonosVolume, sonosMuted, s
       </section>
 
       <section>
-        <div className="glass-panel rounded-xl p-4">
+        <div className="card-item p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <motion.div
                 animate={!sonosMuted ? { scale: [1, 1.1, 1] } : {}}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <Speaker className="h-5 w-5 text-blue-400" />
+                <Speaker className="h-5 w-5 text-info" />
               </motion.div>
-              <span className="text-base font-semibold">{sonosMuted ? 'Muted' : `${sonosVolume}%`}</span>
+              <span className="text-base font-semibold text-text-primary">{sonosMuted ? 'Muted' : `${sonosVolume}%`}</span>
             </div>
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={toggleMute}
               className={cn(
-                'h-9 w-9 rounded-full flex items-center justify-center transition-all',
+                'h-9 w-9 rounded-full flex items-center justify-center transition-all focus-ring',
                 sonosMuted
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-glass-bg border border-glass-border hover:border-white/20'
+                  ? 'bg-danger/20 text-danger border border-danger/30'
+                  : 'bg-surface-2 border border-border-subtle hover:border-white/20'
               )}
+              aria-label={sonosMuted ? 'Unmute' : 'Mute'}
             >
               {sonosMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </motion.button>
           </div>
-          <div className="h-2 bg-glass-border rounded-full overflow-hidden mb-4">
+          <div className="h-2 bg-border-subtle rounded-full overflow-hidden mb-4">
             <motion.div
-              className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
+              className="h-full bg-gradient-to-r from-info to-cyan-400 rounded-full"
               animate={{ width: `${sonosMuted ? 0 : sonosVolume}%` }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             />
@@ -1280,7 +1280,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
       </section>
 
       <section>
-        <div className="glass-panel rounded-xl p-3 space-y-3">
+        <div className="card-item rounded-xl p-3 space-y-3">
           {/* Navigation D-Pad - Edge to Edge */}
           <div className="grid grid-cols-3 gap-1.5">
             {/* Top Row */}
@@ -1360,7 +1360,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => callService('media_player', 'media_previous_track', ENTITIES.media.appleTV)}
-              className="h-12 rounded-xl bg-glass-bg border border-glass-border flex items-center justify-center gap-2 text-white/70 hover:text-white hover:border-white/20 transition-all"
+              className="h-12 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center gap-2 text-white/70 hover:text-white hover:border-white/20 transition-all"
             >
               <SkipBack className="h-4 w-4" />
               <span className="text-xs">Prev</span>
@@ -1376,7 +1376,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => callService('media_player', 'media_next_track', ENTITIES.media.appleTV)}
-              className="h-12 rounded-xl bg-glass-bg border border-glass-border flex items-center justify-center gap-2 text-white/70 hover:text-white hover:border-white/20 transition-all"
+              className="h-12 rounded-xl bg-surface-2 border border-border-subtle flex items-center justify-center gap-2 text-white/70 hover:text-white hover:border-white/20 transition-all"
             >
               <span className="text-xs">Next</span>
               <SkipForward className="h-4 w-4" />
@@ -1490,13 +1490,13 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
 
       {/* Sonos Volume - No header */}
       <section>
-        <div className="glass-panel rounded-xl p-4">
+        <div className="card-item rounded-xl p-4">
           <div className="flex items-center gap-3">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setVolume(Math.max(0, sonosVolume - 5))}
-              className="h-10 w-10 rounded-full bg-glass-bg border border-glass-border hover:border-white/20 flex items-center justify-center transition-all"
+              className="h-10 w-10 rounded-full bg-surface-2 border border-border-subtle hover:border-white/20 flex items-center justify-center transition-all"
             >
               <Volume1 className="h-4 w-4" />
             </motion.button>
@@ -1515,7 +1515,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setVolume(Math.min(100, sonosVolume + 5))}
-              className="h-10 w-10 rounded-full bg-glass-bg border border-glass-border hover:border-white/20 flex items-center justify-center transition-all"
+              className="h-10 w-10 rounded-full bg-surface-2 border border-border-subtle hover:border-white/20 flex items-center justify-center transition-all"
             >
               <Volume2 className="h-4 w-4" />
             </motion.button>
@@ -1527,7 +1527,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
                 'h-10 w-10 rounded-full flex items-center justify-center transition-all',
                 sonosMuted
                   ? 'bg-red-500/20 text-red-400 border-2 border-red-500/50'
-                  : 'bg-glass-bg border border-glass-border hover:border-white/20'
+                  : 'bg-surface-2 border border-border-subtle hover:border-white/20'
               )}
               title={sonosMuted ? 'Unmute' : 'Mute'}
             >
@@ -1565,7 +1565,7 @@ function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intens
           "w-full flex items-center justify-center gap-3 py-3 rounded-xl transition-all",
           isExpanded 
             ? "bg-gradient-to-r from-fuchsia-600/20 to-purple-600/20 border border-fuchsia-500/30"
-            : "bg-glass-bg border border-glass-border hover:border-fuchsia-500/30"
+            : "bg-surface-2 border border-border-subtle hover:border-fuchsia-500/30"
         )}
       >
         <motion.div
@@ -1594,7 +1594,7 @@ function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intens
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="glass-panel rounded-xl p-4 space-y-4">
+            <div className="card-item rounded-xl p-4 space-y-4">
               <div className="grid grid-cols-3 gap-2">
                 <EntityButton icon={Power} label="Power" isActive={syncBoxPower} activeColor="green" onClick={() => toggleEntity('switch', ENTITIES.syncBox.power)} />
                 <EntityButton icon={Zap} label="Sync" isActive={lightSync} activeColor="fuchsia" onClick={() => toggleEntity('switch', ENTITIES.syncBox.lightSync)} />
@@ -1613,7 +1613,7 @@ function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intens
                         'py-2.5 rounded-lg text-xs font-medium transition-all capitalize',
                         syncMode === mode
                           ? 'bg-neon-primary text-white shadow-lg shadow-neon-primary/30 border border-white/20'
-                          : 'bg-glass-bg border border-glass-border text-muted-foreground hover:text-white hover:border-white/20'
+                          : 'bg-surface-2 border border-border-subtle text-muted-foreground hover:text-white hover:border-white/20'
                       )}
                     >
                       {mode}
@@ -1634,7 +1634,7 @@ function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intens
                         'py-2 rounded-lg text-[10px] font-medium transition-all capitalize',
                         intensity === level
                           ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30 border border-white/20'
-                          : 'bg-glass-bg border border-glass-border text-muted-foreground hover:text-white hover:border-white/20'
+                          : 'bg-surface-2 border border-border-subtle text-muted-foreground hover:text-white hover:border-white/20'
                       )}
                     >
                       {level}
@@ -1662,7 +1662,7 @@ function ClimateTab({ getState, getAttr, callService }: any) {
   return (
     <>
       <section>
-        <div className="glass-panel rounded-xl p-4">
+        <div className="card-item rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-3xl font-bold">{currentTemp || '--'}°</p>
@@ -1720,7 +1720,7 @@ function ClimateTab({ getState, getAttr, callService }: any) {
                   'py-2.5 rounded-xl text-xs font-medium transition-all',
                   hvacMode === mode
                     ? 'bg-neon-primary text-white shadow-lg shadow-neon-primary/30 border border-white/20'
-                    : 'bg-glass-bg border border-glass-border text-muted-foreground hover:text-white hover:border-white/20'
+                    : 'bg-surface-2 border border-border-subtle text-muted-foreground hover:text-white hover:border-white/20'
                 )}
               >
                 {label}
@@ -1846,7 +1846,7 @@ function EntityButton({ icon: Icon, label, isActive, activeColor = 'neon', onCli
         fullWidth && 'w-full justify-center',
         isActive
           ? `${activeClasses[activeColor]} text-white shadow-lg border border-white/20`
-          : 'bg-glass-bg border border-glass-border text-muted-foreground hover:text-white hover:border-white/20 hover:bg-glass-border/50'
+          : 'bg-surface-2 border border-border-subtle text-muted-foreground hover:text-white hover:border-white/20 hover:bg-glass-border/50'
       )}
     >
       <motion.div
@@ -1893,7 +1893,7 @@ function RemoteButton({ icon: Icon, label, onClick, size = 'md', color }: any) {
         label && Icon && 'px-3',
         color
           ? `bg-gradient-to-br ${color} text-white shadow-md hover:shadow-lg border border-white/10`
-          : 'bg-glass-bg border border-glass-border hover:bg-glass-border hover:border-white/20'
+          : 'bg-surface-2 border border-border-subtle hover:bg-glass-border hover:border-white/20'
       )}
     >
       {Icon && <Icon className={cn(size === 'lg' ? 'h-6 w-6' : 'h-4 w-4')} />}
@@ -1907,7 +1907,7 @@ function CoverControl({ label, state, onOpen, onClose, onStop }: any) {
   const isClosed = state === 'closed';
   
   return (
-    <div className="glass-panel rounded-xl p-3">
+    <div className="card-item rounded-xl p-3">
       <p className="text-xs font-medium mb-1 text-center">{label}</p>
       <p className={cn(
         'text-[10px] text-center capitalize mb-3 font-medium',
@@ -1924,7 +1924,7 @@ function CoverControl({ label, state, onOpen, onClose, onStop }: any) {
             'h-9 w-9 rounded-lg flex items-center justify-center transition-all',
             isOpen
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'bg-glass-bg border border-glass-border hover:border-white/20'
+              : 'bg-surface-2 border border-border-subtle hover:border-white/20'
           )}
         >
           <ChevronUp className="h-4 w-4" />
@@ -1933,7 +1933,7 @@ function CoverControl({ label, state, onOpen, onClose, onStop }: any) {
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onStop}
-          className="h-9 w-9 rounded-lg flex items-center justify-center bg-glass-bg border border-glass-border hover:border-amber-500/50 hover:bg-amber-500/10 transition-all"
+          className="h-9 w-9 rounded-lg flex items-center justify-center bg-surface-2 border border-border-subtle hover:border-amber-500/50 hover:bg-amber-500/10 transition-all"
         >
           <Square className="h-3.5 w-3.5" />
         </motion.button>
@@ -1945,7 +1945,7 @@ function CoverControl({ label, state, onOpen, onClose, onStop }: any) {
             'h-9 w-9 rounded-lg flex items-center justify-center transition-all',
             isClosed
               ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-              : 'bg-glass-bg border border-glass-border hover:border-white/20'
+              : 'bg-surface-2 border border-border-subtle hover:border-white/20'
           )}
         >
           <ChevronDown className="h-4 w-4" />

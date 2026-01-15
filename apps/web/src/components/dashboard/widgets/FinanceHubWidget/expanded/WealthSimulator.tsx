@@ -226,7 +226,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
             max="50"
             value={years}
             onChange={(e) => setYears(parseInt(e.target.value) || 20)}
-            className="bg-glass-bg border-glass-border"
+            className="bg-surface-3 border-border-subtle"
           />
         </div>
         <div>
@@ -238,7 +238,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
               min="0"
               value={monthlyContribution}
               onChange={(e) => setMonthlyContribution(parseInt(e.target.value) || 0)}
-              className="pl-7 bg-glass-bg border-glass-border"
+              className="pl-7 bg-surface-3 border-border-subtle"
             />
           </div>
         </div>
@@ -251,7 +251,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
             step="0.5"
             value={expectedReturn}
             onChange={(e) => setExpectedReturn(parseFloat(e.target.value) || 7)}
-            className="bg-glass-bg border-glass-border"
+            className="bg-surface-3 border-border-subtle"
           />
         </div>
         <div>
@@ -263,7 +263,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
             step="0.5"
             value={inflationRate}
             onChange={(e) => setInflationRate(parseFloat(e.target.value) || 2.5)}
-            className="bg-glass-bg border-glass-border"
+            className="bg-surface-3 border-border-subtle"
           />
         </div>
       </div>
@@ -281,7 +281,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="space-y-3 p-4 rounded-xl bg-glass-bg/50 border border-glass-border"
+            className="space-y-3 p-4 rounded-xl bg-surface-3/50 border border-border-subtle"
           >
             {/* Existing purchases */}
             {majorPurchases.map((purchase) => (
@@ -302,20 +302,20 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
             ))}
 
             {/* Add new purchase */}
-            <div className="flex gap-2 pt-2 border-t border-glass-border">
+            <div className="flex gap-2 pt-2 border-t border-border-subtle">
               <Input
                 type="text"
                 placeholder="Description"
                 value={newPurchaseDesc}
                 onChange={(e) => setNewPurchaseDesc(e.target.value)}
-                className="flex-1 bg-glass-bg border-glass-border text-sm"
+                className="flex-1 bg-surface-3 border-border-subtle text-sm"
               />
               <Input
                 type="number"
                 placeholder="Amount"
                 value={newPurchaseAmount}
                 onChange={(e) => setNewPurchaseAmount(e.target.value)}
-                className="w-28 bg-glass-bg border-glass-border text-sm"
+                className="w-28 bg-surface-3 border-border-subtle text-sm"
               />
               <Input
                 type="number"
@@ -324,7 +324,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
                 max={years}
                 value={newPurchaseYear}
                 onChange={(e) => setNewPurchaseYear(e.target.value)}
-                className="w-20 bg-glass-bg border-glass-border text-sm"
+                className="w-20 bg-surface-3 border-border-subtle text-sm"
               />
               <Button size="sm" onClick={handleAddPurchase}>Add</Button>
             </div>
@@ -337,7 +337,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl bg-glass-bg/30 border border-glass-border p-4"
+          className="rounded-xl bg-surface-3/30 border border-border-subtle p-4"
         >
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -416,7 +416,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-glass-border">
+          <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-border-subtle">
             <div className="text-center">
               <div className="text-xs text-white/60 mb-1">Starting Net Worth</div>
               <div className="text-lg font-semibold">{formatCompactCurrency(currentNetWorth)}</div>
@@ -454,7 +454,7 @@ export function WealthSimulator({ className }: WealthSimulatorProps) {
 
       {/* Empty state */}
       {simulationData.length === 0 && (
-        <div className="text-center py-16 rounded-xl bg-glass-bg/30 border border-glass-border">
+        <div className="text-center py-16 rounded-xl bg-surface-3/30 border border-border-subtle">
           <Target className="h-12 w-12 mx-auto mb-4 text-white/30" />
           <p className="text-white/50 mb-4">
             Adjust parameters and click Run Simulation to see your wealth projection

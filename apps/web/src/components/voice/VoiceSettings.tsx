@@ -324,7 +324,7 @@ export function VoiceSettings({
   };
 
   return (
-    <div className={cn('glass-panel rounded-xl p-6 space-y-6', className)}>
+    <div className={cn('surface-matte rounded-xl p-6 space-y-6', className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -351,13 +351,13 @@ export function VoiceSettings({
 
         {/* Microphone */}
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">
+          <label className="text-xs text-text-muted mb-2 block">
             Microphone
           </label>
           <select
             value={currentMic}
             onChange={(e) => handleMicrophoneChange(e.target.value)}
-            className="w-full bg-glass-bg border border-glass-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
+            className="w-full bg-surface-3 border border-border-subtle rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
           >
             {microphones.map((mic) => (
               <option key={mic.deviceId} value={mic.deviceId}>
@@ -369,13 +369,13 @@ export function VoiceSettings({
 
         {/* Speaker */}
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">
+          <label className="text-xs text-text-muted mb-2 block">
             Speaker
           </label>
           <select
             value={currentSpeaker}
             onChange={(e) => handleSpeakerChange(e.target.value)}
-            className="w-full bg-glass-bg border border-glass-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
+            className="w-full bg-surface-3 border border-border-subtle rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
           >
             {speakers.map((speaker) => (
               <option key={speaker.deviceId} value={speaker.deviceId}>
@@ -396,7 +396,7 @@ export function VoiceSettings({
         {/* Input Volume */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-muted-foreground">
+            <label className="text-xs text-text-muted">
               Input Volume
             </label>
             <span className="text-xs text-neon-primary">{currentInputVolume}%</span>
@@ -407,14 +407,14 @@ export function VoiceSettings({
             max="100"
             value={currentInputVolume}
             onChange={(e) => handleInputVolumeChange(Number(e.target.value))}
-            className="w-full h-2 bg-glass-border rounded-lg appearance-none cursor-pointer slider"
+            className="w-full h-2 bg-border-subtle rounded-lg appearance-none cursor-pointer slider"
           />
         </div>
 
         {/* Output Volume */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-muted-foreground">
+            <label className="text-xs text-text-muted">
               Output Volume
             </label>
             <span className="text-xs text-neon-primary">{currentOutputVolume}%</span>
@@ -425,7 +425,7 @@ export function VoiceSettings({
             max="100"
             value={currentOutputVolume}
             onChange={(e) => handleOutputVolumeChange(Number(e.target.value))}
-            className="w-full h-2 bg-glass-border rounded-lg appearance-none cursor-pointer slider"
+            className="w-full h-2 bg-border-subtle rounded-lg appearance-none cursor-pointer slider"
           />
         </div>
       </div>
@@ -440,7 +440,7 @@ export function VoiceSettings({
         <select
           value={currentLanguage}
           onChange={(e) => handleLanguageChange(e.target.value)}
-          className="w-full bg-glass-bg border border-glass-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
+          className="w-full bg-surface-3 border border-border-subtle rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neon-primary"
         >
           {languages.map((lang) => (
             <option key={lang.code} value={lang.code}>
@@ -479,7 +479,7 @@ export function VoiceSettings({
         {/* Sensitivity */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-muted-foreground">
+            <label className="text-xs text-text-muted">
               Voice Detection Sensitivity
             </label>
             <span className="text-xs text-neon-primary">{currentSensitivity}%</span>
@@ -490,13 +490,13 @@ export function VoiceSettings({
             max="100"
             value={currentSensitivity}
             onChange={(e) => handleSensitivityChange(Number(e.target.value))}
-            className="w-full h-2 bg-glass-border rounded-lg appearance-none cursor-pointer slider"
+            className="w-full h-2 bg-border-subtle rounded-lg appearance-none cursor-pointer slider"
           />
         </div>
 
         {/* Audio Quality */}
         <div>
-          <label className="text-xs text-muted-foreground mb-2 block">
+          <label className="text-xs text-text-muted mb-2 block">
             Audio Quality
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -508,7 +508,7 @@ export function VoiceSettings({
                   'px-3 py-2 rounded-lg text-sm transition-all',
                   currentAudioQuality === quality
                     ? 'bg-neon-primary text-white'
-                    : 'bg-glass-bg hover:bg-glass-bg/80'
+                    : 'bg-surface-3 hover:bg-surface-3/80'
                 )}
               >
                 {quality.charAt(0).toUpperCase() + quality.slice(1)}
@@ -536,14 +536,14 @@ function ToggleOption({ label, description, checked, onChange }: ToggleOptionPro
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className="text-xs text-text-muted">{description}</p>
       </div>
 
       <button
         onClick={() => onChange(!checked)}
         className={cn(
           'relative w-11 h-6 rounded-full transition-colors',
-          checked ? 'bg-neon-primary' : 'bg-glass-border'
+          checked ? 'bg-neon-primary' : 'bg-border-subtle'
         )}
         aria-label={`Toggle ${label}`}
         aria-checked={checked}

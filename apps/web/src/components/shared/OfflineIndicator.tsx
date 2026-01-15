@@ -149,7 +149,7 @@ export function OfflineIndicator({
       >
         <div
           className={cn(
-            'glass-panel rounded-xl p-4 shadow-lg border',
+            'surface-matte rounded-xl p-4 shadow-lg border',
             isOnline
               ? 'border-neon-accent/50 bg-neon-accent/10'
               : 'border-yellow-500/50 bg-yellow-500/10'
@@ -175,7 +175,7 @@ export function OfflineIndicator({
                 </p>
 
                 {!isOnline && showPendingCount && pendingChanges > 0 && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-text-muted">
                     {pendingChanges} pending {pendingChanges === 1 ? 'change' : 'changes'}
                   </p>
                 )}

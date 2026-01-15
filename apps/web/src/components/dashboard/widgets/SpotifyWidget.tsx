@@ -15,7 +15,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 interface SpotifyTrack {
   id: string;
@@ -196,10 +195,11 @@ export function SpotifyWidget({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       className={cn(
-        'glass-panel rounded-xl overflow-hidden relative w-full',
+        'surface-matte overflow-hidden relative w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
@@ -208,16 +208,16 @@ export function SpotifyWidget({
       {/* Loading State */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-8 w-8 border-2 border-neon-primary border-t-transparent rounded-full animate-spin" />
+          <div className="h-8 w-8 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin" />
         </div>
       )}
 
       {/* Empty State */}
       {!isLoading && !track && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
-          <div className="text-center">
-            <Music className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-sm text-muted-foreground">Not playing</p>
+          <div className="empty-state">
+            <Music className="empty-state-icon" />
+            <p className="empty-state-title">Not playing</p>
           </div>
         </div>
       )}
@@ -251,11 +251,11 @@ export function SpotifyWidget({
 
                 {/* Track Info */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-sm truncate">{track.title}</h4>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <h4 className="text-body text-sm font-semibold truncate">{track.title}</h4>
+                  <p className="text-xs text-text-muted truncate">
                     {track.artist}
                   </p>
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-[10px] text-text-muted truncate">
                     {track.album}
                   </p>
 
@@ -264,7 +264,7 @@ export function SpotifyWidget({
                     href={track.spotifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[10px] text-neon-primary hover:text-neon-accent mt-0.5"
+                    className="inline-flex items-center gap-1 text-[10px] text-neon-primary hover:text-neon-accent mt-0.5 focus-ring rounded"
                   >
                     Open in Spotify
                     <ExternalLink className="h-2.5 w-2.5" />
@@ -274,7 +274,7 @@ export function SpotifyWidget({
 
               {/* Progress Bar */}
               <div className="mt-2 flex-shrink-0">
-                <div className="h-1 bg-glass-border rounded-full overflow-hidden mb-1">
+                <div className="h-1 bg-border-subtle rounded-full overflow-hidden mb-1">
                   <motion.div
                     className="h-full bg-neon-accent"
                     initial={{ width: 0 }}
@@ -283,7 +283,7 @@ export function SpotifyWidget({
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <div className="flex items-center justify-between text-[10px] text-text-muted">
                   <span>{formatDuration(localProgress)}</span>
                   <span>{formatDuration(track.durationMs)}</span>
                 </div>
@@ -292,57 +292,55 @@ export function SpotifyWidget({
               {/* Playback Controls */}
               {showControls && (
                 <div className="flex items-center justify-center gap-1 mt-2 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn('h-6 w-6', state?.shuffleState && 'text-neon-primary')}
+                  <button
+                    className={cn(
+                      'btn-icon btn-icon-sm focus-ring',
+                      state?.shuffleState && 'text-neon-primary'
+                    )}
                     onClick={handleShuffle}
+                    aria-label="Shuffle"
                   >
                     <Shuffle className="h-3 w-3" />
-                  </Button>
+                  </button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                  <button
+                    className="btn-icon btn-icon-sm focus-ring"
                     onClick={handleSkipPrevious}
+                    aria-label="Previous track"
                   >
                     <SkipBack className="h-3.5 w-3.5" />
-                  </Button>
+                  </button>
 
-                  <Button
-                    variant="neon"
-                    size="icon"
-                    className="h-8 w-8"
+                  <button
+                    className="h-8 w-8 flex items-center justify-center rounded-full bg-neon-primary text-white hover:bg-neon-primary/90 transition-colors focus-ring"
                     onClick={handlePlayPause}
+                    aria-label={state?.isPlaying ? 'Pause' : 'Play'}
                   >
                     {state?.isPlaying ? (
                       <Pause className="h-3.5 w-3.5" />
                     ) : (
                       <Play className="h-3.5 w-3.5" />
                     )}
-                  </Button>
+                  </button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                  <button
+                    className="btn-icon btn-icon-sm focus-ring"
                     onClick={handleSkipNext}
+                    aria-label="Next track"
                   >
                     <SkipForward className="h-3.5 w-3.5" />
-                  </Button>
+                  </button>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  <button
                     className={cn(
-                      'h-6 w-6',
+                      'btn-icon btn-icon-sm focus-ring',
                       state?.repeatState !== 'off' && 'text-neon-primary'
                     )}
                     onClick={handleRepeat}
+                    aria-label="Repeat"
                   >
                     <Repeat className="h-3 w-3" />
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>

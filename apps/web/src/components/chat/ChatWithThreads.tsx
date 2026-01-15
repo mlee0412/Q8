@@ -98,7 +98,7 @@ export function ChatWithThreads({
             animate={{ width: 240, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="h-full border-r border-glass-border overflow-hidden flex-shrink-0 bg-glass-bg/50"
+            className="h-full border-r border-border-subtle overflow-hidden flex-shrink-0 bg-surface-2/50"
           >
             <ThreadSidebar
               userId={userId}

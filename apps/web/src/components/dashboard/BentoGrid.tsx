@@ -8,11 +8,23 @@ interface BentoGridProps {
   className?: string;
 }
 
+/**
+ * BentoGrid v2.0
+ *
+ * Responsive dashboard grid with Q8 Design System spacing.
+ * - Desktop: 16px gap
+ * - Tablet: 12px gap
+ * - Mobile: 8px gap (single column)
+ */
 export function BentoGrid({ children, className }: BentoGridProps) {
   return (
     <div
       className={cn(
-        'grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(160px,auto)] gap-4 p-4',
+        'grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(160px,auto)]',
+        // Responsive gap per design spec
+        'gap-2 sm:gap-3 md:gap-4',
+        // Responsive padding
+        'p-2 sm:p-3 md:p-4',
         className
       )}
     >
@@ -28,7 +40,18 @@ interface BentoItemProps {
   className?: string;
 }
 
-export function BentoItem({ children, colSpan = 1, rowSpan = 1, className }: BentoItemProps) {
+/**
+ * BentoItem - Generic grid item container
+ *
+ * Use WidgetWrapper for actual widgets.
+ * This is for raw grid placement without widget chrome.
+ */
+export function BentoItem({
+  children,
+  colSpan = 1,
+  rowSpan = 1,
+  className,
+}: BentoItemProps) {
   // Map colSpan to Tailwind classes - full width on mobile, specified span on md+
   const colSpanClasses: Record<number, string> = {
     1: 'col-span-1',
@@ -49,14 +72,14 @@ export function BentoItem({ children, colSpan = 1, rowSpan = 1, className }: Ben
     <motion.div
       layout
       className={cn(
-        'glass-panel relative overflow-hidden w-full',
+        'surface-matte relative overflow-hidden w-full',
         colSpanClasses[colSpan],
         rowSpanClasses[rowSpan],
         className
       )}
-      initial={{ opacity: 0, scale: 0.95 }}
+      initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
     >
       {children}
     </motion.div>

@@ -207,10 +207,10 @@ export function TransactionCategoryModal({
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="w-full max-w-lg bg-glass-bg/95 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl overflow-hidden"
+          className="w-full max-w-lg bg-surface-3/95 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-2xl overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
             <div className="flex items-center gap-3">
               <Tag className="h-5 w-5 text-neon-primary" />
               <h2 className="text-lg font-semibold text-white">Change Category</h2>
@@ -392,7 +392,7 @@ export function TransactionCategoryModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-glass-border">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>

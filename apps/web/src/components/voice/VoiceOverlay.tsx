@@ -22,7 +22,7 @@ export function VoiceOverlay({ isActive, onToggle }: VoiceOverlayProps) {
         </h2>
 
         {/* Audio Visualizer Placeholder */}
-        <div className="w-64 h-32 glass-panel flex items-center justify-center">
+        <div className="w-64 h-32 surface-matte flex items-center justify-center">
           <div className="flex gap-2">
             {[...Array(8)].map((_, i) => (
               <div

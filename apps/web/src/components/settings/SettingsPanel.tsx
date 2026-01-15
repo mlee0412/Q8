@@ -135,18 +135,18 @@ export function SettingsPanel({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="glass-panel rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden"
+          className="surface-matte rounded-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
             <div className="flex items-center gap-3">
               <Settings className="h-5 w-5 text-neon-primary" />
               <h2 className="text-lg font-semibold">Settings</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-glass-bg transition-colors"
+              className="p-2 rounded-lg hover:bg-surface-3 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -154,7 +154,7 @@ export function SettingsPanel({
 
           <div className="flex h-[60vh]">
             {/* Sidebar */}
-            <nav className="w-48 border-r border-glass-border p-3 space-y-1">
+            <nav className="w-48 border-r border-border-subtle p-3 space-y-1">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
@@ -163,7 +163,7 @@ export function SettingsPanel({
                     'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                     activeTab === tab.id
                       ? 'bg-neon-primary/20 text-neon-primary'
-                      : 'hover:bg-glass-bg text-muted-foreground'
+                      : 'hover:bg-surface-3 text-text-muted'
                   )}
                 >
                   <tab.icon className="h-4 w-4" />
@@ -218,7 +218,7 @@ export function SettingsPanel({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-glass-border">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-subtle">
             <Button variant="ghost" onClick={onClose}>
               Cancel
             </Button>
@@ -256,11 +256,11 @@ function ProfileSettings({
                 'p-3 rounded-lg border text-sm text-left transition-colors',
                 preferences.communicationStyle === style
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               <div className="font-medium capitalize">{style}</div>
-              <div className="text-xs text-muted-foreground mt-1">
+              <div className="text-xs text-text-muted mt-1">
                 {style === 'concise' ? 'Brief, to-the-point responses' : 'Thorough explanations'}
               </div>
             </button>
@@ -279,7 +279,7 @@ function ProfileSettings({
                 'flex-1 py-2 rounded-lg border text-sm capitalize transition-colors',
                 preferences.responseLength === length
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               {length}
@@ -317,7 +317,7 @@ function AppearanceSettings({
                 'flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors',
                 preferences.theme === theme.id
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               <theme.icon className="h-6 w-6" />
@@ -359,7 +359,7 @@ function VoiceSettings({
                 'flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
                 preferences.preferredVoice === voice.id
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               {preferences.preferredVoice === voice.id && (
@@ -367,7 +367,7 @@ function VoiceSettings({
               )}
               <div>
                 <div className="text-sm font-medium">{voice.label}</div>
-                <div className="text-xs text-muted-foreground">{voice.desc}</div>
+                <div className="text-xs text-text-muted">{voice.desc}</div>
               </div>
             </button>
           ))}
@@ -387,7 +387,7 @@ function VoiceSettings({
           onChange={(e) => updatePreference('speechSpeed', parseFloat(e.target.value))}
           className="w-full accent-neon-primary"
         />
-        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+        <div className="flex justify-between text-xs text-text-muted mt-1">
           <span>Slower</span>
           <span>Faster</span>
         </div>
@@ -422,7 +422,7 @@ function AgentSettings({
                 'w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
                 preferences.agentPersonality === p.id
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               {preferences.agentPersonality === p.id && (
@@ -430,7 +430,7 @@ function AgentSettings({
               )}
               <div>
                 <div className="text-sm font-medium">{p.label}</div>
-                <div className="text-xs text-muted-foreground">{p.desc}</div>
+                <div className="text-xs text-text-muted">{p.desc}</div>
               </div>
             </button>
           ))}
@@ -467,7 +467,7 @@ function PrivacySettings({
                 'w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-colors',
                 preferences.memoryRetention === option.id
                   ? 'border-neon-primary bg-neon-primary/10'
-                  : 'border-glass-border hover:bg-glass-bg'
+                  : 'border-border-subtle hover:bg-surface-3'
               )}
             >
               {preferences.memoryRetention === option.id && (
@@ -475,7 +475,7 @@ function PrivacySettings({
               )}
               <div>
                 <div className="text-sm font-medium">{option.label}</div>
-                <div className="text-xs text-muted-foreground">{option.desc}</div>
+                <div className="text-xs text-text-muted">{option.desc}</div>
               </div>
             </button>
           ))}
@@ -488,11 +488,11 @@ function PrivacySettings({
             type="checkbox"
             checked={preferences.shareAnalytics || false}
             onChange={(e) => updatePreference('shareAnalytics', e.target.checked)}
-            className="rounded border-glass-border"
+            className="rounded border-border-subtle"
           />
           <div>
             <div className="text-sm font-medium">Share anonymous analytics</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-text-muted">
               Help improve Q8 by sharing usage data
             </div>
           </div>
@@ -519,14 +519,14 @@ function ShortcutsSettings() {
         {shortcuts.map((shortcut, i) => (
           <div
             key={i}
-            className="flex items-center justify-between py-2 border-b border-glass-border/50"
+            className="flex items-center justify-between py-2 border-b border-border-subtle/50"
           >
-            <span className="text-sm text-muted-foreground">{shortcut.action}</span>
+            <span className="text-sm text-text-muted">{shortcut.action}</span>
             <div className="flex items-center gap-1">
               {shortcut.keys.map((key, j) => (
                 <kbd
                   key={j}
-                  className="px-2 py-1 text-xs rounded bg-glass-bg border border-glass-border"
+                  className="px-2 py-1 text-xs rounded bg-surface-3 border border-border-subtle"
                 >
                   {key}
                 </kbd>

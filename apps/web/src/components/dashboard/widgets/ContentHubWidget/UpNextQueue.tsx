@@ -60,11 +60,11 @@ export function UpNextQueue({
     return (
       <div className={cn('py-3', className)}>
         <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-xs text-muted-foreground">Up Next</span>
+          <span className="text-xs text-text-muted">Up Next</span>
         </div>
         <div className="flex items-center justify-center py-4 text-center">
           <div>
-            <p className="text-xs text-muted-foreground">Queue is empty</p>
+            <p className="text-xs text-text-muted">Queue is empty</p>
             {onAddMore && (
               <Button
                 variant="ghost"
@@ -86,7 +86,7 @@ export function UpNextQueue({
     <div className={cn('py-2', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-2 px-1">
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-text-muted">
           Up Next ({items.length})
         </span>
         {onAddMore && (
@@ -102,7 +102,7 @@ export function UpNextQueue({
       </div>
 
       {/* Horizontal scroll container */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-glass-border scrollbar-track-transparent">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border-subtle scrollbar-track-transparent">
         {visibleItems.map((item, index) => (
           <motion.div
             key={item.id}
@@ -115,7 +115,7 @@ export function UpNextQueue({
             <div
               className={cn(
                 'relative w-24 cursor-pointer rounded-lg overflow-hidden',
-                'bg-glass-bg backdrop-blur-sm border border-glass-border',
+                'bg-surface-3 backdrop-blur-sm border border-border-subtle',
                 'hover:border-neon-primary/50 transition-all'
               )}
               onClick={() => onPlay(item)}
@@ -158,7 +158,7 @@ export function UpNextQueue({
               {/* Info */}
               <div className="p-1.5">
                 <p className="text-[10px] font-medium truncate">{item.title}</p>
-                <p className="text-[9px] text-muted-foreground truncate">
+                <p className="text-[9px] text-text-muted truncate">
                   {item.subtitle}
                 </p>
               </div>
@@ -174,10 +174,10 @@ export function UpNextQueue({
             className="flex-shrink-0 flex items-center justify-center w-16"
           >
             <div className="text-center">
-              <div className="h-10 w-10 rounded-full bg-glass-bg border border-glass-border flex items-center justify-center mx-auto mb-1">
+              <div className="h-10 w-10 rounded-full bg-surface-3 border border-border-subtle flex items-center justify-center mx-auto mb-1">
                 <span className="text-xs font-medium">+{remainingCount}</span>
               </div>
-              <span className="text-[9px] text-muted-foreground">more</span>
+              <span className="text-[9px] text-text-muted">more</span>
             </div>
           </motion.div>
         )}
@@ -211,18 +211,18 @@ export function QueueListItem({
       exit={{ opacity: 0, x: -20 }}
       className={cn(
         'flex items-center gap-2 p-2 rounded-lg group',
-        'hover:bg-glass-bg transition-colors cursor-pointer',
+        'hover:bg-surface-3 transition-colors cursor-pointer',
         className
       )}
       onClick={onPlay}
     >
       {/* Drag handle */}
       {isDraggable && (
-        <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+        <GripVertical className="h-4 w-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
       )}
 
       {/* Index */}
-      <span className="w-5 text-xs text-muted-foreground text-center">
+      <span className="w-5 text-xs text-text-muted text-center">
         {index + 1}
       </span>
 
@@ -238,11 +238,11 @@ export function QueueListItem({
       {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{item.title}</p>
-        <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+        <p className="text-xs text-text-muted truncate">{item.subtitle}</p>
       </div>
 
       {/* Duration */}
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-text-muted">
         {formatDuration(item.duration)}
       </span>
 

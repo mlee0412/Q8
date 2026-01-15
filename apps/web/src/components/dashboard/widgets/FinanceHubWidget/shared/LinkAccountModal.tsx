@@ -216,11 +216,11 @@ export function LinkAccountModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md mx-4 bg-glass-bg backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl overflow-hidden"
+          className="relative w-full max-w-md mx-4 bg-surface-3 backdrop-blur-xl border border-border-subtle rounded-2xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-glass-border">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
             <h2 className="text-lg font-semibold">
               {step === 'select' && 'Link Account'}
               {step === 'plaid' && 'Connecting...'}
@@ -237,7 +237,7 @@ export function LinkAccountModal({
           <div className="p-6">
             {/* Error message */}
             {errorMessage && step !== 'error' && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-center gap-2">
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-danger text-sm flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 {errorMessage}
               </div>
@@ -246,7 +246,7 @@ export function LinkAccountModal({
             {/* Step: Select link method */}
             {step === 'select' && (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-text-muted mb-4">
                   Choose how you would like to add your account
                 </p>
 
@@ -254,14 +254,14 @@ export function LinkAccountModal({
                 <button
                   onClick={handlePlaidSelect}
                   disabled={isLoading}
-                  className="w-full p-4 rounded-xl bg-glass-bg border border-glass-border hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
+                  className="w-full p-4 rounded-xl bg-surface-3 border border-border-subtle hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
                 >
                   <div className="h-12 w-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
                     <Building2 className="h-6 w-6 text-blue-400" />
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">Bank & Credit Cards</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-text-muted">
                       Connect via Plaid (11,000+ institutions)
                     </div>
                   </div>
@@ -272,14 +272,14 @@ export function LinkAccountModal({
                 <button
                   onClick={handleSnapTradeSelect}
                   disabled={isLoading}
-                  className="w-full p-4 rounded-xl bg-glass-bg border border-glass-border hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
+                  className="w-full p-4 rounded-xl bg-surface-3 border border-border-subtle hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
                 >
                   <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
                     <TrendingUp className="h-6 w-6 text-green-400" />
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">Investment Accounts</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-text-muted">
                       Connect brokerages via SnapTrade
                     </div>
                   </div>
@@ -289,14 +289,14 @@ export function LinkAccountModal({
                 {/* Manual Entry */}
                 <button
                   onClick={() => setStep('manual')}
-                  className="w-full p-4 rounded-xl bg-glass-bg border border-glass-border hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
+                  className="w-full p-4 rounded-xl bg-surface-3 border border-border-subtle hover:border-neon-primary/50 transition-all text-left flex items-center gap-4"
                 >
                   <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
                     <Wallet className="h-6 w-6 text-purple-400" />
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">Manual Entry</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-text-muted">
                       Add cash, crypto, or other accounts manually
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export function LinkAccountModal({
             {step === 'plaid' && (
               <div className="text-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-neon-primary" />
-                <p className="text-muted-foreground">
+                <p className="text-text-muted">
                   Opening secure connection...
                 </p>
               </div>
@@ -319,7 +319,7 @@ export function LinkAccountModal({
               <div className="text-center py-8">
                 <ExternalLink className="h-8 w-8 mx-auto mb-4 text-green-400" />
                 <p className="font-medium mb-2">Complete connection in the new window</p>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-text-muted mb-4">
                   After connecting, close that window and click below to refresh.
                 </p>
                 <Button onClick={() => { onSuccess?.(); onClose(); }}>
@@ -332,7 +332,7 @@ export function LinkAccountModal({
             {step === 'manual' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1.5">
+                  <label className="block text-sm text-text-muted mb-1.5">
                     Account Name
                   </label>
                   <Input
@@ -340,13 +340,13 @@ export function LinkAccountModal({
                     placeholder="e.g., Cash Wallet, Bitcoin"
                     value={manualName}
                     onChange={(e) => setManualName(e.target.value)}
-                    className="bg-glass-bg border-glass-border"
+                    className="bg-surface-3 border-border-subtle"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-muted-foreground mb-1.5">
+                  <label className="block text-sm text-text-muted mb-1.5">
                     Account Type
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -358,7 +358,7 @@ export function LinkAccountModal({
                           'p-3 rounded-lg border text-left flex items-center gap-2 transition-all',
                           manualType === type
                             ? 'bg-neon-primary/20 border-neon-primary/50 text-neon-primary'
-                            : 'bg-glass-bg border-glass-border hover:border-neon-primary/30'
+                            : 'bg-surface-3 border-border-subtle hover:border-neon-primary/30'
                         )}
                       >
                         <Icon className="h-4 w-4" />
@@ -370,7 +370,7 @@ export function LinkAccountModal({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1.5">
+                    <label className="block text-sm text-text-muted mb-1.5">
                       Current Balance
                     </label>
                     <Input
@@ -379,11 +379,11 @@ export function LinkAccountModal({
                       placeholder="0.00"
                       value={manualBalance}
                       onChange={(e) => setManualBalance(e.target.value)}
-                      className="bg-glass-bg border-glass-border"
+                      className="bg-surface-3 border-border-subtle"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1.5">
+                    <label className="block text-sm text-text-muted mb-1.5">
                       Institution (optional)
                     </label>
                     <Input
@@ -391,7 +391,7 @@ export function LinkAccountModal({
                       placeholder="e.g., Coinbase"
                       value={manualInstitution}
                       onChange={(e) => setManualInstitution(e.target.value)}
-                      className="bg-glass-bg border-glass-border"
+                      className="bg-surface-3 border-border-subtle"
                     />
                   </div>
                 </div>
@@ -424,7 +424,7 @@ export function LinkAccountModal({
               <div className="text-center py-8">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-400" />
                 <p className="font-medium mb-2">Account linked successfully!</p>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-text-muted mb-4">
                   Your account data will sync automatically.
                 </p>
                 <Button onClick={onClose}>Done</Button>
@@ -434,9 +434,9 @@ export function LinkAccountModal({
             {/* Step: Error */}
             {step === 'error' && (
               <div className="text-center py-8">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
+                <AlertCircle className="h-12 w-12 mx-auto mb-4 text-danger" />
                 <p className="font-medium mb-2">Connection Failed</p>
-                <p className="text-sm text-muted-foreground mb-4">
+                <p className="text-sm text-text-muted mb-4">
                   {errorMessage || 'Something went wrong. Please try again.'}
                 </p>
                 <div className="flex gap-3 justify-center">

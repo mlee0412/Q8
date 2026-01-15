@@ -395,7 +395,7 @@ export function AIInsights({ className }: AIInsightsProps) {
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-glass-bg rounded-lg p-1">
+        <div className="flex bg-surface-3 rounded-lg p-1">
           <button
             onClick={() => setActiveTab('insights')}
             className={cn(
@@ -516,7 +516,7 @@ export function AIInsights({ className }: AIInsightsProps) {
           {/* Chat messages */}
           <div
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto space-y-4 p-4 rounded-xl bg-glass-bg/30 border border-glass-border mb-4"
+            className="flex-1 overflow-y-auto space-y-4 p-4 rounded-xl bg-surface-3/30 border border-border-subtle mb-4"
           >
             {chatMessages.length === 0 && (
               <div className="text-center py-8 text-white/50">
@@ -527,7 +527,7 @@ export function AIInsights({ className }: AIInsightsProps) {
                     <button
                       key={suggestion}
                       onClick={() => handleSuggestionClick(suggestion)}
-                      className="text-xs px-3 py-1.5 rounded-full bg-glass-bg border border-glass-border hover:border-neon-primary/50 hover:bg-neon-primary/10 transition-all"
+                      className="text-xs px-3 py-1.5 rounded-full bg-surface-3 border border-border-subtle hover:border-neon-primary/50 hover:bg-neon-primary/10 transition-all"
                     >
                       {suggestion}
                     </button>
@@ -551,7 +551,7 @@ export function AIInsights({ className }: AIInsightsProps) {
                     'p-3 rounded-2xl',
                     msg.role === 'user'
                       ? 'bg-neon-primary/20 text-white rounded-br-sm'
-                      : 'bg-glass-bg border border-glass-border rounded-bl-sm'
+                      : 'bg-surface-3 border border-border-subtle rounded-bl-sm'
                   )}
                 >
                   <div className="flex items-center gap-2 mb-1 text-xs opacity-60">
@@ -590,7 +590,7 @@ export function AIInsights({ className }: AIInsightsProps) {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center gap-2 text-muted-foreground"
+                className="flex items-center gap-2 text-text-muted"
               >
                 <div className="flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-neon-primary animate-bounce" style={{ animationDelay: '0ms' }} />
@@ -611,7 +611,7 @@ export function AIInsights({ className }: AIInsightsProps) {
                   <button
                     key={suggestion}
                     onClick={() => handleSuggestionClick(suggestion)}
-                    className="text-xs px-2 py-1 rounded-full bg-glass-bg/50 border border-glass-border hover:border-neon-primary/50 transition-all text-white/60 hover:text-white"
+                    className="text-xs px-2 py-1 rounded-full bg-surface-3/50 border border-border-subtle hover:border-neon-primary/50 transition-all text-white/60 hover:text-white"
                   >
                     {suggestion}
                   </button>
@@ -627,7 +627,7 @@ export function AIInsights({ className }: AIInsightsProps) {
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
               placeholder={userId ? "Ask about your finances..." : "Please sign in to use AI chat"}
-              className="flex-1 bg-glass-bg border-glass-border"
+              className="flex-1 bg-surface-3 border-border-subtle"
               disabled={isSending || !userId}
             />
             <Button

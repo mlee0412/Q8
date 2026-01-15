@@ -211,22 +211,22 @@ export function ChatInput({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-full left-0 right-0 mb-2 glass-panel rounded-xl shadow-lg overflow-hidden"
+          className="absolute bottom-full left-0 right-0 mb-2 surface-matte rounded-xl shadow-lg overflow-hidden"
         >
           <div className="p-2">
-            <p className="text-xs text-muted-foreground px-2 py-1">
+            <p className="text-xs text-text-muted px-2 py-1">
               Mention an agent
             </p>
             {agents.map((agent) => (
               <button
                 key={agent.id}
                 onClick={() => handleMentionSelect(agent.id)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-glass-bg transition-colors"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-3 transition-colors focus-ring"
               >
                 <span className="text-xl">{agent.icon}</span>
                 <div className="text-left">
-                  <p className="text-sm font-medium">{agent.name}</p>
-                  <p className="text-xs text-muted-foreground">@{agent.id}</p>
+                  <p className="text-sm font-medium text-text-primary">{agent.name}</p>
+                  <p className="text-xs text-text-muted">@{agent.id}</p>
                 </div>
               </button>
             ))}
@@ -240,15 +240,15 @@ export function ChatInput({
           {selectedFiles.map((file, index) => (
             <div
               key={index}
-              className="glass-panel px-3 py-2 rounded-lg flex items-center gap-2"
+              className="bg-surface-3 border border-border-subtle px-3 py-2 rounded-lg flex items-center gap-2"
             >
-              <Paperclip className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">{file.name}</span>
+              <Paperclip className="h-4 w-4 text-text-muted" />
+              <span className="text-sm text-text-primary">{file.name}</span>
               <button
                 onClick={() =>
                   setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
                 }
-                className="text-muted-foreground hover:text-foreground"
+                className="text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
               >
                 ×
               </button>
@@ -258,7 +258,7 @@ export function ChatInput({
       )}
 
       {/* Input Container */}
-      <div className="bg-glass-bg/30 border border-glass-border/50 rounded-xl flex items-end gap-2 p-2.5">
+      <div className="bg-surface-2 border border-border-subtle rounded-xl flex items-end gap-2 p-2.5">
         {/* File Upload */}
         {showFileUpload && (
           <>
@@ -291,7 +291,7 @@ export function ChatInput({
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="w-full bg-transparent border-0 outline-none resize-none max-h-32 placeholder:text-muted-foreground"
+            className="w-full bg-transparent border-0 outline-none resize-none max-h-32 placeholder:text-text-muted text-text-primary"
           />
 
           {/* Character Count */}
@@ -299,7 +299,7 @@ export function ChatInput({
             <span
               className={cn(
                 'absolute bottom-0 right-0 text-xs',
-                charactersRemaining < 0 ? 'text-red-500' : 'text-muted-foreground'
+                charactersRemaining < 0 ? 'text-danger' : 'text-text-muted'
               )}
             >
               {charactersRemaining}
@@ -328,7 +328,7 @@ export function ChatInput({
         <button
           onClick={handleSend}
           disabled={disabled || (!message.trim() && selectedFiles.length === 0)}
-          className="flex-shrink-0 h-9 w-9 rounded-lg bg-neon-primary hover:bg-neon-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+          className="flex-shrink-0 h-9 w-9 rounded-lg bg-neon-primary hover:bg-neon-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors focus-ring"
         >
           {disabled ? (
             <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -340,11 +340,11 @@ export function ChatInput({
 
       {/* Keyboard Shortcuts Hint */}
       <div className="flex items-center justify-center mt-1.5 gap-3">
-        <span className="text-[10px] text-muted-foreground/70">
+        <span className="text-[10px] text-text-muted/70">
           Enter to send
         </span>
         {enableAgentMentions && (
-          <span className="text-[10px] text-muted-foreground/70">
+          <span className="text-[10px] text-text-muted/70">
             @ to mention agent
           </span>
         )}

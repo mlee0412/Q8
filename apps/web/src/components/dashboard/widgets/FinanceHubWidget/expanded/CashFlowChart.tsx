@@ -194,7 +194,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
     if (!active || !payload) return null;
 
     return (
-      <div className="bg-glass-bg/95 backdrop-blur-xl border border-glass-border rounded-lg p-3 shadow-lg">
+      <div className="bg-surface-3/95 backdrop-blur-xl border border-border-subtle rounded-lg p-3 shadow-lg">
         <div className="text-xs text-white/60 mb-2">
           {label && formatPeriodLabel(label)}
         </div>
@@ -232,7 +232,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
             variant="ghost"
             size="sm"
             onClick={() => setShowRangeSelector(!showRangeSelector)}
-            className="border border-glass-border"
+            className="border border-border-subtle"
           >
             <Calendar className="h-4 w-4 mr-1" />
             {timeRange}
@@ -244,7 +244,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute right-0 top-full mt-1 z-10 bg-glass-bg/95 backdrop-blur-xl border border-glass-border rounded-lg shadow-lg p-1"
+              className="absolute right-0 top-full mt-1 z-10 bg-surface-3/95 backdrop-blur-xl border border-border-subtle rounded-lg shadow-lg p-1"
             >
               {timeRangeOptions.map((range) => (
                 <button
@@ -290,7 +290,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-3 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">Net Flow</div>
           <div
             className={cn(
@@ -304,7 +304,7 @@ export function CashFlowChart({ className }: CashFlowChartProps) {
           </div>
         </div>
 
-        <div className="p-3 rounded-xl bg-glass-bg border border-glass-border">
+        <div className="p-3 rounded-xl bg-surface-3 border border-border-subtle">
           <div className="text-xs text-white/60 mb-1">
             Avg {aggregationLevel === 'daily' ? 'Daily' : aggregationLevel === 'weekly' ? 'Weekly' : 'Monthly'}
           </div>

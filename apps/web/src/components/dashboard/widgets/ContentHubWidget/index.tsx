@@ -511,7 +511,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
         layout
         className={cn(
           'relative overflow-hidden rounded-2xl',
-          'bg-glass-bg backdrop-blur-glass border border-glass-border',
+          'bg-surface-3 backdrop-blur-glass border border-border-subtle',
           'shadow-glass transition-all duration-300',
           className
         )}
@@ -548,7 +548,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
         </AnimatePresence>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-glass-border">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-neon-primary" />
             <span className="text-sm font-medium">ContentHub</span>
@@ -584,7 +584,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden border-b border-glass-border"
+              className="overflow-hidden border-b border-border-subtle"
             >
               <div className="p-2">
                 <div className="relative">
@@ -592,12 +592,12 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                     placeholder="Search across all sources..."
                     value={searchQuery}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleSearch(e.target.value)}
-                    className="h-8 text-sm bg-glass-bg border-glass-border pr-8"
+                    className="h-8 text-sm bg-surface-3 border-border-subtle pr-8"
                     autoFocus
                   />
                   {searchQuery && (
                     <button 
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground"
                       onClick={clearSearch}
                     >
                       <X className="h-3.5 w-3.5" />
@@ -608,7 +608,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
               
               {/* Search Results */}
               {(searchResults.length > 0 || searchLoading) && (
-                <div className="max-h-60 overflow-y-auto border-t border-glass-border">
+                <div className="max-h-60 overflow-y-auto border-t border-border-subtle">
                   {searchLoading ? (
                     <div className="flex items-center justify-center py-4">
                       <div className="h-5 w-5 border-2 border-neon-primary border-t-transparent rounded-full animate-spin" />
@@ -617,7 +617,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                     searchResults.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center gap-2 p-2 hover:bg-glass-bg cursor-pointer"
+                        className="flex items-center gap-2 p-2 hover:bg-surface-3 cursor-pointer"
                         onClick={() => handlePlayFromSearch(item)}
                       >
                         <img
@@ -627,7 +627,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-text-muted truncate">
                             {item.subtitle} • {item.source}
                           </p>
                         </div>
@@ -661,7 +661,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
         />
 
         {/* Quick Actions */}
-        <div className="px-3 py-2 border-t border-glass-border">
+        <div className="px-3 py-2 border-t border-border-subtle">
           <QuickActions
             onAIDiscover={handleAIDiscover}
             onSmartHome={handleSmartHome}
@@ -670,7 +670,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
         </div>
 
         {/* Up Next Queue */}
-        <div className="px-3 border-t border-glass-border">
+        <div className="px-3 border-t border-border-subtle">
           <UpNextQueue
             items={queue}
             onPlay={handlePlay}
@@ -835,7 +835,7 @@ function MediaCommandCenter({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Now Playing - Large */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl overflow-hidden bg-glass-bg/50 backdrop-blur-sm border border-glass-border">
+              <div className="rounded-2xl overflow-hidden bg-surface-3/50 backdrop-blur-sm border border-border-subtle">
                 <NowPlayingCard
                   item={nowPlaying}
                   isPlaying={isPlaying}
@@ -854,7 +854,7 @@ function MediaCommandCenter({
             {/* Queue & History sidebar */}
             <div className="space-y-6">
               {/* Up Next */}
-              <div className="rounded-2xl bg-glass-bg/50 backdrop-blur-sm border border-glass-border p-4">
+              <div className="rounded-2xl bg-surface-3/50 backdrop-blur-sm border border-border-subtle p-4">
                 <h3 className="text-sm font-medium text-white mb-3">Up Next</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {queue.slice(0, 5).map((item, index) => (
@@ -867,7 +867,7 @@ function MediaCommandCenter({
                     />
                   ))}
                   {queue.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">
+                    <p className="text-xs text-text-muted text-center py-4">
                       Queue is empty
                     </p>
                   )}
@@ -875,7 +875,7 @@ function MediaCommandCenter({
               </div>
 
               {/* Recently Played */}
-              <div className="rounded-2xl bg-glass-bg/50 backdrop-blur-sm border border-glass-border p-4">
+              <div className="rounded-2xl bg-surface-3/50 backdrop-blur-sm border border-border-subtle p-4">
                 <h3 className="text-sm font-medium text-white mb-3">Recently Played</h3>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {history.slice(0, 5).map((item, index) => (
@@ -888,7 +888,7 @@ function MediaCommandCenter({
                     />
                   ))}
                   {history.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">
+                    <p className="text-xs text-text-muted text-center py-4">
                       No history yet
                     </p>
                   )}
@@ -1000,7 +1000,7 @@ function MediaCommandCenter({
                           />
                         ))}
                         {playlistTracks.length === 0 && (
-                          <p className="col-span-full text-center text-muted-foreground py-8">
+                          <p className="col-span-full text-center text-text-muted py-8">
                             This playlist is empty
                           </p>
                         )}
@@ -1131,7 +1131,7 @@ function MediaCommandCenter({
                     )}
 
                     {spotifyPlaylists.length === 0 && spotifyRecentlyPlayed.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">
+                      <p className="text-sm text-text-muted text-center py-8">
                         Connect Spotify to see your playlists and history
                       </p>
                     )}
@@ -1173,7 +1173,7 @@ function MediaCommandCenter({
                 )}
 
                 {youtubeTrending.length === 0 && youtubeMusic.length === 0 && trending.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">
+                  <p className="text-sm text-text-muted text-center py-8">
                     No YouTube content available
                   </p>
                 )}
@@ -1207,7 +1207,7 @@ function QueueItem({
       className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/5 cursor-pointer group"
       onClick={onPlay}
     >
-      <span className="w-4 text-[10px] text-muted-foreground text-center">
+      <span className="w-4 text-[10px] text-text-muted text-center">
         {index + 1}
       </span>
       <img
@@ -1217,7 +1217,7 @@ function QueueItem({
       />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-white truncate">{item.title}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{item.subtitle}</p>
+        <p className="text-[10px] text-text-muted truncate">{item.subtitle}</p>
       </div>
       {showRemove && onRemove && (
         <button
@@ -1227,7 +1227,7 @@ function QueueItem({
             onRemove();
           }}
         >
-          <X className="h-3 w-3 text-muted-foreground" />
+          <X className="h-3 w-3 text-text-muted" />
         </button>
       )}
     </div>
@@ -1251,7 +1251,7 @@ function ContentCard({
       className="cursor-pointer group"
       onClick={onClick}
     >
-      <div className="relative aspect-square rounded-lg overflow-hidden bg-glass-bg">
+      <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-3">
         <img
           src={item.thumbnailUrl}
           alt={item.title}
@@ -1260,7 +1260,7 @@ function ContentCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
       <p className="mt-1.5 text-xs font-medium text-white truncate">{item.title}</p>
-      <p className="text-[10px] text-muted-foreground truncate">{item.subtitle}</p>
+      <p className="text-[10px] text-text-muted truncate">{item.subtitle}</p>
     </motion.div>
   );
 }
@@ -1282,7 +1282,7 @@ function PlaylistCard({
       className="cursor-pointer group"
       onClick={onClick}
     >
-      <div className="relative aspect-square rounded-lg overflow-hidden bg-glass-bg">
+      <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-3">
         <img
           src={item.thumbnailUrl || '/placeholder-playlist.png'}
           alt={item.title}
@@ -1295,7 +1295,7 @@ function PlaylistCard({
         </div>
       </div>
       <p className="mt-1.5 text-xs font-medium text-white truncate">{item.title}</p>
-      <p className="text-[10px] text-muted-foreground truncate">{item.subtitle}</p>
+      <p className="text-[10px] text-text-muted truncate">{item.subtitle}</p>
     </motion.div>
   );
 }
