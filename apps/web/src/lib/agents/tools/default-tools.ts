@@ -5,6 +5,7 @@
 
 import type { OpenAITool } from '../types';
 import { getWeather, getWeatherByCity, getWeatherForecast } from './weather';
+import { evaluateWithResult } from '@/lib/utils/safe-math';
 
 /**
  * Tool definitions for OpenAI function calling
@@ -365,34 +366,9 @@ function evaluateExpression(expression: string): { expression: string; result: n
     };
   }
 
-  // Handle basic math using safe evaluation
-  try {
-    // Replace common math functions
-    let sanitized = expression
-      .replace(/sqrt\(([^)]+)\)/gi, 'Math.sqrt($1)')
-      .replace(/pow\(([^,]+),([^)]+)\)/gi, 'Math.pow($1,$2)')
-      .replace(/abs\(([^)]+)\)/gi, 'Math.abs($1)')
-      .replace(/round\(([^)]+)\)/gi, 'Math.round($1)')
-      .replace(/floor\(([^)]+)\)/gi, 'Math.floor($1)')
-      .replace(/ceil\(([^)]+)\)/gi, 'Math.ceil($1)')
-      .replace(/sin\(([^)]+)\)/gi, 'Math.sin($1)')
-      .replace(/cos\(([^)]+)\)/gi, 'Math.cos($1)')
-      .replace(/tan\(([^)]+)\)/gi, 'Math.tan($1)')
-      .replace(/log\(([^)]+)\)/gi, 'Math.log($1)')
-      .replace(/pi/gi, 'Math.PI')
-      .replace(/e(?![a-z])/gi, 'Math.E');
-
-    // Only allow safe characters
-    if (!/^[0-9+\-*/().%\s,Math.sqrtpowabsroundfloorceisincostanlogPIE]+$/.test(sanitized)) {
-      return { expression, result: 'Invalid expression' };
-    }
-
-    // Evaluate
-    const result = new Function(`return ${sanitized}`)();
-    return { expression, result: typeof result === 'number' ? result : 'Invalid result' };
-  } catch {
-    return { expression, result: 'Could not evaluate expression' };
-  }
+  // Handle basic math using safe mathjs evaluation
+  // Replaces unsafe new Function() with mathjs library
+  return evaluateWithResult(expression);
 }
 
 /**

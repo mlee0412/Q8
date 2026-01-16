@@ -49,7 +49,22 @@ import {
   Palette,
   X,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// ============ Shared Types ============
+type CallServiceFn = (
+  domain: string,
+  service: string,
+  entityId?: string | null,
+  data?: Record<string, unknown>
+) => Promise<boolean>;
+
+interface HAStateItem {
+  entity_id: string;
+  state: string;
+  attributes: Record<string, unknown>;
+}
 
 // ============ Light Control Types & Presets ============
 interface LightControlConfig {
@@ -150,7 +165,7 @@ interface LightControlModalProps {
   currentBrightness: number;
   currentColor: [number, number, number] | null;
   isOn: boolean;
-  callService: (domain: string, service: string, entityId?: string | null, data?: Record<string, any>) => Promise<boolean>;
+  callService: CallServiceFn;
 }
 
 function LightControlModal({
@@ -753,9 +768,9 @@ export function SmartHomeWidget({
 
       if (!response.ok) throw new Error('Failed to fetch states');
 
-      const data = await response.json();
+      const data = await response.json() as { states?: HAStateItem[] };
       const stateMap: HAState = {};
-      data.states?.forEach((s: any) => {
+      data.states?.forEach((s: HAStateItem) => {
         stateMap[s.entity_id] = { state: s.state, attributes: s.attributes };
       });
       setStates(stateMap);
@@ -774,11 +789,11 @@ export function SmartHomeWidget({
     return () => clearInterval(interval);
   }, [fetchStates]);
 
-  const callService = async (
+  const callService: CallServiceFn = async (
     domain: string,
     service: string,
     entityId?: string | null,
-    data?: Record<string, any>
+    data?: Record<string, unknown>
   ): Promise<boolean> => {
     try {
       const response = await fetch('/api/homeassistant', {
@@ -810,7 +825,7 @@ export function SmartHomeWidget({
   const setVolume = (level: number) => callService('media_player', 'volume_set', ENTITIES.media.sonos, { volume_level: level / 100 });
   const toggleMute = () => callService('media_player', 'volume_mute', ENTITIES.media.sonos, { is_volume_muted: !sonosMuted });
 
-  const tabs: { id: TabType; icon: any; label: string }[] = [
+  const tabs: { id: TabType; icon: LucideIcon; label: string }[] = [
     { id: 'home', icon: Home, label: 'Home' },
     { id: 'lights', icon: Lightbulb, label: 'Lights' },
     { id: 'media', icon: Tv, label: 'Media' },
@@ -963,8 +978,101 @@ export function SmartHomeWidget({
   );
 }
 
+// ============ Tab Component Props ============
+interface HomeTabProps {
+  isOn: (entityId: string) => boolean;
+  activateScene: (entityId: string) => void;
+  toggleEntity: (domain: string, entityId: string) => void;
+  sonosVolume: number;
+  sonosMuted: boolean;
+  setVolume: (level: number) => void;
+  toggleMute: () => void;
+  callService: CallServiceFn;
+  openLightControl: (config: LightControlConfig) => void;
+}
+
+interface LightsTabProps {
+  isOn: (entityId: string) => boolean;
+  toggleEntity: (domain: string, entityId: string) => void;
+  activateScene: (entityId: string) => void;
+  callService: CallServiceFn;
+  openLightControl: (config: LightControlConfig) => void;
+  getAttr: (entityId: string, attr: string) => unknown;
+}
+
+interface MediaTabProps {
+  isOn: (entityId: string) => boolean;
+  getState: (entityId: string) => string;
+  getAttr: (entityId: string, attr: string) => unknown;
+  callService: CallServiceFn;
+  toggleEntity: (domain: string, entityId: string) => void;
+  sonosVolume: number;
+  sonosMuted: boolean;
+  setVolume: (level: number) => void;
+  toggleMute: () => void;
+}
+
+interface HueSyncBoxCardProps {
+  syncBoxPower: boolean;
+  lightSync: boolean;
+  dolbyVision: boolean;
+  syncMode: string;
+  intensity: string;
+  toggleEntity: (domain: string, entityId: string) => void;
+  callService: CallServiceFn;
+}
+
+interface ClimateTabProps {
+  getState: (entityId: string) => string;
+  getAttr: (entityId: string, attr: string) => unknown;
+  callService: CallServiceFn;
+}
+
+// ============ Reusable Component Props ============
+interface SceneButtonProps {
+  icon: LucideIcon;
+  label: string;
+  gradient: string;
+  onClick: () => void;
+  onLongPress?: () => void;
+  size?: 'sm' | 'md';
+}
+
+interface EntityButtonProps {
+  icon: LucideIcon;
+  label: string;
+  isActive: boolean;
+  activeColor?: string;
+  onClick: () => void;
+  onLongPress?: () => void;
+  fullWidth?: boolean;
+}
+
+interface ActionButtonProps {
+  icon: LucideIcon;
+  label: string;
+  gradient: string;
+  onClick: () => void;
+}
+
+interface RemoteButtonProps {
+  icon?: LucideIcon;
+  label?: string;
+  onClick: () => void;
+  size?: 'md' | 'lg';
+  color?: string;
+}
+
+interface CoverControlProps {
+  label: string;
+  state: string;
+  onOpen: () => void;
+  onClose: () => void;
+  onStop: () => void;
+}
+
 // ============ Home Tab ============
-function HomeTab({ isOn, activateScene, toggleEntity, sonosVolume, sonosMuted, setVolume, toggleMute, callService, openLightControl }: any) {
+function HomeTab({ isOn, activateScene, toggleEntity, sonosVolume, sonosMuted, setVolume, toggleMute, callService, openLightControl }: HomeTabProps) {
   const entertainmentLightConfig: LightControlConfig = {
     entityId: ENTITIES.lights.entertainment,
     name: 'Entertainment',
@@ -1117,7 +1225,7 @@ function HomeTab({ isOn, activateScene, toggleEntity, sonosVolume, sonosMuted, s
 }
 
 // ============ Lights Tab ============
-function LightsTab({ isOn, toggleEntity, activateScene, callService, openLightControl, getAttr }: any) {
+function LightsTab({ isOn, toggleEntity, activateScene, callService, openLightControl, getAttr }: LightsTabProps) {
   const entertainmentConfig: LightControlConfig = {
     entityId: ENTITIES.lights.entertainment,
     name: 'Entertainment',
@@ -1245,7 +1353,7 @@ function LightsTab({ isOn, toggleEntity, activateScene, callService, openLightCo
 }
 
 // ============ Media Tab ============
-function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sonosMuted, setVolume, toggleMute }: any) {
+function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sonosMuted, setVolume, toggleMute }: MediaTabProps) {
   const syncBoxPower = isOn(ENTITIES.syncBox.power);
   const lightSync = isOn(ENTITIES.syncBox.lightSync);
   const dolbyVision = isOn(ENTITIES.syncBox.dolbyVision);
@@ -1552,7 +1660,7 @@ function MediaTab({ isOn, getState, callService, toggleEntity, sonosVolume, sono
 }
 
 // ============ Hue Sync Box Card (Collapsible) ============
-function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intensity, toggleEntity, callService }: any) {
+function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intensity, toggleEntity, callService }: HueSyncBoxCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -1651,11 +1759,11 @@ function HueSyncBoxCard({ syncBoxPower, lightSync, dolbyVision, syncMode, intens
 }
 
 // ============ Climate Tab ============
-function ClimateTab({ getState, getAttr, callService }: any) {
-  const currentTemp = getAttr(ENTITIES.climate, 'current_temperature');
-  const targetTemp = getAttr(ENTITIES.climate, 'temperature');
+function ClimateTab({ getState, getAttr, callService }: ClimateTabProps) {
+  const currentTemp = getAttr(ENTITIES.climate, 'current_temperature') as number | null;
+  const targetTemp = getAttr(ENTITIES.climate, 'temperature') as number | null;
   const hvacMode = getState(ENTITIES.climate);
-  const hvacAction = getAttr(ENTITIES.climate, 'hvac_action');
+  const hvacAction = getAttr(ENTITIES.climate, 'hvac_action') as string | null;
 
   const setClimateTemp = (temp: number) => callService('climate', 'set_temperature', ENTITIES.climate, { temperature: temp });
 
@@ -1785,7 +1893,7 @@ function ClimateTab({ getState, getAttr, callService }: any) {
 
 // ============ Reusable Components ============
 
-function SceneButton({ icon: Icon, label, gradient, onClick, onLongPress, size = 'md' }: any) {
+function SceneButton({ icon: Icon, label, gradient, onClick, onLongPress, size = 'md' }: SceneButtonProps) {
   const longPressHandlers = useLongPress(
     onLongPress || (() => {}),
     onClick,
@@ -1813,7 +1921,7 @@ function SceneButton({ icon: Icon, label, gradient, onClick, onLongPress, size =
   );
 }
 
-function EntityButton({ icon: Icon, label, isActive, activeColor = 'neon', onClick, onLongPress, fullWidth = false }: any) {
+function EntityButton({ icon: Icon, label, isActive, activeColor = 'neon', onClick, onLongPress, fullWidth = false }: EntityButtonProps) {
   const longPressHandlers = useLongPress(
     onLongPress || (() => {}),
     onClick,
@@ -1860,7 +1968,7 @@ function EntityButton({ icon: Icon, label, isActive, activeColor = 'neon', onCli
   );
 }
 
-function ActionButton({ icon: Icon, label, gradient, onClick }: any) {
+function ActionButton({ icon: Icon, label, gradient, onClick }: ActionButtonProps) {
   return (
     <motion.button
       whileHover={{ scale: 1.03, y: -2 }}
@@ -1879,7 +1987,7 @@ function ActionButton({ icon: Icon, label, gradient, onClick }: any) {
   );
 }
 
-function RemoteButton({ icon: Icon, label, onClick, size = 'md', color }: any) {
+function RemoteButton({ icon: Icon, label, onClick, size = 'md', color }: RemoteButtonProps) {
   return (
     <motion.button
       whileHover={{ scale: 1.05 }}
@@ -1902,7 +2010,7 @@ function RemoteButton({ icon: Icon, label, onClick, size = 'md', color }: any) {
   );
 }
 
-function CoverControl({ label, state, onOpen, onClose, onStop }: any) {
+function CoverControl({ label, state, onOpen, onClose, onStop }: CoverControlProps) {
   const isOpen = state === 'open';
   const isClosed = state === 'closed';
   

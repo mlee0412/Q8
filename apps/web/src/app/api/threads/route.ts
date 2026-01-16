@@ -2,32 +2,38 @@
  * Threads API Route
  * GET - List user's threads
  * POST - Create new thread
+ *
+ * SECURITY: All endpoints require authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 import type { Thread, ThreadInsert } from '@/lib/supabase/types';
 
-export const runtime = 'edge';
+// Changed from 'edge' to 'nodejs' for cookie-based auth support
+export const runtime = 'nodejs';
 
 /**
  * GET /api/threads
- * List threads for a user
+ * List threads for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not query params
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const includeArchived = searchParams.get('includeArchived') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
 
     let query = supabaseAdmin
       .from('threads')
@@ -86,23 +92,22 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/threads
- * Create a new thread
+ * Create a new thread for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not request body
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
-    const { userId, title, metadata } = body as {
-      userId: string;
+    const { title, metadata } = body as {
       title?: string;
       metadata?: Record<string, unknown>;
     };
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
 
     const threadData: ThreadInsert = {
       user_id: userId,

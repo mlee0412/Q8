@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getDatabase } from '@/lib/db';
-import type { RxDatabase, RxCollection, RxQuery, RxDocument } from 'rxdb';
+import { getDatabase, type Q8Database } from '@/lib/db';
+import type { RxCollection, RxQuery, RxDocument } from 'rxdb';
 
 /**
  * Hook to access RxDB database
  */
 export function useRxDB() {
-  const [db, setDb] = useState<RxDatabase | null>(null);
+  const [db, setDb] = useState<Q8Database | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 

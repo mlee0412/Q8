@@ -3,7 +3,7 @@
  * Local-first database using IndexedDB
  */
 
-import { createRxDatabase, addRxPlugin } from 'rxdb';
+import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
@@ -25,7 +25,21 @@ if (process.env.NODE_ENV === 'development') {
   addRxPlugin(RxDBDevModePlugin);
 }
 
-let dbPromise: Promise<any> | null = null;
+// Database collection types
+interface Q8DatabaseCollections {
+  chat_messages: RxCollection;
+  user_preferences: RxCollection;
+  devices: RxCollection;
+  knowledge_base: RxCollection;
+  github_prs: RxCollection;
+  calendar_events: RxCollection;
+  tasks: RxCollection;
+  [key: string]: RxCollection;
+}
+
+export type Q8Database = RxDatabase<Q8DatabaseCollections>;
+
+let dbPromise: Promise<Q8Database> | null = null;
 
 /**
  * Initialize RxDB database
@@ -36,7 +50,7 @@ export async function initDatabase() {
     return dbPromise;
   }
 
-  dbPromise = createRxDatabase({
+  dbPromise = createRxDatabase<Q8DatabaseCollections>({
     name: 'q8_db',
     storage: getRxStorageDexie(),
     multiInstance: false,
@@ -66,7 +80,7 @@ export async function initDatabase() {
       },
     });
 
-    return db;
+    return db as Q8Database;
   });
 
   return dbPromise;

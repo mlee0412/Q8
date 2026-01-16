@@ -56,7 +56,13 @@
       "Bash(git push:*)",
       "Bash(tasklist:*)",
       "mcp__serena__find_file",
-      "mcp__serena__think_about_task_adherence"
+      "mcp__serena__think_about_task_adherence",
+      "Bash(xargs cat:*)",
+      "mcp__serena__search_for_pattern",
+      "Bash(grep:*)",
+      "Bash(Remove-Item -Path \"C:\\\\Users\\\\Minki\\\\Q8\\\\apps\\\\web\\\\.next\" -Recurse -Force -ErrorAction SilentlyContinue)",
+      "Bash(Write-Output \"Cleared .next folder\")",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

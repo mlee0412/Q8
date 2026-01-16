@@ -110,9 +110,15 @@ interface DataTableProps<T> {
    * @default false
    */
   showIndex?: boolean;
+
+  /**
+   * Key field for unique row identification
+   * @default 'id'
+   */
+  rowKey?: keyof T;
 }
 
-export function DataTable<T extends Record<string, any>>({
+export function DataTable<T extends Record<string, unknown>>({
   collection,
   columns,
   query,
@@ -125,6 +131,7 @@ export function DataTable<T extends Record<string, any>>({
   onRowClick,
   className,
   showIndex = false,
+  rowKey = 'id' as keyof T,
 }: DataTableProps<T>) {
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -290,7 +297,7 @@ export function DataTable<T extends Record<string, any>>({
             <tbody>
               {paginatedData.map((row, rowIndex) => (
                 <motion.tr
-                  key={rowIndex}
+                  key={row[rowKey] != null ? String(row[rowKey]) : `row-${rowIndex}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: rowIndex * 0.05 }}

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
 import { createClient } from '@supabase/supabase-js';
 import { decrypt } from '@/lib/utils/encryption';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const PLAID_CLIENT_ID = process.env.PLAID_CLIENT_ID;
 const PLAID_SECRET = process.env.PLAID_SECRET;
@@ -42,19 +46,19 @@ function createContentKey(tx: {
 
 /**
  * POST /api/finance/sync
- * Sync all accounts and transactions for a user
+ * Sync all accounts and transactions for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, fullSync = false } = body;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const body = await request.json();
+    const { fullSync = false } = body;
 
     const results = {
       accountsUpdated: 0,
@@ -236,8 +240,9 @@ export async function POST(request: NextRequest) {
 
           if (!upsertError) results.transactionsAdded++;
         }
-      } catch (error: any) {
-        const errorMessage = error.response?.data?.error_message || error.message;
+      } catch (error: unknown) {
+        const errorObj = error as { response?: { data?: { error_message?: string } }; message?: string };
+        const errorMessage = errorObj.response?.data?.error_message || errorObj.message || 'Unknown error';
         results.errors.push(`Item ${itemId}: ${errorMessage}`);
 
         // Update account with sync error
@@ -255,10 +260,11 @@ export async function POST(request: NextRequest) {
       success: true,
       ...results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Sync error:', error);
+    const errorObj = error as { message?: string };
     return NextResponse.json(
-      { error: error.message || 'Sync failed' },
+      { error: errorObj.message || 'Sync failed' },
       { status: 500 }
     );
   }

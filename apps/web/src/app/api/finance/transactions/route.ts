@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,21 +12,23 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/finance/transactions
- * Fetch transactions with optional filters
+ * Fetch transactions with optional filters for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const accountId = searchParams.get('accountId');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const limit = parseInt(searchParams.get('limit') || '100');
     const offset = parseInt(searchParams.get('offset') || '0');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
-    }
 
     let query = supabase
       .from('finance_transactions')
@@ -121,13 +127,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/finance/transactions
- * Create a new manual transaction
+ * Create a new manual transaction for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
     const {
-      userId,
       accountId,
       amount,
       date,
@@ -139,10 +151,24 @@ export async function POST(request: NextRequest) {
       recurringId,
     } = body;
 
-    if (!userId || !accountId || amount === undefined || !date) {
+    if (!accountId || amount === undefined || !date) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, accountId, amount, date' },
+        { error: 'Missing required fields: accountId, amount, date' },
         { status: 400 }
+      );
+    }
+
+    // Verify user owns the account
+    const { data: account, error: accountError } = await supabase
+      .from('finance_accounts')
+      .select('user_id')
+      .eq('id', accountId)
+      .single();
+
+    if (accountError || !account || account.user_id !== userId) {
+      return NextResponse.json(
+        { error: 'Account not found or access denied' },
+        { status: 403 }
       );
     }
 
@@ -197,15 +223,36 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/finance/transactions
- * Update a transaction
+ * Update a transaction (must belong to authenticated user)
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const body = await request.json();
     const { id, ...updates } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Transaction ID required' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: existing, error: fetchError } = await supabase
+      .from('finance_transactions')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Transform camelCase to snake_case for update
@@ -255,15 +302,36 @@ export async function PUT(request: NextRequest) {
 
 /**
  * DELETE /api/finance/transactions
- * Delete a transaction
+ * Delete a transaction (must belong to authenticated user)
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ error: 'Transaction ID required' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: existing, error: fetchError } = await supabase
+      .from('finance_transactions')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const { error } = await supabase

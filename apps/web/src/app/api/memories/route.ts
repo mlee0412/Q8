@@ -2,33 +2,43 @@
  * Memories API Route
  * GET - List user's memories
  * POST - Create new memory
+ *
+ * SECURITY: All endpoints require authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import type { AgentMemoryInsert, MemoryType, MemoryImportance } from '@/lib/supabase/types';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
+import type {
+  AgentMemoryInsert,
+  MemoryType,
+  MemoryImportance,
+} from '@/lib/supabase/types';
 
-export const runtime = 'edge';
+// Changed from 'edge' to 'nodejs' for cookie-based auth support
+export const runtime = 'nodejs';
 
 /**
  * GET /api/memories
- * List memories for a user
+ * List memories for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not query params
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const memoryType = searchParams.get('type') as MemoryType | null;
     const importance = searchParams.get('importance') as MemoryImportance | null;
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
 
     let query = supabaseAdmin
       .from('agent_memories')
@@ -67,13 +77,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/memories
- * Create a new memory
+ * Create a new memory for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not request body
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
     const {
-      userId,
       content,
       memoryType,
       importance = 'medium',
@@ -81,7 +97,6 @@ export async function POST(request: NextRequest) {
       tags = [],
       expiresAt,
     } = body as {
-      userId: string;
       content: string;
       memoryType: MemoryType;
       importance?: MemoryImportance;
@@ -90,9 +105,9 @@ export async function POST(request: NextRequest) {
       expiresAt?: string;
     };
 
-    if (!userId || !content || !memoryType) {
+    if (!content || !memoryType) {
       return NextResponse.json(
-        { error: 'userId, content, and memoryType are required' },
+        { error: 'content and memoryType are required' },
         { status: 400 }
       );
     }

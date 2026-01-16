@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { Provider } from 'rxdb-hooks';
-import { getDatabase } from '@/lib/db';
-import type { RxDatabase } from 'rxdb';
+import { getDatabase, type Q8Database } from '@/lib/db';
 
 interface RxDBProviderProps {
   children: React.ReactNode;
 }
 
 export function RxDBProvider({ children }: RxDBProviderProps) {
-  const [db, setDb] = useState<RxDatabase | null>(null);
+  const [db, setDb] = useState<Q8Database | null>(null);
 
   useEffect(() => {
     let mounted = true;

@@ -8,6 +8,7 @@ import { getModel } from '../model_factory';
 import { financeTools } from '../tools/finance-tools';
 import { executeFinanceTool } from '../tools/finance-executor';
 import { defaultTools } from '../tools/default-tools';
+import { safeEvaluate } from '@/lib/utils/safe-math';
 import type { Tool, OpenAITool } from '../types';
 
 /**
@@ -109,18 +110,19 @@ export async function executeFinanceAdvisorTool(
 
     if (toolName === 'calculate') {
       const expression = args.expression as string;
-      // Safe eval using Function constructor with restricted context
+      // Safe eval using mathjs library (replaces unsafe new Function())
       try {
-        const result = new Function(`return ${expression}`)();
+        const result = safeEvaluate(expression);
         return {
           success: true,
           message: `Calculated: ${expression} = ${result}`,
           data: { expression, result },
         };
-      } catch {
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Invalid expression';
         return {
           success: false,
-          message: `Invalid calculation expression: ${expression}`,
+          message: `Invalid calculation expression: ${errorMsg}`,
         };
       }
     }

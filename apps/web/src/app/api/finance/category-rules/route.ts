@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normalizeMerchantName } from '@/lib/finance/categoryMatcher';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -9,17 +13,19 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/finance/category-rules
- * Fetch all category rules for a user
+ * Fetch all category rules for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const activeOnly = searchParams.get('activeOnly') === 'true';
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const { searchParams } = new URL(request.url);
+    const activeOnly = searchParams.get('activeOnly') === 'true';
 
     let query = supabase
       .from('finance_category_rules')
@@ -67,13 +73,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/finance/category-rules
- * Create a new category rule
+ * Create a new category rule for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
     const {
-      userId,
       merchantPattern,
       matchType = 'contains',
       category,
@@ -81,9 +93,9 @@ export async function POST(request: NextRequest) {
       priority = 0,
     } = body;
 
-    if (!userId || !merchantPattern || !category) {
+    if (!merchantPattern || !category) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, merchantPattern, category' },
+        { error: 'Missing required fields: merchantPattern, category' },
         { status: 400 }
       );
     }
@@ -150,15 +162,36 @@ export async function POST(request: NextRequest) {
 
 /**
  * PUT /api/finance/category-rules
- * Update an existing category rule
+ * Update an existing category rule (must belong to authenticated user)
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const body = await request.json();
     const { id, ...updates } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Rule ID required' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: existing, error: fetchError } = await supabase
+      .from('finance_category_rules')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     // Transform camelCase to snake_case for update
@@ -210,15 +243,36 @@ export async function PUT(request: NextRequest) {
 
 /**
  * DELETE /api/finance/category-rules
- * Delete a category rule
+ * Delete a category rule (must belong to authenticated user)
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ error: 'Rule ID required' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: existing, error: fetchError } = await supabase
+      .from('finance_category_rules')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existing) {
+      return NextResponse.json({ error: 'Rule not found' }, { status: 404 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
     const { error } = await supabase

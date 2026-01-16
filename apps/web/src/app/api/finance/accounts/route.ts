@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,16 +12,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/finance/accounts
- * Fetch all finance accounts for a user
+ * Fetch all finance accounts for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('finance_accounts')
@@ -67,13 +71,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/finance/accounts
- * Create a new manual account
+ * Create a new manual account for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
     const {
-      userId,
       name,
       type,
       subtype,
@@ -83,9 +93,9 @@ export async function POST(request: NextRequest) {
       currency = 'USD',
     } = body;
 
-    if (!userId || !name || !type) {
+    if (!name || !type) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, name, type' },
+        { error: 'Missing required fields: name, type' },
         { status: 400 }
       );
     }

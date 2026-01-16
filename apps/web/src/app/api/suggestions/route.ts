@@ -1,6 +1,6 @@
 /**
  * Suggestions API Route
- * Get proactive suggestions based on context
+ * Get proactive suggestions based on context for authenticated users
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,11 +8,14 @@ import { generateSuggestions, getQuickActions } from '@/lib/memory';
 import { buildEnrichedContext } from '@/lib/agents/context-provider';
 import { getConversationContext } from '@/lib/memory/memory-store';
 import type { SuggestionContext } from '@/lib/memory/types';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 export const runtime = 'edge';
 
 interface SuggestionsRequest {
-  userId: string;
   sessionId: string;
   pendingTasks?: number;
   upcomingEvents?: number;
@@ -21,12 +24,19 @@ interface SuggestionsRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as SuggestionsRequest;
-    const { userId, sessionId, pendingTasks = 0, upcomingEvents = 0, lastInteraction } = body;
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
 
-    if (!userId || !sessionId) {
+    const body = (await request.json()) as SuggestionsRequest;
+    const { sessionId, pendingTasks = 0, upcomingEvents = 0, lastInteraction } = body;
+
+    if (!sessionId) {
       return NextResponse.json(
-        { error: 'userId and sessionId are required' },
+        { error: 'sessionId is required' },
         { status: 400 }
       );
     }

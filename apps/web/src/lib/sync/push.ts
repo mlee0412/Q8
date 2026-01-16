@@ -3,7 +3,8 @@
  * Sends local changes to Supabase
  */
 
-import type { RxDatabase, RxDocument } from 'rxdb';
+import type { RxDocument } from 'rxdb';
+import type { Q8Database } from '@/lib/db';
 
 export interface PushOptions {
   batchSize?: number;
@@ -13,7 +14,7 @@ export interface PushOptions {
  * Push local changes to Supabase for a specific collection
  */
 export async function pushChanges(
-  db: RxDatabase,
+  db: Q8Database,
   collectionName: string,
   options: PushOptions = {}
 ) {
@@ -66,7 +67,7 @@ export async function pushChanges(
 /**
  * Push changes for all collections
  */
-export async function pushAllCollections(db: RxDatabase, options: PushOptions = {}) {
+export async function pushAllCollections(db: Q8Database, options: PushOptions = {}) {
   const collections = ['chat_messages', 'user_preferences', 'devices', 'knowledge_base', 'github_prs'];
 
   const results = await Promise.allSettled(

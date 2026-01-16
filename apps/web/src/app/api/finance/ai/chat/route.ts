@@ -5,6 +5,10 @@ import {
   executeFinanceAdvisorTool,
   getFinancialContext,
 } from '@/lib/agents/sub-agents/finance-advisor';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -27,16 +31,19 @@ interface ToolCall {
 
 /**
  * POST /api/finance/ai/chat
- * Handle finance-related chat messages with AI
+ * Handle finance-related chat messages with AI for authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, message, conversationHistory = [] } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const body = await request.json();
+    const { message, conversationHistory = [] } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message required' }, { status: 400 });
@@ -220,17 +227,19 @@ async function storeConversation(
 
 /**
  * GET /api/finance/ai/chat
- * Get chat history for a user
+ * Get chat history for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const limit = parseInt(searchParams.get('limit') || '20');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
 
     const { data, error } = await supabase
       .from('finance_chat_history')

@@ -3,7 +3,7 @@
  * Fetches changes from Supabase and updates local RxDB
  */
 
-import type { RxDatabase } from 'rxdb';
+import type { Q8Database } from '@/lib/db';
 
 export interface PullOptions {
   lastPulledAt?: string;
@@ -14,7 +14,7 @@ export interface PullOptions {
  * Pull changes from Supabase for a specific collection
  */
 export async function pullChanges(
-  db: RxDatabase,
+  db: Q8Database,
   collectionName: string,
   options: PullOptions = {}
 ) {
@@ -58,7 +58,7 @@ export async function pullChanges(
 /**
  * Pull changes for all collections
  */
-export async function pullAllCollections(db: RxDatabase, options: PullOptions = {}) {
+export async function pullAllCollections(db: Q8Database, options: PullOptions = {}) {
   const collections = ['chat_messages', 'user_preferences', 'devices', 'knowledge_base', 'github_prs'];
 
   const results = await Promise.allSettled(

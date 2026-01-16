@@ -9,7 +9,7 @@ import { processMessage } from '@/lib/agents';
 import { buildEnrichedContext } from '@/lib/agents/context-provider';
 import type { AgentMessage } from '@/lib/agents/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 interface ChatRequest {
   message: string;

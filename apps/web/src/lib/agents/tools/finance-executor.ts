@@ -3,10 +3,71 @@
  * Implements the logic for each finance AI tool
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+// Type definitions for database records
+interface FinanceAccount {
+  id: string;
+  user_id: string;
+  name: string;
+  type: string;
+  balance_current: string;
+  institution_name?: string;
+  is_hidden: boolean;
+}
+
+interface FinanceTransaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  date: string;
+  merchant_name?: string;
+  category?: string[];
+  is_recurring: boolean;
+  status: string;
+}
+
+interface FinanceRecurring {
+  id: string;
+  user_id: string;
+  name: string;
+  amount: string;
+  next_due_date: string;
+  frequency: string;
+  category?: string[];
+  is_active: boolean;
+  is_income: boolean;
+}
+
+interface FinanceSnapshot {
+  id: string;
+  user_id: string;
+  date: string;
+  net_worth: string;
+  total_assets: string;
+  total_liabilities: string;
+}
+
+interface FinanceSnapshotPartial {
+  date: string;
+  net_worth: string;
+  total_assets: string;
+  total_liabilities: string;
+}
+
+interface BillItem {
+  name: string;
+  amount: number;
+  formatted_amount: string;
+  due_date: string;
+  days_until: number;
+  status: 'overdue' | 'due_soon' | 'upcoming';
+  frequency: string;
+  category: string;
+}
 
 /**
  * Execute a finance tool by name
@@ -48,7 +109,7 @@ export async function executeFinanceTool(
  * Get balance sheet summary
  */
 async function getBalanceSheet(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -132,7 +193,7 @@ async function getBalanceSheet(
  * Get spending summary by category
  */
 async function getSpendingSummary(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -197,7 +258,7 @@ async function getSpendingSummary(
  * Get recent transactions
  */
 async function getRecentTransactions(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -234,17 +295,17 @@ async function getRecentTransactions(
   if (error) throw new Error(`Failed to fetch transactions: ${error.message}`);
 
   // Filter by amount if specified
-  let filtered: any[] = transactions || [];
+  let filtered: FinanceTransaction[] = transactions || [];
   if (minAmount !== undefined) {
-    filtered = filtered.filter((tx: any) => Math.abs(tx.amount) >= minAmount);
+    filtered = filtered.filter((tx: FinanceTransaction) => Math.abs(tx.amount) >= minAmount);
   }
   if (maxAmount !== undefined) {
-    filtered = filtered.filter((tx: any) => Math.abs(tx.amount) <= maxAmount);
+    filtered = filtered.filter((tx: FinanceTransaction) => Math.abs(tx.amount) <= maxAmount);
   }
 
   return {
     count: filtered.length,
-    transactions: filtered.map((tx: any) => ({
+    transactions: filtered.map((tx: FinanceTransaction) => ({
       date: tx.date,
       merchant: tx.merchant_name || 'Unknown',
       amount: tx.amount,
@@ -260,7 +321,7 @@ async function getRecentTransactions(
  * Get upcoming bills
  */
 async function getUpcomingBills(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -286,7 +347,7 @@ async function getUpcomingBills(
   const today = new Date().toISOString().slice(0, 10);
   let totalDue = 0;
 
-  const upcomingBills = (bills || []).map((bill: any) => {
+  const upcomingBills: BillItem[] = (bills || []).map((bill: FinanceRecurring) => {
     const daysUntil = Math.ceil(
       (new Date(bill.next_due_date).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -312,7 +373,7 @@ async function getUpcomingBills(
     total_due: totalDue,
     formatted_total: formatCurrency(totalDue),
     bills_count: upcomingBills.length,
-    overdue_count: upcomingBills.filter((b: any) => b.status === 'overdue').length,
+    overdue_count: upcomingBills.filter((b: BillItem) => b.status === 'overdue').length,
     bills: upcomingBills,
   };
 }
@@ -321,7 +382,7 @@ async function getUpcomingBills(
  * Analyze if user can afford a purchase
  */
 async function canIAfford(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -394,7 +455,7 @@ async function canIAfford(
  * Run wealth simulation
  */
 async function simulateWealth(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -498,7 +559,7 @@ async function simulateWealth(
  * Get net worth history
  */
 async function getNetWorthHistory(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -522,14 +583,15 @@ async function getNetWorthHistory(
     };
   }
 
-  const first = snapshots[0];
-  const last = snapshots[snapshots.length - 1];
+  const typedSnapshots = snapshots as FinanceSnapshotPartial[];
+  const first = typedSnapshots[0]!;
+  const last = typedSnapshots[typedSnapshots.length - 1]!;
   const change = parseFloat(last.net_worth) - parseFloat(first.net_worth);
   const changePercent = (change / parseFloat(first.net_worth)) * 100;
 
   return {
     period,
-    data_points: snapshots.length,
+    data_points: typedSnapshots.length,
     summary: {
       start_net_worth: formatCurrency(parseFloat(first.net_worth)),
       end_net_worth: formatCurrency(parseFloat(last.net_worth)),
@@ -537,7 +599,7 @@ async function getNetWorthHistory(
       change_percent: changePercent.toFixed(1) + '%',
       trend: change > 0 ? 'increasing' : change < 0 ? 'decreasing' : 'stable',
     },
-    history: snapshots.map((s: any) => ({
+    history: typedSnapshots.map((s) => ({
       date: s.date,
       net_worth: formatCurrency(parseFloat(s.net_worth)),
     })),
@@ -548,7 +610,7 @@ async function getNetWorthHistory(
  * Find subscriptions from transactions
  */
 async function findSubscriptions(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -653,7 +715,7 @@ async function findSubscriptions(
  * Compare spending between periods
  */
 async function compareSpending(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {
@@ -687,8 +749,8 @@ async function compareSpending(
     fetchPeriod(start2, end2),
   ]);
 
-  const total1 = txs1.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
-  const total2 = txs2.reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
+  const total1 = txs1.reduce((sum: number, tx: { amount: number }) => sum + Math.abs(tx.amount), 0);
+  const total2 = txs2.reduce((sum: number, tx: { amount: number }) => sum + Math.abs(tx.amount), 0);
   const difference = total2 - total1;
   const percentChange = total1 > 0 ? ((difference / total1) * 100) : 0;
 
@@ -721,7 +783,7 @@ async function compareSpending(
  * Get AI-generated financial insights
  */
 async function getFinancialInsights(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   args: Record<string, unknown>
 ) {

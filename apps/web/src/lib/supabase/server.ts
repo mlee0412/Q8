@@ -10,9 +10,27 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /**
  * Supabase admin client for server-side operations
- * Uses service role key - bypasses RLS
- * 
- * WARNING: Only use in server contexts (API routes, server actions)
+ * Uses service role key - BYPASSES ALL ROW-LEVEL SECURITY (RLS)
+ *
+ * @warning ADMIN CLIENT - Bypasses RLS! Only use for:
+ * - Database migrations and schema changes
+ * - Batch administrative operations
+ * - System-level operations (not user-scoped data)
+ * - Background jobs that need full database access
+ *
+ * @danger NEVER use this client with user-supplied userId parameters!
+ * For user-scoped data, use createServerClient() with user's access token
+ * or getAuthenticatedUser() from '@/lib/auth/api-auth'
+ *
+ * @example
+ * // WRONG - Security vulnerability!
+ * const userId = request.query.userId;
+ * supabaseAdmin.from('notes').select('*').eq('user_id', userId);
+ *
+ * // CORRECT - Use authenticated client
+ * const user = await getAuthenticatedUser(request);
+ * const client = createServerClient(accessToken);
+ * client.from('notes').select('*'); // RLS filters automatically
  */
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {

@@ -21,14 +21,17 @@ import {
 import { ChatWithThreads } from '@/components/chat/ChatWithThreads';
 import { VoiceConversation } from '@/components/voice';
 import { UserProfile } from '@/components/auth/UserProfile';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/hooks/useAuth';
 import { CommandPalette } from '@/components/CommandPalette';
 import { SettingsPanel } from '@/components/settings';
 import { ToastProvider, toast } from '@/components/ui/toast';
 import { AnimatedBackground } from '@/components/shared/AnimatedBackground';
 
-const USER_ID = 'demo-user';
+function DashboardContent() {
+  // SECURITY: Get userId from authenticated session, not hardcoded
+  const { userId, fullName, isLoading } = useAuth();
 
-export default function DashboardPage() {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -60,8 +63,12 @@ export default function DashboardPage() {
     toast.info('Message sent', message);
   };
 
+  // Show loading state while auth is being verified
+  if (isLoading || !userId) {
+    return null; // ProtectedRoute handles loading state
+  }
+
   return (
-    <ToastProvider>
     <main className="min-h-screen relative">
       {/* Animated Background */}
       <AnimatedBackground />
@@ -112,7 +119,7 @@ export default function DashboardPage() {
         <VoiceConversation
           isOpen={isVoiceMode}
           onClose={() => setIsVoiceMode(false)}
-          userId={USER_ID}
+          userId={userId}
           threadId="voice-session"
         />
 
@@ -146,7 +153,7 @@ export default function DashboardPage() {
 
               {/* Quick Notes */}
               <BentoItem colSpan={2} rowSpan={2}>
-                <QuickNotesWidget userId={USER_ID} />
+                <QuickNotesWidget userId={userId} />
               </BentoItem>
 
               {/* Task Widget */}
@@ -167,7 +174,7 @@ export default function DashboardPage() {
               {/* Suggestions Widget */}
               <BentoItem colSpan={1} rowSpan={1}>
                 <SuggestionsWidget
-                  userId={USER_ID}
+                  userId={userId}
                   sessionId="suggestions-session"
                   onSuggestionClick={(action) => {
                     console.log('Suggestion clicked:', action);
@@ -191,9 +198,9 @@ export default function DashboardPage() {
           <div className="lg:col-span-1">
             <div className="surface-matte rounded-2xl h-[calc(100vh-12rem)] overflow-hidden">
               <ChatWithThreads
-                userId={USER_ID}
+                userId={userId}
                 userProfile={{
-                  name: 'User',
+                  name: fullName || 'User',
                   timezone: 'America/New_York',
                   communicationStyle: 'concise',
                 }}
@@ -216,12 +223,21 @@ export default function DashboardPage() {
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        userId={USER_ID}
+        userId={userId}
         onPreferencesChange={(prefs) => {
           toast.success('Settings saved', 'Your preferences have been updated');
         }}
       />
     </main>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ToastProvider>
+      <ProtectedRoute>
+        <DashboardContent />
+      </ProtectedRoute>
     </ToastProvider>
   );
 }

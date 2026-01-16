@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,17 +12,19 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/finance/snapshots
- * Fetch net worth snapshots for a user
+ * Fetch net worth snapshots for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const days = parseInt(searchParams.get('days') || '30');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const { searchParams } = new URL(request.url);
+    const days = parseInt(searchParams.get('days') || '30');
 
     // Calculate start date
     const startDate = new Date();
@@ -62,16 +68,16 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/finance/snapshots
- * Create or update a daily snapshot
+ * Create or update a daily snapshot for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
 
     const today = new Date().toISOString().slice(0, 10);
 

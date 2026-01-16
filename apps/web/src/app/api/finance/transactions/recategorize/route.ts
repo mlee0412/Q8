@@ -5,6 +5,10 @@ import {
   generateMerchantPattern,
   suggestMatchType,
 } from '@/lib/finance/categoryMatcher';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -12,7 +16,6 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface RecategorizeRequest {
-  userId: string;
   transactionId: string;
   newCategory: string;
   createRule?: boolean;
@@ -49,9 +52,15 @@ async function checkCategoryRulesSupport(): Promise<boolean> {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body: RecategorizeRequest = await request.json();
     const {
-      userId,
       transactionId,
       newCategory,
       createRule = false,
@@ -60,9 +69,9 @@ export async function POST(request: NextRequest) {
       customPattern,
     } = body;
 
-    if (!userId || !transactionId || !newCategory) {
+    if (!transactionId || !newCategory) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, transactionId, newCategory' },
+        { error: 'Missing required fields: transactionId, newCategory' },
         { status: 400 }
       );
     }
@@ -308,14 +317,20 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const merchantName = searchParams.get('merchantName');
     const matchType = searchParams.get('matchType') as 'exact' | 'contains' | 'starts_with' | 'regex' | null;
 
-    if (!userId || !merchantName) {
+    if (!merchantName) {
       return NextResponse.json(
-        { error: 'Missing required params: userId, merchantName' },
+        { error: 'Missing required param: merchantName' },
         { status: 400 }
       );
     }

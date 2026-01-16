@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+  forbiddenResponse,
+} from '@/lib/auth/api-auth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,13 +13,19 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 /**
  * GET /api/finance/accounts/[id]
- * Fetch a single finance account
+ * Fetch a single finance account (must belong to authenticated user)
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const { id } = await params;
 
     const { data, error } = await supabase
@@ -29,6 +40,11 @@ export async function GET(
       }
       console.error('Supabase error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Verify ownership
+    if (data.user_id !== user.id) {
+      return forbiddenResponse('You do not have access to this account');
     }
 
     // Transform snake_case to camelCase
@@ -68,14 +84,39 @@ export async function GET(
 
 /**
  * PUT /api/finance/accounts/[id]
- * Update a finance account
+ * Update a finance account (must belong to authenticated user)
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const { id } = await params;
+
+    // First verify ownership
+    const { data: existing, error: fetchError } = await supabase
+      .from('finance_accounts')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+      }
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    if (existing.user_id !== user.id) {
+      return forbiddenResponse('You do not have access to this account');
+    }
+
     const body = await request.json();
 
     // Build update object - transform camelCase to snake_case
@@ -103,9 +144,6 @@ export async function PUT(
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Account not found' }, { status: 404 });
-      }
       console.error('Supabase update error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -147,19 +185,25 @@ export async function PUT(
 
 /**
  * DELETE /api/finance/accounts/[id]
- * Delete a finance account (manual accounts only)
+ * Delete a finance account (manual accounts only, must belong to authenticated user)
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+
     const { id } = await params;
 
-    // First check if account exists and is manual
+    // First check if account exists and verify ownership
     const { data: existing, error: fetchError } = await supabase
       .from('finance_accounts')
-      .select('is_manual')
+      .select('user_id, is_manual')
       .eq('id', id)
       .single();
 
@@ -168,6 +212,11 @@ export async function DELETE(
         return NextResponse.json({ error: 'Account not found' }, { status: 404 });
       }
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    // Verify ownership
+    if (existing.user_id !== user.id) {
+      return forbiddenResponse('You do not have access to this account');
     }
 
     // Only allow deletion of manual accounts

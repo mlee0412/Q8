@@ -4,19 +4,23 @@ import {
   getFinancialContext,
   type FinancialInsight,
 } from '@/lib/agents/sub-agents/finance-advisor';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 
 /**
  * GET /api/finance/ai/insights
- * Generate proactive financial insights for a user
+ * Generate proactive financial insights for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
 
     // Generate proactive insights
     const insights = await generateProactiveInsights(userId);
@@ -45,16 +49,19 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/finance/ai/insights
- * Generate insights with additional context or refresh
+ * Generate insights with additional context or refresh for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, includeContext = false } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+    // Authenticate user from session
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
     }
+    const userId = user.id;
+
+    const body = await request.json();
+    const { includeContext = false } = body;
 
     // Generate proactive insights
     const insights = await generateProactiveInsights(userId);

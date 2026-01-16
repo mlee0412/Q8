@@ -2,13 +2,20 @@
  * Notes API Route
  * GET - List user's notes
  * POST - Create new note
+ *
+ * SECURITY: All endpoints require authentication
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import {
+  getAuthenticatedUser,
+  unauthorizedResponse,
+} from '@/lib/auth/api-auth';
 import type { Note, NoteInsert } from '@/lib/supabase/types';
 
-export const runtime = 'edge';
+// Changed from 'edge' to 'nodejs' for cookie-based auth support
+export const runtime = 'nodejs';
 
 /**
  * Get logical date string for daily note (day starts at 5 AM)
@@ -18,12 +25,12 @@ export const runtime = 'edge';
 function getLogicalDateStr(date: Date = new Date()): string {
   const hours = date.getHours();
   const targetDate = new Date(date);
-  
+
   // Before 5 AM, use previous day
   if (hours < 5) {
     targetDate.setDate(targetDate.getDate() - 1);
   }
-  
+
   // Use local date formatting to avoid timezone issues
   const year = targetDate.getFullYear();
   const month = String(targetDate.getMonth() + 1).padStart(2, '0');
@@ -32,25 +39,18 @@ function getLogicalDateStr(date: Date = new Date()): string {
 }
 
 /**
- * Get logical date object for daily note (day starts at 5 AM)
- */
-function getLogicalDate(date: Date = new Date()): Date {
-  const hours = date.getHours();
-  const logicalDate = new Date(date);
-  
-  // Before 5 AM, use previous day
-  if (hours < 5) {
-    logicalDate.setDate(logicalDate.getDate() - 1);
-  }
-  
-  return logicalDate;
-}
-
-/**
  * Format date for daily notes: "Saturday 11/30/25"
  */
 function formatDailyTitle(date: Date): string {
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
   const dayName = days[date.getDay()];
   const month = date.getMonth() + 1;
   const day = date.getDate();
@@ -66,7 +66,7 @@ function getDailyNoteTemplate(date: Date): string {
   return `# ${title}
 
 ## 📋 Today's Focus
-- [ ] 
+- [ ]
 
 ## 📝 Notes
 
@@ -82,29 +82,46 @@ function getDailyNoteTemplate(date: Date): string {
 `;
 }
 
+// Allowed sort fields (whitelist for security)
+const ALLOWED_SORT_FIELDS = [
+  'updated_at',
+  'created_at',
+  'title',
+  'word_count',
+] as const;
+type SortField = (typeof ALLOWED_SORT_FIELDS)[number];
+
+function isValidSortField(field: string): field is SortField {
+  return ALLOWED_SORT_FIELDS.includes(field as SortField);
+}
+
 /**
  * GET /api/notes
- * List notes for a user
+ * List notes for the authenticated user
  */
 export async function GET(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not query params
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const folderId = searchParams.get('folderId');
     const includeArchived = searchParams.get('includeArchived') === 'true';
     const pinnedOnly = searchParams.get('pinnedOnly') === 'true';
     const dailyOnly = searchParams.get('dailyOnly') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
-    const sortBy = searchParams.get('sortBy') || 'updated_at';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    // SECURITY: Validate sort field to prevent injection
+    const sortByParam = searchParams.get('sortBy') || 'updated_at';
+    const sortBy: SortField = isValidSortField(sortByParam)
+      ? sortByParam
+      : 'updated_at';
+    const sortOrder = searchParams.get('sortOrder') || 'desc';
 
     let query = supabaseAdmin
       .from('notes')
@@ -143,7 +160,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       notes: notes || [],
       count: count || notes?.length || 0,
     });
@@ -158,23 +175,28 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/notes
- * Create a new note
+ * Create a new note for the authenticated user
  */
 export async function POST(request: NextRequest) {
   try {
+    // SECURITY: Get user from authenticated session, not request body
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
+      return unauthorizedResponse();
+    }
+    const userId = user.id;
+
     const body = await request.json();
-    const { 
-      userId, 
-      title, 
-      content, 
+    const {
+      title,
+      content,
       contentJson,
-      folderId, 
+      folderId,
       tags,
       color,
       isDaily,
       dailyDate,
     } = body as {
-      userId: string;
       title?: string;
       content?: string;
       contentJson?: Record<string, unknown>;
@@ -185,13 +207,6 @@ export async function POST(request: NextRequest) {
       dailyDate?: string;
     };
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
-
     // Handle daily note creation
     let noteTitle = title;
     let noteContent = content || '';
@@ -201,7 +216,7 @@ export async function POST(request: NextRequest) {
       // Use provided date string or get logical date string (5 AM boundary)
       noteDailyDate = dailyDate || getLogicalDateStr();
       const date = new Date(noteDailyDate + 'T12:00:00'); // Parse at noon to avoid timezone issues
-      
+
       // Check if daily note already exists
       const { data: existingDaily } = await supabaseAdmin
         .from('notes')
