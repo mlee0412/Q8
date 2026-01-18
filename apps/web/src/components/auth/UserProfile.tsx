@@ -119,7 +119,7 @@ export function UserProfile({
     try {
       await supabase.auth.signOut();
       onLogout?.();
-      router.push('/');
+      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }

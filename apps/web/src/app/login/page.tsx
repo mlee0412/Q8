@@ -32,6 +32,7 @@ function LoginContent() {
         <AuthForm
           mode="login"
           redirectTo="/"
+          oauthProviders={['google']}
           logo={
             <div className="text-center mb-2">
               <h1 className="text-5xl font-bold bg-gradient-to-r from-neon-primary to-neon-accent bg-clip-text text-transparent">

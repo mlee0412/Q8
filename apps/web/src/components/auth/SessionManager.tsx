@@ -125,7 +125,7 @@ export function SessionManager({ children }: SessionManagerProps) {
     try {
       await supabase.auth.signOut();
       await clearRxDBData();
-      router.push('/');
+      router.push('/login');
     } catch (error) {
       console.error('Sign out failed:', error);
     }
