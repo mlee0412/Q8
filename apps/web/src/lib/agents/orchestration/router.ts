@@ -12,6 +12,7 @@ import type {
 } from './types';
 import { DEFAULT_ROUTING_POLICY } from './types';
 import { getRoutingMetrics } from './metrics';
+import { logger } from '@/lib/logger';
 
 /**
  * Agent capability definitions for routing decisions
@@ -270,7 +271,7 @@ Respond with JSON only:
 
     // Check if we exceeded latency budget
     if (elapsed > policy.maxLLMRoutingLatency) {
-      console.warn(`[Router] LLM routing took ${elapsed}ms, exceeding budget of ${policy.maxLLMRoutingLatency}ms`);
+      logger.warn('LLM routing exceeded latency budget', { elapsed, budget: policy.maxLLMRoutingLatency });
     }
 
     const response = completion.choices[0]?.message?.content;
@@ -302,7 +303,7 @@ Respond with JSON only:
       performanceContext: metrics[parsed.agent as ExtendedAgentType],
     };
   } catch (error) {
-    console.error('[Router] LLM routing failed:', error);
+    logger.error('LLM routing failed', { message, error });
     // Fall back to heuristic routing
     const heuristicResult = heuristicRoute(message);
     return {
@@ -339,7 +340,7 @@ export async function route(
   const result = await Promise.race([llmPromise, timeoutPromise]);
 
   if (result === null) {
-    console.warn(`[Router] LLM routing timed out after ${timeout}ms, using heuristic`);
+    logger.warn('LLM routing timed out, using heuristic', { timeout });
     const heuristicResult = heuristicRoute(message);
     return {
       ...heuristicResult,

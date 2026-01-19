@@ -12,6 +12,7 @@ import { homeAssistantTools, executeHomeAssistantTool } from '../home-tools';
 import { financeAdvisorConfig, executeFinanceAdvisorTool, getFinancialContext } from '../sub-agents/finance-advisor';
 import { executeDefaultTool } from '../tools/default-tools';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { ChatMessageInsert } from '@/lib/supabase/types';
 import type { EnrichedContext } from '../types';
 import type {
@@ -190,7 +191,7 @@ async function fetchMemoryContext(userId: string): Promise<string> {
         ).join('\n');
     }
   } catch (error) {
-    console.warn('[Orchestration] Failed to fetch memories:', error);
+    logger.warn('Failed to fetch memories', { userId, error });
   }
   return '';
 }
@@ -426,7 +427,7 @@ export async function processMessage(
       },
     };
   } catch (error) {
-    console.error('[Orchestration] Error:', error);
+    logger.error('Orchestration error', { userId, threadId: providedThreadId, error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Log failure
@@ -697,7 +698,7 @@ export async function* streamMessage(
 
     yield { type: 'done', fullContent, agent: routingDecision.agent, threadId };
   } catch (error) {
-    console.error('[Orchestration] Streaming error:', error);
+    logger.error('Orchestration streaming error', { userId, threadId: providedThreadId, error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     yield { type: 'error', message: errorMessage, recoverable: true };
   }
@@ -711,5 +712,5 @@ function extractMemoriesAsync(userId: string, threadId: string, userMessage: str
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, threadId, userMessage, assistantMessage }),
-  }).catch((err) => console.warn('[Orchestration] Memory extraction failed:', err));
+  }).catch((err) => logger.warn('Memory extraction failed', { userId, threadId, error: err }));
 }

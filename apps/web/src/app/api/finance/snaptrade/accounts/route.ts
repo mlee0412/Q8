@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth/api-auth';
-import { getServerEnv, clientEnv, integrations } from '@/lib/env';
+import { integrations } from '@/lib/env';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 
 const SNAPTRADE_API_BASE = 'https://api.snaptrade.com/api/v1';
@@ -15,11 +15,6 @@ interface SnapTradeHolding {
   symbol?: string;
   units?: number;
 }
-
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  getServerEnv().SUPABASE_SERVICE_ROLE_KEY
-);
 
 /**
  * Generate SnapTrade signature for API requests

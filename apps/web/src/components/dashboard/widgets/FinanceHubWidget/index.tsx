@@ -5,9 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Maximize2,
-  Minimize2,
   RefreshCw,
-  Plus,
   Wallet,
   X,
   Link,
@@ -23,12 +21,8 @@ import { AlertCarousel } from './compact/AlertCarousel';
 import { PrivacyToggle } from './shared/PrivacyToggle';
 import { LinkAccountModal } from './shared/LinkAccountModal';
 import { FinanceSettings } from './shared/FinanceSettings';
-import { UnifiedLedger } from './expanded/UnifiedLedger';
-import { RecurringManager } from './expanded/RecurringManager';
-import { WealthSimulator } from './expanded/WealthSimulator';
-import { SpendingBreakdown } from './expanded/SpendingBreakdown';
-import { AIInsights } from './expanded/AIInsights';
-import { useFinanceHub } from './hooks/useFinanceHub';
+import { FinanceCommandCenter } from './expanded/FinanceCommandCenter';
+import { useFinanceHub } from './hooks';
 
 interface FinanceHubWidgetProps {
   className?: string;
@@ -101,7 +95,7 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
     } finally {
       setSyncing(false);
     }
-  }, [userId, syncAccounts]);
+  }, [userId, syncAccounts, setSyncing, setError]);
 
   // Auto-sync twice daily at 6 AM and 6 PM
   useEffect(() => {
@@ -293,118 +287,6 @@ export function FinanceHubWidget({ className }: FinanceHubWidgetProps) {
         isSyncing={isSyncing}
       />
     </>
-  );
-}
-
-/**
- * FinanceCommandCenter - Expanded fullscreen overlay
- */
-interface FinanceCommandCenterProps {
-  onClose: () => void;
-}
-
-function FinanceCommandCenter({ onClose }: FinanceCommandCenterProps) {
-  const { activeTab, setActiveTab, netWorth, totalAssets, totalLiabilities } = useFinanceHubStore();
-
-  const tabIcons = {
-    ledger: '📒',
-    recurring: '🔄',
-    simulator: '📈',
-    insights: '💡',
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-xl"
-    >
-      {/* Close button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
-        onClick={onClose}
-      >
-        <Minimize2 className="h-5 w-5" />
-      </Button>
-
-      <div className="h-full overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <Wallet className="h-8 w-8 text-neon-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-white">Finance Command Center</h1>
-                <p className="text-sm text-white/60">
-                  Your money, unified. Your future, simulated.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Quick Stats */}
-              <div className="hidden md:flex items-center gap-6 text-sm">
-                <div>
-                  <span className="text-white/60">Net Worth: </span>
-                  <span className="font-semibold text-white">
-                    ${netWorth.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-white/60">Assets: </span>
-                  <span className="font-semibold text-green-400">
-                    ${totalAssets.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-white/60">Liabilities: </span>
-                  <span className="font-semibold text-red-400">
-                    ${totalLiabilities.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-              <PrivacyToggle size="lg" />
-            </div>
-          </div>
-
-          {/* Tab Navigation */}
-          <div className="flex gap-2 mb-6 border-b border-border-subtle pb-2">
-            {(['ledger', 'recurring', 'simulator', 'insights'] as const).map((tab) => (
-              <Button
-                key={tab}
-                variant={activeTab === tab ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  activeTab === tab
-                    ? 'bg-neon-primary/20 text-neon-primary border border-neon-primary/30'
-                    : 'text-white/70 hover:text-white'
-                )}
-              >
-                <span className="mr-1.5">{tabIcons[tab]}</span>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </Button>
-            ))}
-          </div>
-
-          {/* Tab Content */}
-          <div className="rounded-2xl bg-surface-3/50 backdrop-blur-sm border border-border-subtle p-6 min-h-[60vh]">
-            {activeTab === 'ledger' && <UnifiedLedger />}
-            {activeTab === 'recurring' && <RecurringManager />}
-            {activeTab === 'simulator' && (
-              <div className="grid lg:grid-cols-2 gap-6">
-                <WealthSimulator />
-                <SpendingBreakdown />
-              </div>
-            )}
-            {activeTab === 'insights' && <AIInsights />}
-          </div>
-        </div>
-      </div>
-    </motion.div>
   );
 }
 

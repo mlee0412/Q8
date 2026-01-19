@@ -184,9 +184,13 @@ export const useContentHubStore = create<ContentHubState>()(
 
       // Queue actions
       addToQueue: (item) =>
-        set((state) => ({
-          queue: [...state.queue, item],
-        })),
+        set((state) => {
+          // Prevent duplicate items in queue
+          if (state.queue.some((i) => i.id === item.id)) {
+            return state;
+          }
+          return { queue: [...state.queue, item] };
+        }),
 
       removeFromQueue: (itemId) =>
         set((state) => ({

@@ -4,14 +4,13 @@
  */
 
 import { mcpClient } from '../client';
-
-export const GITHUB_MCP_URL = process.env.GITHUB_MCP_URL || 'http://localhost:3001';
+import { MCP_CONFIG } from '../config';
 
 /**
  * Initialize GitHub MCP tools
  */
 export async function initGitHubTools() {
-  await mcpClient.registerServer('github', GITHUB_MCP_URL);
+  await mcpClient.registerServer('github', MCP_CONFIG.github.url());
   return mcpClient.getServerTools('github');
 }
 

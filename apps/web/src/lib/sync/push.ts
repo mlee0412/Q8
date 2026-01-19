@@ -5,6 +5,7 @@
 
 import type { RxDocument } from 'rxdb';
 import type { Q8Database } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export interface PushOptions {
   batchSize?: number;
@@ -59,7 +60,7 @@ export async function pushChanges(
       errors,
     };
   } catch (error) {
-    console.error(`Push sync error for ${collectionName}:`, error);
+    logger.error('Push sync error', { module: 'sync-push', collectionName, error });
     throw error;
   }
 }
@@ -68,7 +69,8 @@ export async function pushChanges(
  * Push changes for all collections
  */
 export async function pushAllCollections(db: Q8Database, options: PushOptions = {}) {
-  const collections = ['chat_messages', 'user_preferences', 'devices', 'knowledge_base', 'github_prs'];
+  const { SYNCABLE_COLLECTIONS } = await import('./constants');
+  const collections = [...SYNCABLE_COLLECTIONS];
 
   const results = await Promise.allSettled(
     collections.map((name) => pushChanges(db, name, options))

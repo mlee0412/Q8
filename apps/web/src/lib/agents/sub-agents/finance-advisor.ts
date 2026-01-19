@@ -9,6 +9,7 @@ import { financeTools } from '../tools/finance-tools';
 import { executeFinanceTool } from '../tools/finance-executor';
 import { defaultTools } from '../tools/default-tools';
 import { safeEvaluate } from '@/lib/utils/safe-math';
+import { logger } from '@/lib/logger';
 import type { Tool, OpenAITool } from '../types';
 
 /**
@@ -72,7 +73,7 @@ export async function executeFinanceAdvisorTool(
   userId: string
 ): Promise<{ success: boolean; message: string; data?: unknown }> {
   try {
-    console.log(`[FinanceAdvisor] Executing tool: ${toolName}`, args);
+    logger.debug('Executing finance advisor tool', { toolName, args });
 
     // Check if it's a finance tool
     const isFinanceTool = financeTools.some(
@@ -134,7 +135,7 @@ export async function executeFinanceAdvisorTool(
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[FinanceAdvisor] Tool error:`, error);
+    logger.error('Finance advisor tool error', { toolName, error });
     return {
       success: false,
       message: `Error executing ${toolName}: ${errorMessage}`,
@@ -181,7 +182,7 @@ Top Categories: ${spendingSummary.categories?.map((c) => `${c.name} (${c.formatt
 Upcoming Bills (7 days): ${billsSummary.bills_count || 0} bills totaling ${billsSummary.formatted_total || '$0.00'}
 </financial_context>`;
   } catch (error) {
-    console.error('[FinanceAdvisor] Error building financial context:', error);
+    logger.error('Error building financial context', { userId, error });
     return '<financial_context>Unable to load financial context</financial_context>';
   }
 }
@@ -324,7 +325,7 @@ export async function generateProactiveInsights(
       });
     }
   } catch (error) {
-    console.error('[FinanceAdvisor] Error generating insights:', error);
+    logger.error('Error generating proactive insights', { userId, error });
   }
 
   return insights;

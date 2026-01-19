@@ -9,6 +9,7 @@
 
 import { getModel } from '../model_factory';
 import { defaultTools } from '../tools/default-tools';
+import { logger } from '@/lib/logger';
 import type { Tool, OpenAITool } from '../types';
 
 /**
@@ -136,7 +137,7 @@ export async function initializeResearcherAgent() {
       // Perplexity Sonar Pro has native web search - no external tools needed
     };
   } catch (error) {
-    console.error('Error initializing researcher agent:', error);
+    logger.error('Error initializing researcher agent', { error });
     return researcherAgentConfig;
   }
 }

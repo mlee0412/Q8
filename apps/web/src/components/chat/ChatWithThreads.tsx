@@ -9,6 +9,7 @@ import { ThreadSidebar } from './ThreadSidebar';
 import { StreamingChatPanel, StreamingChatPanelRef } from './StreamingChatPanel';
 import { useThreads } from '@/hooks/useThreads';
 import { useOptionalChatContext } from '@/contexts/ChatContext';
+import { logger } from '@/lib/logger';
 
 export interface ChatWithThreadsRef {
   sendMessage: (message: string) => void;
@@ -107,7 +108,7 @@ export const ChatWithThreads = forwardRef<ChatWithThreadsRef, ChatWithThreadsPro
       await fetch(`/api/threads/${currentThreadId}/summarize`, { method: 'POST' });
       await refreshThreads();
     } catch (err) {
-      console.error('Failed to regenerate title:', err);
+      logger.error('Failed to regenerate title', { threadId: currentThreadId, error: err });
     }
   }, [currentThreadId, refreshThreads]);
 

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Loader2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import type { User } from '@supabase/supabase-js';
 
 interface ProtectedRouteProps {

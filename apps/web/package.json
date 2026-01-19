@@ -25,6 +25,8 @@
     "@tiptap/extension-task-list": "^3.11.1",
     "@tiptap/react": "^3.11.1",
     "@tiptap/starter-kit": "^3.11.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "colorthief": "^2.6.0",

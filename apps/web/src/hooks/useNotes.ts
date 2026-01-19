@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import type { Note, NoteFolder, NoteUpdate } from '@/lib/supabase/types';
+import { logger } from '@/lib/logger';
 
 interface UseNotesOptions {
   userId: string;
@@ -114,7 +115,7 @@ export function useNotes(options: UseNotesOptions): UseNotesReturn {
       const data = await response.json();
       setFolders(data.folders || []);
     } catch (err) {
-      console.error('Failed to fetch folders:', err);
+      logger.error('Failed to fetch folders', { userId, error: err });
     }
   }, [userId]);
 

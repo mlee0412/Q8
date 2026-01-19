@@ -3,12 +3,13 @@
  * Generates contextual suggestions based on time, weather, history
  */
 
-import type { 
-  ProactiveSuggestion, 
+import type {
+  ProactiveSuggestion,
   SuggestionContext,
   MemoryEntry,
 } from './types';
 import { searchMemories, getUserPreferences, getShortTermMemory } from './memory-store';
+import { logger } from '@/lib/logger';
 
 /**
  * Generate a unique ID
@@ -454,7 +455,7 @@ export function dismissSuggestion(suggestionId: string): void {
       JSON.stringify(trimmedRecords)
     );
   } catch (error) {
-    console.error('Failed to persist suggestion dismissal:', error);
+    logger.error('Failed to persist suggestion dismissal', { module: 'suggestions', error, suggestionId });
   }
 }
 

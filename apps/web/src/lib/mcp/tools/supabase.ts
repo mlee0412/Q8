@@ -4,14 +4,13 @@
  */
 
 import { mcpClient } from '../client';
-
-export const SUPABASE_MCP_URL = process.env.SUPABASE_MCP_URL || 'http://localhost:3003';
+import { MCP_CONFIG } from '../config';
 
 /**
  * Initialize Supabase MCP tools
  */
 export async function initSupabaseTools() {
-  await mcpClient.registerServer('supabase', SUPABASE_MCP_URL);
+  await mcpClient.registerServer('supabase', MCP_CONFIG.supabase.url());
   return mcpClient.getServerTools('supabase');
 }
 

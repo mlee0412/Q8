@@ -4,14 +4,13 @@
  */
 
 import { mcpClient } from '../client';
-
-export const GOOGLE_MCP_URL = process.env.GOOGLE_MCP_URL || 'http://localhost:3002';
+import { MCP_CONFIG } from '../config';
 
 /**
  * Initialize Google Workspace MCP tools
  */
 export async function initGoogleTools() {
-  await mcpClient.registerServer('google', GOOGLE_MCP_URL);
+  await mcpClient.registerServer('google', MCP_CONFIG.google.url());
   return mcpClient.getServerTools('google');
 }
 

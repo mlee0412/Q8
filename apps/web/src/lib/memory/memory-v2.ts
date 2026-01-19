@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { MemoryType, MemoryImportance, LongTermMemory } from './types';
 
 /**
@@ -62,7 +63,7 @@ export interface StoreMemoryOptions {
  */
 async function generateEmbedding(text: string): Promise<number[] | null> {
   if (!process.env.OPENAI_API_KEY) {
-    console.warn('[Memory V2] No OpenAI API key for embeddings');
+    logger.warn('No OpenAI API key for embeddings', { module: 'memory-v2' });
     return null;
   }
 
@@ -77,7 +78,7 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
 
     return response.data[0]?.embedding || null;
   } catch (error) {
-    console.error('[Memory V2] Embedding generation failed:', error);
+    logger.error('Embedding generation failed', { module: 'memory-v2', error });
     return null;
   }
 }
@@ -157,13 +158,13 @@ export async function storeMemory(
       .single();
 
     if (error || !data) {
-      console.error('[Memory V2] Failed to store memory:', error);
+      logger.error('Failed to store memory', { module: 'memory-v2', error });
       return null;
     }
 
     return mapToEnhancedMemory(data);
   } catch (error) {
-    console.error('[Memory V2] Error storing memory:', error);
+    logger.error('Error storing memory', { module: 'memory-v2', error });
     return null;
   }
 }
@@ -208,7 +209,7 @@ export async function searchMemoriesHybrid(
     });
 
     if (error) {
-      console.error('[Memory V2] Hybrid search failed:', error);
+      logger.error('Hybrid search failed', { module: 'memory-v2', error, userId });
       // Fall back to simple text search
       return fallbackSearch(userId, query, limit);
     }
@@ -253,7 +254,7 @@ export async function searchMemoriesHybrid(
       whyRelevant: generateRelevanceExplanation(row.match_type, row.relevance_score),
     }));
   } catch (error) {
-    console.error('[Memory V2] Search error:', error);
+    logger.error('Search error', { module: 'memory-v2', error, userId });
     return fallbackSearch(userId, query, limit);
   }
 }
@@ -380,7 +381,7 @@ export async function resolveConflict(
     }
     // 'keep_both' - no action needed
   } catch (error) {
-    console.error('[Memory V2] Conflict resolution failed:', error);
+    logger.error('Conflict resolution failed', { module: 'memory-v2', error, existingMemoryId, resolution });
   }
 }
 

@@ -13,9 +13,8 @@ export { StatusWidget } from './StatusWidget';
 // Phase 3 Widgets
 export { GitHubPRWidget } from './GitHubPRWidget';
 export { CalendarWidget } from './CalendarWidget';
-export { SpotifyWidget } from './SpotifyWidget';
-export { WeatherWidget } from './WeatherWidget';
-export { TaskWidget } from './TaskWidget';
+export { WeatherWidget } from './WeatherWidget/index';
+export { TaskWidget } from './TaskWidget/index';
 export { SuggestionsWidget } from './SuggestionsWidget';
 
 // Phase 6 - ContentHub (replaces SpotifyWidget)
@@ -23,11 +22,11 @@ export { ContentHubWidget } from './ContentHubWidget';
 
 // Phase 4 Widgets
 export { ClockWidget } from './ClockWidget';
-export { QuickNotesWidget } from './QuickNotesWidget';
-export { FocusWidget } from './FocusWidget';
+export { QuickNotesWidget } from './QuickNotesWidget/index';
+export { FocusWidget } from './FocusWidget/index';
 
 // Phase 5 Widgets - Smart Home Integration
-export { SmartHomeWidget } from './SmartHomeWidget';
+export { SmartHomeWidget } from './SmartHomeWidget/index';
 
 // Phase 7 - FinanceHub
 export { FinanceHubWidget } from './FinanceHubWidget';

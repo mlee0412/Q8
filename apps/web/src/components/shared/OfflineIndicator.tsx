@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { getSyncEngine } from '@/lib/sync';
 import { getPushQueueManager } from '@/lib/sync/queue';
+import { logger } from '@/lib/logger';
 
 interface OfflineIndicatorProps {
   /**

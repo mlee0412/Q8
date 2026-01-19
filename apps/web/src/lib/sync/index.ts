@@ -10,6 +10,8 @@
  * - Persistent push queue
  */
 
+import { logger } from '@/lib/logger';
+
 // Types
 export * from './types';
 
@@ -64,9 +66,7 @@ export function startSync(
   db: import('rxdb').RxDatabase,
   config: { interval?: number; pullOnStart?: boolean; pushOnStart?: boolean } = {}
 ) {
-  console.warn(
-    '[Sync] startSync is deprecated. Use initSyncEngine for the new sync system.'
-  );
+  logger.warn('startSync is deprecated. Use initSyncEngine for the new sync system.', { module: 'sync' });
 
   const {
     interval = 30000,
@@ -79,10 +79,10 @@ export function startSync(
   const { pushAllCollections } = require('./push');
 
   if (pullOnStart) {
-    pullAllCollections(db).catch(console.error);
+    pullAllCollections(db).catch((error: unknown) => logger.error('Initial pull failed', { module: 'sync', error }));
   }
   if (pushOnStart) {
-    pushAllCollections(db).catch(console.error);
+    pushAllCollections(db).catch((error: unknown) => logger.error('Initial push failed', { module: 'sync', error }));
   }
 
   const syncInterval = setInterval(async () => {
@@ -90,7 +90,7 @@ export function startSync(
       await pullAllCollections(db);
       await pushAllCollections(db);
     } catch (error) {
-      console.error('Sync error:', error);
+      logger.error('Sync error', { module: 'sync', error });
     }
   }, interval);
 

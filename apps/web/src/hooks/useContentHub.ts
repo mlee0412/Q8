@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useContentHubStore } from '@/lib/stores/contenthub';
 import type { ContentItem } from '@/types/contenthub';
+import { logger } from '@/lib/logger';
 
 // Demo content for when APIs aren't available (defined outside hook to avoid dependency issues)
 const DEMO_CONTENT: ContentItem[] = [
@@ -66,10 +67,15 @@ export function useContentHub() {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/contenthub?mode=${activeMode}&sources=spotify,youtube`
+        `/api/contenthub?mode=${activeMode}&sources=spotify,youtube`,
+        { credentials: 'include' }
       );
 
       if (!response.ok) {
+        // Fall through to demo content for auth errors
+        if (response.status === 401) {
+          throw new Error('Not authenticated');
+        }
         throw new Error('Failed to fetch content');
       }
 
@@ -89,7 +95,7 @@ export function useContentHub() {
 
       setError(null);
     } catch (error) {
-      console.warn('ContentHub fetch error, using demo content:', error);
+      logger.warn('ContentHub fetch error, using demo content', { error });
 
       // Use demo content as fallback
       if (!nowPlaying && DEMO_CONTENT[0]) {
@@ -147,7 +153,7 @@ export function useContentHub() {
         }
       }
     } catch (error) {
-      console.error('Spotify state fetch error:', error);
+      logger.error('Spotify state fetch error', { error });
     }
   }, [nowPlaying, isPlaying, play, pause, resume]);
 
@@ -167,7 +173,7 @@ export function useContentHub() {
       // Refresh state after action
       setTimeout(fetchSpotifyState, 500);
     } catch (error) {
-      console.error('Spotify control error:', error);
+      logger.error('Spotify control error', { action, error });
       setError('Failed to control playback');
     }
   }, [fetchSpotifyState, setError]);
@@ -188,7 +194,7 @@ export function useContentHub() {
       const data = await response.json();
       return data.results as ContentItem[];
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('ContentHub search error', { query, error });
       setError('Search failed');
       return [];
     }
@@ -201,7 +207,7 @@ export function useContentHub() {
       const data = await response.json();
       return data.devices || [];
     } catch (error) {
-      console.error('Get devices error:', error);
+      logger.error('Get Spotify devices error', { error });
       return [];
     }
   }, []);
@@ -306,7 +312,7 @@ export function useContentHub() {
 
       return { success: false, error: castData.error || 'Cast failed' };
     } catch (error) {
-      console.error('Cast error:', error);
+      logger.error('Cast error', { itemId: item.id, source: item.source, error });
       const message = error instanceof Error ? error.message : 'Cast failed';
       setError(`Cast: ${message}`);
       return { success: false, error: message };
@@ -317,10 +323,15 @@ export function useContentHub() {
   const fetchRecommendations = useCallback(async () => {
     try {
       const response = await fetch(
-        `/api/contenthub?mode=${activeMode}&sources=spotify,youtube`
+        `/api/contenthub?mode=${activeMode}&sources=spotify,youtube`,
+        { credentials: 'include' }
       );
 
       if (!response.ok) {
+        // Don't throw for auth errors - just return empty
+        if (response.status === 401) {
+          return { recommendations: [], trending: [] };
+        }
         throw new Error('Failed to fetch recommendations');
       }
 
@@ -330,7 +341,7 @@ export function useContentHub() {
         trending: data.trending as ContentItem[],
       };
     } catch (error) {
-      console.error('Recommendations error:', error);
+      logger.error('Recommendations fetch error', { activeMode, error });
       return { recommendations: [], trending: [] };
     }
   }, [activeMode]);
@@ -380,7 +391,7 @@ export function useContentHub() {
         context: data.context,
       };
     } catch (error) {
-      console.error('AI Recommendations error:', error);
+      logger.error('AI Recommendations error', { activeMode, error });
       return { success: false, recommendations: [], context: null };
     }
   }, [activeMode]);
@@ -388,11 +399,11 @@ export function useContentHub() {
   // Fetch user's Spotify library (playlists, history, top tracks)
   const fetchSpotifyLibrary = useCallback(async () => {
     try {
-      const response = await fetch('/api/spotify/library');
+      const response = await fetch('/api/spotify/library', { credentials: 'include' });
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
-      console.error('Spotify library error:', error);
+      logger.error('Spotify library fetch error', { error });
       return null;
     }
   }, []);
@@ -400,11 +411,11 @@ export function useContentHub() {
   // Fetch YouTube trending content
   const fetchYouTubeLibrary = useCallback(async () => {
     try {
-      const response = await fetch('/api/youtube/library');
+      const response = await fetch('/api/youtube/library', { credentials: 'include' });
       if (!response.ok) return null;
       return await response.json();
     } catch (error) {
-      console.error('YouTube library error:', error);
+      logger.error('YouTube library fetch error', { error });
       return null;
     }
   }, []);
@@ -412,14 +423,14 @@ export function useContentHub() {
   // Fetch playlist tracks
   const fetchPlaylistTracks = useCallback(async (playlistId: string) => {
     try {
-      const response = await fetch(`/api/spotify/playlists?id=${playlistId}`);
+      const response = await fetch(`/api/spotify/playlists?id=${playlistId}`, { credentials: 'include' });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to fetch playlist');
       }
       return await response.json();
     } catch (error) {
-      console.error('Playlist tracks error:', error);
+      logger.error('Playlist tracks fetch error', { playlistId, error });
       setError(error instanceof Error ? error.message : 'Failed to fetch playlist');
       return null;
     }
@@ -444,7 +455,7 @@ export function useContentHub() {
       }
       return { success: true, message: data.message };
     } catch (error) {
-      console.error('Add to playlist error:', error);
+      logger.error('Add to playlist error', { playlistId, trackUri, error });
       const message = error instanceof Error ? error.message : 'Failed to add to playlist';
       setError(message);
       return { success: false, error: message };
@@ -470,7 +481,7 @@ export function useContentHub() {
       }
       return { success: true, message: data.message };
     } catch (error) {
-      console.error('Remove from playlist error:', error);
+      logger.error('Remove from playlist error', { playlistId, trackUri, error });
       const message = error instanceof Error ? error.message : 'Failed to remove from playlist';
       setError(message);
       return { success: false, error: message };
@@ -497,7 +508,7 @@ export function useContentHub() {
       }
       return { success: true, playlist: data.playlist };
     } catch (error) {
-      console.error('Create playlist error:', error);
+      logger.error('Create playlist error', { name, error });
       const message = error instanceof Error ? error.message : 'Failed to create playlist';
       setError(message);
       return { success: false, error: message };
@@ -569,7 +580,7 @@ export function useSpotifyControls() {
         // Handle specific error codes
         if (data.code === 'PERMISSIONS_MISSING') {
           const authMessage = 'Spotify permissions missing. Click here to re-authorize.';
-          console.error('Spotify permissions error - user needs to re-authorize at /api/spotify/auth');
+          logger.error('Spotify permissions error - user needs to re-authorize', { authUrl: '/api/spotify/auth' });
           setError(authMessage);
           // Could trigger a modal or redirect here
           return { success: false, error: authMessage, code: data.code, authUrl: data.authUrl };
@@ -587,14 +598,14 @@ export function useSpotifyControls() {
 
       // Check if it's a mock response
       if (data.mock) {
-        console.warn('Spotify not configured, using mock mode');
+        logger.warn('Spotify not configured, using mock mode');
         return { success: true };
       }
 
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Control failed';
-      console.error('Spotify control error:', message);
+      logger.error('Spotify control error', { action, message, error });
       setError(`Spotify: ${message}`);
       return { success: false, error: message };
     }
@@ -674,7 +685,7 @@ export function useSpotifySync() {
       }
       return null;
     } catch (error) {
-      console.error('Spotify state fetch error:', error);
+      logger.error('Spotify state sync error', { error });
       return null;
     }
   }, [nowPlaying, isPlaying, play, pause, resume]);

@@ -6,6 +6,7 @@
 
 import { getModel } from '../model_factory';
 import { initHomeAssistantTools } from '@/lib/mcp/tools/home-assistant';
+import { logger } from '@/lib/logger';
 import type { Tool } from '../types';
 
 export const homeAgentConfig = {
@@ -44,7 +45,7 @@ export async function initializeHomeAgent() {
       tools: [...haTools],
     };
   } catch (error) {
-    console.error('Error initializing home agent:', error);
+    logger.error('Error initializing home agent', { error });
     return homeAgentConfig;
   }
 }

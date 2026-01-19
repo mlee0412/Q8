@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { MemoriesSettings } from './MemoriesSettings';
+import { logger } from '@/lib/logger';
 import type { UserPreferences } from '@/lib/memory/types';
 
 interface SettingsPanelProps {

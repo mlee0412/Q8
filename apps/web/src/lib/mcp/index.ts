@@ -4,6 +4,7 @@
  */
 
 export * from './client';
+export * from './config';
 export * from './tools/github';
 export * from './tools/google';
 export * from './tools/supabase';

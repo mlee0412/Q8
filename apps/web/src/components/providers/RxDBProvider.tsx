@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Provider } from 'rxdb-hooks';
 import { getDatabase, type Q8Database } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 interface RxDBProviderProps {
   children: React.ReactNode;

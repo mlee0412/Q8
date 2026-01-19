@@ -4,6 +4,7 @@
  */
 
 import { getWeather, type WeatherData } from './tools/weather';
+import { logger } from '@/lib/logger';
 import type { EnrichedContext, UserProfile, SessionState } from './types';
 
 // User's home location (configured)
@@ -123,7 +124,7 @@ async function getCachedWeather(): Promise<WeatherData | null> {
     weatherCache = { data: weather, timestamp: now };
     return weather;
   } catch (error) {
-    console.error('Failed to fetch weather:', error);
+    logger.error('Failed to fetch weather', { lat: USER_LOCATION.coordinates.lat, long: USER_LOCATION.coordinates.long, error });
     return weatherCache.data; // Return stale data if available
   }
 }

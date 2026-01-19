@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useContentHubStore } from '@/lib/stores/contenthub';
+import { logger } from '@/lib/logger';
 
 // Spotify Web Playback SDK types
 declare global {
@@ -140,7 +141,17 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
     }
 
     try {
-      const response = await fetch('/api/spotify/token');
+      const response = await fetch('/api/spotify/token', {
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          return null; // Not authenticated, fail silently
+        }
+        throw new Error('Failed to fetch token');
+      }
+      
       const data = await response.json();
 
       if (data.error) {
@@ -152,7 +163,7 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
       tokenExpiryRef.current = Date.now() + (data.expires_in * 1000);
       return data.access_token;
     } catch (err) {
-      console.error('Failed to get Spotify token:', err);
+      logger.error('Failed to get Spotify token', { error: err });
       setError('Failed to authenticate with Spotify');
       return null;
     }
@@ -173,7 +184,7 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
 
     // Define callback before loading script
     window.onSpotifyWebPlaybackSDKReady = () => {
-      console.log('Spotify Web Playback SDK Ready');
+      logger.info('Spotify Web Playback SDK ready');
       initializePlayer();
     };
 
@@ -215,32 +226,32 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
     // Error handling - cast from unknown to specific types
     player.addListener('initialization_error', (state: unknown) => {
       const { message } = state as WebPlaybackError;
-      console.error('Spotify initialization error:', message);
+      logger.error('Spotify initialization error', { message });
       setError(`Initialization error: ${message}`);
     });
 
     player.addListener('authentication_error', (state: unknown) => {
       const { message } = state as WebPlaybackError;
-      console.error('Spotify auth error:', message);
+      logger.error('Spotify auth error', { message });
       setError(`Authentication error: ${message}`);
     });
 
     player.addListener('account_error', (state: unknown) => {
       const { message } = state as WebPlaybackError;
-      console.error('Spotify account error:', message);
+      logger.error('Spotify account error', { message });
       setError(`Account error: ${message}. Spotify Premium is required.`);
     });
 
     player.addListener('playback_error', (state: unknown) => {
       const { message } = state as WebPlaybackError;
-      console.error('Spotify playback error:', message);
+      logger.error('Spotify playback error', { message });
       setError(`Playback error: ${message}`);
     });
 
     // Ready
     player.addListener('ready', (state: unknown) => {
       const { device_id } = state as { device_id: string };
-      console.log('Spotify player ready with device ID:', device_id);
+      logger.info('Spotify player ready', { deviceId: device_id });
       setDeviceId(device_id);
       setIsReady(true);
       setError(null);
@@ -249,7 +260,7 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
     // Not Ready
     player.addListener('not_ready', (state: unknown) => {
       const { device_id } = state as { device_id: string };
-      console.log('Device ID has gone offline:', device_id);
+      logger.info('Spotify device has gone offline', { deviceId: device_id });
       setIsReady(false);
       setIsActive(false);
     });
@@ -296,7 +307,7 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
     // Connect to Spotify
     const success = await player.connect();
     if (success) {
-      console.log('Connected to Spotify');
+      logger.info('Connected to Spotify');
     } else {
       setError('Failed to connect to Spotify');
     }
@@ -350,7 +361,7 @@ export function useSpotifyWebPlayback(): UseSpotifyWebPlaybackReturn {
         body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
-      console.error('Play error:', err);
+      logger.error('Spotify play error', { error: err });
     }
   }, [deviceId, getAccessToken]);
 

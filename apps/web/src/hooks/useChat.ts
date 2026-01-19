@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 export type AgentType = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home';
 
@@ -130,7 +131,7 @@ export function useChat(options: UseChatOptions) {
         threadId,
       }));
     } catch (err) {
-      console.error('Failed to load messages:', err);
+      logger.error('Failed to load messages', { threadId, error: err });
     }
   }, []);
 
@@ -231,7 +232,7 @@ export function useChat(options: UseChatOptions) {
             const data = JSON.parse(line.slice(6));
             await processStreamEvent(data, assistantMessageId);
           } catch (e) {
-            console.warn('Failed to parse SSE event:', line);
+            logger.warn('Failed to parse SSE event', { line, error: e });
           }
         }
       }

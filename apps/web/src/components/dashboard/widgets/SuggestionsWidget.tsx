@@ -15,6 +15,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import type { ProactiveSuggestion } from '@/lib/memory/types';
 import { getDismissedSuggestions, dismissSuggestion } from '@/lib/memory/suggestions';
 
@@ -123,7 +124,7 @@ export function SuggestionsWidget({
         setQuickActions(data.quickActions || []);
       }
     } catch (error) {
-      console.error('Failed to fetch suggestions:', error);
+      logger.error('Failed to fetch suggestions', { error });
     } finally {
       setIsLoading(false);
     }

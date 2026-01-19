@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { ExtendedAgentType } from './types';
 
 /**
@@ -59,7 +60,7 @@ export async function logRoutingTelemetry(event: RoutingTelemetryEvent): Promise
     });
   } catch (error) {
     // Log but don't fail - telemetry is non-critical
-    console.warn('[Metrics] Failed to log routing telemetry:', error);
+    logger.warn('Failed to log routing telemetry', { userId: event.userId, threadId: event.threadId, error });
   }
 }
 
@@ -80,7 +81,7 @@ export async function recordImplicitFeedback(
       signal_type: signal,
     });
   } catch (error) {
-    console.warn('[Metrics] Failed to record feedback:', error);
+    logger.warn('Failed to record feedback', { userId, threadId, agent, signal, error });
   }
 }
 
@@ -147,7 +148,7 @@ export async function getRoutingMetrics(): Promise<Record<ExtendedAgentType, Age
 
     return metrics as Record<ExtendedAgentType, AgentMetrics | undefined>;
   } catch (error) {
-    console.warn('[Metrics] Failed to fetch routing metrics:', error);
+    logger.warn('Failed to fetch routing metrics', { error });
     return defaultMetrics as Record<ExtendedAgentType, AgentMetrics | undefined>;
   }
 }

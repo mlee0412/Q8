@@ -5,6 +5,8 @@
 
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 const OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+const OPENWEATHER_ONECALL_URL = 'https://api.openweathermap.org/data/3.0/onecall';
+const OPENWEATHER_AQI_URL = 'https://api.openweathermap.org/data/2.5/air_pollution';
 
 export interface WeatherData {
   temp: number;
@@ -35,6 +37,53 @@ export interface ForecastData {
   description: string;
   icon: string;
   precipitation: number;
+}
+
+export interface HourlyForecastData {
+  time: string;
+  temp: number;
+  condition: string;
+  icon: string;
+  precipitation: number;
+  windSpeed: number;
+  humidity: number;
+}
+
+export interface AirQualityData {
+  aqi: number;
+  category: 'good' | 'moderate' | 'unhealthy-sensitive' | 'unhealthy' | 'very-unhealthy' | 'hazardous';
+  pm25: number;
+  pm10: number;
+  o3: number;
+  no2: number;
+  co: number;
+  so2: number;
+}
+
+export interface UVIndexData {
+  value: number;
+  category: 'low' | 'moderate' | 'high' | 'very-high' | 'extreme';
+  peakTime?: string;
+}
+
+export interface WeatherAlertData {
+  id: string;
+  event: string;
+  severity: 'minor' | 'moderate' | 'severe' | 'extreme';
+  headline: string;
+  description: string;
+  start: string;
+  end: string;
+  sender?: string;
+}
+
+export interface ExtendedWeatherData {
+  current: WeatherData;
+  hourly: HourlyForecastData[];
+  daily: ForecastData[];
+  alerts: WeatherAlertData[];
+  airQuality: AirQualityData | null;
+  uvIndex: UVIndexData;
 }
 
 /**
@@ -241,4 +290,222 @@ export function getWeatherSuggestion(weather: WeatherData): string | null {
   }
 
   return null;
+}
+
+/**
+ * Get extended weather data using One Call API 3.0
+ * Includes hourly forecast, daily forecast, alerts, and UV index
+ */
+export async function getExtendedWeather(lat: number, lon: number): Promise<ExtendedWeatherData> {
+  if (!OPENWEATHER_API_KEY) {
+    throw new Error('OPENWEATHER_API_KEY not configured');
+  }
+
+  // Fetch One Call API data
+  const oneCallUrl = `${OPENWEATHER_ONECALL_URL}?lat=${lat}&lon=${lon}&units=imperial&appid=${OPENWEATHER_API_KEY}`;
+  const oneCallResponse = await fetch(oneCallUrl);
+
+  if (!oneCallResponse.ok) {
+    throw new Error(`One Call API error: ${oneCallResponse.status} ${oneCallResponse.statusText}`);
+  }
+
+  const oneCallData = await oneCallResponse.json();
+
+  // Fetch Air Quality data
+  let airQuality: AirQualityData | null = null;
+  try {
+    const aqiUrl = `${OPENWEATHER_AQI_URL}?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}`;
+    const aqiResponse = await fetch(aqiUrl);
+    if (aqiResponse.ok) {
+      const aqiData = await aqiResponse.json();
+      if (aqiData.list && aqiData.list[0]) {
+        const aqi = aqiData.list[0];
+        airQuality = {
+          aqi: aqi.main.aqi * 50, // Convert 1-5 scale to approximate AQI
+          category: getAQICategory(aqi.main.aqi),
+          pm25: aqi.components.pm2_5 || 0,
+          pm10: aqi.components.pm10 || 0,
+          o3: aqi.components.o3 || 0,
+          no2: aqi.components.no2 || 0,
+          co: aqi.components.co || 0,
+          so2: aqi.components.so2 || 0,
+        };
+      }
+    }
+  } catch {
+    // Air quality data is optional
+  }
+
+  // Parse current weather
+  const current: WeatherData = {
+    temp: oneCallData.current.temp,
+    feelsLike: oneCallData.current.feels_like,
+    tempMin: oneCallData.daily[0]?.temp?.min || oneCallData.current.temp - 5,
+    tempMax: oneCallData.daily[0]?.temp?.max || oneCallData.current.temp + 5,
+    humidity: oneCallData.current.humidity,
+    pressure: oneCallData.current.pressure,
+    windSpeed: oneCallData.current.wind_speed,
+    windDeg: oneCallData.current.wind_deg || 0,
+    condition: oneCallData.current.weather[0]?.main || 'Unknown',
+    description: oneCallData.current.weather[0]?.description || 'Unknown',
+    icon: oneCallData.current.weather[0]?.icon || '01d',
+    visibility: oneCallData.current.visibility || 10000,
+    clouds: oneCallData.current.clouds || 0,
+    sunrise: formatTime(oneCallData.current.sunrise, oneCallData.timezone_offset),
+    sunset: formatTime(oneCallData.current.sunset, oneCallData.timezone_offset),
+    timezone: oneCallData.timezone_offset,
+    cityName: oneCallData.timezone?.split('/')[1]?.replace('_', ' ') || 'Unknown',
+  };
+
+  // Parse hourly forecast (next 48 hours)
+  const hourly: HourlyForecastData[] = (oneCallData.hourly || []).slice(0, 48).map((h: Record<string, unknown>) => ({
+    time: new Date((h.dt as number) * 1000).toISOString(),
+    temp: h.temp as number,
+    condition: ((h.weather as Array<{ main?: string }>)?.[0]?.main) || 'Unknown',
+    icon: ((h.weather as Array<{ icon?: string }>)?.[0]?.icon) || '01d',
+    precipitation: (h.pop as number) || 0,
+    windSpeed: h.wind_speed as number,
+    humidity: h.humidity as number,
+  }));
+
+  // Parse daily forecast (next 7 days)
+  const daily: ForecastData[] = (oneCallData.daily || []).slice(0, 7).map((d: Record<string, unknown>) => ({
+    date: new Date((d.dt as number) * 1000),
+    temp: (d.temp as { day: number })?.day || 0,
+    tempMin: (d.temp as { min: number })?.min || 0,
+    tempMax: (d.temp as { max: number })?.max || 0,
+    condition: ((d.weather as Array<{ main?: string }>)?.[0]?.main) || 'Unknown',
+    description: ((d.weather as Array<{ description?: string }>)?.[0]?.description) || 'Unknown',
+    icon: ((d.weather as Array<{ icon?: string }>)?.[0]?.icon) || '01d',
+    precipitation: (d.pop as number) || 0,
+  }));
+
+  // Parse alerts
+  const alerts: WeatherAlertData[] = (oneCallData.alerts || []).map((a: Record<string, unknown>, index: number) => ({
+    id: `alert-${index}-${a.start}`,
+    event: (a.event as string) || 'Weather Alert',
+    severity: mapAlertSeverity(a.tags as string[] | undefined),
+    headline: (a.event as string) || 'Weather Alert',
+    description: (a.description as string) || '',
+    start: new Date((a.start as number) * 1000).toISOString(),
+    end: new Date((a.end as number) * 1000).toISOString(),
+    sender: a.sender_name as string | undefined,
+  }));
+
+  // Parse UV Index
+  const uvIndex: UVIndexData = {
+    value: Math.round(oneCallData.current.uvi || 0),
+    category: getUVCategory(oneCallData.current.uvi || 0),
+  };
+
+  return {
+    current,
+    hourly,
+    daily,
+    alerts,
+    airQuality,
+    uvIndex,
+  };
+}
+
+/**
+ * Get AQI category from OpenWeatherMap's 1-5 scale
+ */
+function getAQICategory(aqi: number): AirQualityData['category'] {
+  switch (aqi) {
+    case 1: return 'good';
+    case 2: return 'moderate';
+    case 3: return 'unhealthy-sensitive';
+    case 4: return 'unhealthy';
+    case 5: return 'hazardous';
+    default: return 'moderate';
+  }
+}
+
+/**
+ * Get UV category from UV index value
+ */
+function getUVCategory(uvi: number): UVIndexData['category'] {
+  if (uvi <= 2) return 'low';
+  if (uvi <= 5) return 'moderate';
+  if (uvi <= 7) return 'high';
+  if (uvi <= 10) return 'very-high';
+  return 'extreme';
+}
+
+/**
+ * Map alert tags to severity level
+ */
+function mapAlertSeverity(tags?: string[]): WeatherAlertData['severity'] {
+  if (!tags || tags.length === 0) return 'moderate';
+  const tagStr = tags.join(' ').toLowerCase();
+  if (tagStr.includes('extreme') || tagStr.includes('emergency')) return 'extreme';
+  if (tagStr.includes('severe') || tagStr.includes('warning')) return 'severe';
+  if (tagStr.includes('watch') || tagStr.includes('advisory')) return 'moderate';
+  return 'minor';
+}
+
+/**
+ * Get hourly forecast from standard API (fallback when One Call not available)
+ */
+export async function getHourlyForecast(lat: number, lon: number): Promise<HourlyForecastData[]> {
+  if (!OPENWEATHER_API_KEY) {
+    throw new Error('OPENWEATHER_API_KEY not configured');
+  }
+
+  const url = `${OPENWEATHER_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=imperial&appid=${OPENWEATHER_API_KEY}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Forecast API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  return data.list.slice(0, 24).map((item: Record<string, unknown>) => ({
+    time: new Date((item.dt as number) * 1000).toISOString(),
+    temp: (item.main as { temp: number })?.temp || 0,
+    condition: ((item.weather as Array<{ main?: string }>)?.[0]?.main) || 'Unknown',
+    icon: ((item.weather as Array<{ icon?: string }>)?.[0]?.icon) || '01d',
+    precipitation: (item.pop as number) || 0,
+    windSpeed: (item.wind as { speed: number })?.speed || 0,
+    humidity: (item.main as { humidity: number })?.humidity || 0,
+  }));
+}
+
+/**
+ * Get air quality data
+ */
+export async function getAirQuality(lat: number, lon: number): Promise<AirQualityData | null> {
+  if (!OPENWEATHER_API_KEY) {
+    throw new Error('OPENWEATHER_API_KEY not configured');
+  }
+
+  try {
+    const url = `${OPENWEATHER_AQI_URL}?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.list || !data.list[0]) {
+      return null;
+    }
+
+    const aqi = data.list[0];
+    return {
+      aqi: aqi.main.aqi * 50,
+      category: getAQICategory(aqi.main.aqi),
+      pm25: aqi.components.pm2_5 || 0,
+      pm10: aqi.components.pm10 || 0,
+      o3: aqi.components.o3 || 0,
+      no2: aqi.components.no2 || 0,
+      co: aqi.components.co || 0,
+      so2: aqi.components.so2 || 0,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -17,6 +17,7 @@ import {
 } from '@/lib/mcp/tools/google';
 import { mcpClient } from '@/lib/mcp/client';
 import { defaultTools } from '../tools/default-tools';
+import { logger } from '@/lib/logger';
 import type { Tool, OpenAITool } from '../types';
 
 /**
@@ -331,7 +332,7 @@ export async function initializeSecretaryAgent() {
       mcpTools,
     };
   } catch (error) {
-    console.error('Error initializing secretary agent:', error);
+    logger.error('Error initializing secretary agent', { error });
     return secretaryAgentConfig;
   }
 }

@@ -1,8 +1,8 @@
 /**
  * Notes Components
- * Full-featured note-taking system
+ * Re-exports from QuickNotesWidget/expanded for backwards compatibility
+ * 
+ * @deprecated Import from '@/components/dashboard/widgets/QuickNotesWidget/expanded' instead
  */
 
-export { NotesPanel } from './NotesPanel';
-export { NoteEditor } from './NoteEditor';
-export { RichTextEditor } from './RichTextEditor';
+export { NotesPanel, NoteEditor, RichTextEditor } from '@/components/dashboard/widgets/QuickNotesWidget/expanded';

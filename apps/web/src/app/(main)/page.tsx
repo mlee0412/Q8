@@ -6,7 +6,6 @@ import { BentoGrid, BentoItem } from '@/components/dashboard/BentoGrid';
 import {
   StatusWidget,
   WeatherWidget,
-  SpotifyWidget,
   ContentHubWidget,
   GitHubPRWidget,
   TaskWidget,

@@ -4,12 +4,9 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
-  Bot,
   User,
-  Code2,
   Check,
   Copy,
-  Home,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MessageActions } from './MessageActions';
@@ -18,6 +15,7 @@ import type { Components } from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { ExtraProps } from 'react-markdown';
+import { getAgentDisplayConfig, type AgentRole } from '@/lib/agents/display-config';
 
 /**
  * Props for the code component in ReactMarkdown
@@ -28,14 +26,7 @@ interface CodeComponentProps extends React.HTMLAttributes<HTMLElement>, ExtraPro
   children?: React.ReactNode;
 }
 
-type AgentRole =
-  | 'orchestrator'
-  | 'coder'
-  | 'researcher'
-  | 'secretary'
-  | 'personality'
-  | 'home'
-  | 'user';
+// AgentRole is now imported from display-config
 
 interface ChatMessageProps {
   /**
@@ -316,54 +307,9 @@ export function ChatMessage({
 
 ChatMessage.displayName = 'ChatMessage';
 
-// Helper: Get agent configuration
+// Helper: Get agent configuration - uses centralized display config
 function getAgentConfig(role: AgentRole) {
-  const configs = {
-    orchestrator: {
-      name: 'Q8 Orchestrator',
-      icon: Bot,
-      iconColor: 'text-neon-primary',
-      bgColor: 'bg-neon-primary/20',
-    },
-    coder: {
-      name: 'DevBot',
-      icon: Code2,
-      iconColor: 'text-blue-500',
-      bgColor: 'bg-blue-500/20',
-    },
-    researcher: {
-      name: 'Research Agent',
-      icon: Bot,
-      iconColor: 'text-purple-500',
-      bgColor: 'bg-purple-500/20',
-    },
-    secretary: {
-      name: 'Secretary',
-      icon: Bot,
-      iconColor: 'text-green-500',
-      bgColor: 'bg-green-500/20',
-    },
-    personality: {
-      name: 'Grok',
-      icon: Bot,
-      iconColor: 'text-orange-500',
-      bgColor: 'bg-orange-500/20',
-    },
-    home: {
-      name: 'HomeBot',
-      icon: Home,
-      iconColor: 'text-cyan-500',
-      bgColor: 'bg-cyan-500/20',
-    },
-    user: {
-      name: 'You',
-      icon: User,
-      iconColor: 'text-neon-primary',
-      bgColor: 'bg-neon-primary/20',
-    },
-  };
-
-  return configs[role];
+  return getAgentDisplayConfig(role);
 }
 
 // Helper: Format timestamp

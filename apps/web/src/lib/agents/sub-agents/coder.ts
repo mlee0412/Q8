@@ -13,16 +13,16 @@ import {
   createPR,
   listPRs,
   triggerWorkflow,
-  GITHUB_MCP_URL,
 } from '@/lib/mcp/tools/github';
 import {
   initSupabaseTools,
   runSQL,
   getSchema,
   vectorSearch,
-  SUPABASE_MCP_URL,
 } from '@/lib/mcp/tools/supabase';
 import { mcpClient } from '@/lib/mcp/client';
+import { MCP_CONFIG } from '@/lib/mcp/config';
+import { logger } from '@/lib/logger';
 import type { Tool, OpenAITool } from '../types';
 
 /**
@@ -291,7 +291,7 @@ export async function initializeCoderAgent() {
       mcpTools: [...githubMcpTools, ...supabaseMcpTools],
     };
   } catch (error) {
-    console.error('Error initializing coder agent:', error);
+    logger.error('Error initializing coder agent', { error });
     return coderAgentConfig;
   }
 }
@@ -395,7 +395,7 @@ export async function executeCoderTool(
 
     // Check if it's an MCP connection error
     if (errorMessage.includes('Failed to fetch') || errorMessage.includes('not found in any registered server')) {
-      const serverUrl = toolName.startsWith('github_') ? GITHUB_MCP_URL : SUPABASE_MCP_URL;
+      const serverUrl = toolName.startsWith('github_') ? MCP_CONFIG.github.url() : MCP_CONFIG.supabase.url();
       return {
         success: false,
         message: `MCP server not available. Please ensure the server is running at ${serverUrl}.`,

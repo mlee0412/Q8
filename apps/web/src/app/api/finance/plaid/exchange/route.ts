@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Configuration, PlaidApi, PlaidEnvironments } from 'plaid';
-import { createClient } from '@supabase/supabase-js';
 import { encrypt } from '@/lib/utils/encryption';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth/api-auth';
 import { plaidExchangeSchema, validationErrorResponse } from '@/lib/validations';
-import { getServerEnv, clientEnv, integrations } from '@/lib/env';
+import { integrations } from '@/lib/env';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 /**
  * Type guard for Plaid API errors with response data
@@ -26,10 +26,6 @@ function isPlaidApiError(error: unknown): error is PlaidApiError {
     ('response' in error || 'message' in error)
   );
 }
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  getServerEnv().SUPABASE_SERVICE_ROLE_KEY
-);
 // Initialize Plaid client
 const configuration = new Configuration({
   basePath: PlaidEnvironments[integrations.plaid.env as keyof typeof PlaidEnvironments],

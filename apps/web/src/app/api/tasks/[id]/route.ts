@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import {
   getAuthenticatedUser,
   unauthorizedResponse,
   forbiddenResponse,
 } from '@/lib/auth/api-auth';
 import { updateTaskSchema, validationErrorResponse } from '@/lib/validations';
-import { getServerEnv, clientEnv } from '@/lib/env';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
-
-const supabase = createClient(
-  clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-  getServerEnv().SUPABASE_SERVICE_ROLE_KEY
-);
 
 interface RouteParams {
   params: Promise<{ id: string }>;

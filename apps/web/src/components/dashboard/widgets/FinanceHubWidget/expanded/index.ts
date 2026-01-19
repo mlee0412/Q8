@@ -3,12 +3,13 @@
  */
 
 export { AddTransactionForm } from './AddTransactionForm';
-export { RecurringManager } from './RecurringManager';
 export { UnifiedLedger } from './UnifiedLedger';
+export { RecurringManager } from './RecurringManager';
 export { WealthSimulator } from './WealthSimulator';
 export { SpendingBreakdown } from './SpendingBreakdown';
 export { AIInsights } from './AIInsights';
+export { CashFlowChart } from './CashFlowChart';
 export { AccountBalancesCard } from './AccountBalancesCard';
 export { TransactionCategoryModal } from './TransactionCategoryModal';
-export { CashFlowChart } from './CashFlowChart';
 export { DebtManagementPanel } from './DebtManagementPanel';
+export { FinanceCommandCenter } from './FinanceCommandCenter';

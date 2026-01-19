@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useContentHubStore } from '@/lib/stores/contenthub';
+import { logger } from '@/lib/logger';
 
 interface ColorThemeResult {
   gradientStyle: React.CSSProperties;
@@ -65,7 +66,7 @@ export function useColorTheme(imageUrl: string | null): ColorThemeResult {
       const ColorThiefModule = await import('colorthief').catch(() => null);
 
       if (!ColorThiefModule) {
-        console.warn('ColorThief not available, using fallback colors');
+        logger.warn('ColorThief not available, using fallback colors');
         setFallbackGradient();
         return;
       }
@@ -104,7 +105,7 @@ export function useColorTheme(imageUrl: string | null): ColorThemeResult {
             `.trim(),
           });
         } catch (error) {
-          console.warn('Failed to extract colors, using fallback:', error);
+          logger.warn('Failed to extract colors, using fallback', { imageUrl, error });
           setFallbackGradient();
         } finally {
           setIsLoading(false);
@@ -112,11 +113,11 @@ export function useColorTheme(imageUrl: string | null): ColorThemeResult {
       };
 
       img.onerror = () => {
-        console.warn('Failed to load image, using fallback colors');
+        logger.warn('Failed to load image, using fallback colors', { imageUrl });
         setFallbackGradient();
       };
     } catch (error) {
-      console.warn('ColorThief error, using fallback:', error);
+      logger.warn('ColorThief error, using fallback', { imageUrl, error });
       setFallbackGradient();
     }
   }, [imageUrl, setDominantColor]);

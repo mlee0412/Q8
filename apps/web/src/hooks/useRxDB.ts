@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getDatabase, type Q8Database } from '@/lib/db';
 import type { RxCollection, RxQuery, RxDocument } from 'rxdb';
+import { logger } from '@/lib/logger';
 
 /**
  * Hook to access RxDB database
@@ -60,7 +61,7 @@ export function useRxQuery<T>(
 
     // If database failed to initialize, show empty state
     if (dbError || !db) {
-      console.error('RxDB initialization error:', dbError);
+      logger.error('RxDB initialization error', { error: dbError });
       setData([]);
       setIsLoading(false);
       return;
@@ -75,7 +76,7 @@ export function useRxQuery<T>(
 
         const collection = db[collectionName] as RxCollection<T>;
         if (!collection) {
-          console.warn(`Collection ${collectionName} not found in database`);
+          logger.warn('Collection not found in database', { collectionName });
           if (mounted) {
             setData([]);
             setIsLoading(false);
@@ -94,7 +95,7 @@ export function useRxQuery<T>(
             }
           },
           error: (err) => {
-            console.error(`RxDB query error for ${collectionName}:`, err);
+            logger.error('RxDB query error', { collectionName, error: err });
             if (mounted) {
               setData([]);
               setIsLoading(false);
@@ -102,7 +103,7 @@ export function useRxQuery<T>(
           },
         });
       } catch (error) {
-        console.error(`Error subscribing to ${collectionName}:`, error);
+        logger.error('Error subscribing to collection', { collectionName, error });
         if (mounted) {
           setData([]);
           setIsLoading(false);

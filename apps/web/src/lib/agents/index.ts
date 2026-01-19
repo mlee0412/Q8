@@ -13,6 +13,7 @@ import { initializeHomeAgent } from './sub-agents/home';
 import { addMessage, getConversationHistory } from './conversation-store';
 import { buildDeviceSummary } from './home-context';
 import { homeAssistantTools, executeHomeAssistantTool } from './home-tools';
+import { logger } from '@/lib/logger';
 import type { AgentContext, AgentMessage, AgentResponse, EnrichedContext } from './types';
 import { buildContextSummary, getGreeting } from './context-provider';
 import { buildMemoryContext, addConversationEntry } from '@/lib/memory';
@@ -166,7 +167,7 @@ export async function processMessage(
       },
     };
   } catch (error) {
-    console.error('Agent orchestration error:', error);
+    logger.error('Agent orchestration error', { sessionId: context.sessionId, error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return {

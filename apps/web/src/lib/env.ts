@@ -69,6 +69,20 @@ const serverOnlyEnvSchema = z.object({
   SNAPTRADE_CLIENT_ID: z.string().optional(),
   SNAPTRADE_CONSUMER_KEY: z.string().optional(),
 
+  // Upstash Redis (Rate Limiting)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  RATE_LIMIT_ENABLED: z
+    .string()
+    .optional()
+    .transform((val) => val !== 'false'),
+
+  // MCP Server URLs
+  GITHUB_MCP_URL: z.string().url().optional(),
+  GOOGLE_MCP_URL: z.string().url().optional(),
+  SUPABASE_MCP_URL: z.string().url().optional(),
+  HOME_ASSISTANT_MCP_URL: z.string().url().optional(),
+
   // Vercel (Auto-populated in deployment)
   VERCEL_URL: z.string().optional(),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface UserProfileProps {

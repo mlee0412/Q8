@@ -4,19 +4,14 @@
  */
 
 import { mcpClient } from '../client';
-
-export const HOME_ASSISTANT_URL = process.env.HASS_URL || 'http://homeassistant.local:8123';
-export const HOME_ASSISTANT_TOKEN = process.env.HASS_TOKEN;
+import { MCP_CONFIG } from '../config';
 
 /**
  * Initialize Home Assistant MCP tools
  * Uses the home-assistant MCP server
  */
 export async function initHomeAssistantTools() {
-  // The home-assistant MCP server should be running and configured
-  // It connects to HA using HASS_URL and HASS_TOKEN env vars
-  const mcpUrl = process.env.HOME_ASSISTANT_MCP_URL || 'http://localhost:3004';
-  await mcpClient.registerServer('home-assistant', mcpUrl);
+  await mcpClient.registerServer('home-assistant', MCP_CONFIG.homeAssistant.url());
   return mcpClient.getServerTools('home-assistant');
 }
 
@@ -24,10 +19,10 @@ export async function initHomeAssistantTools() {
  * Direct Home Assistant API client (fallback if MCP not available)
  */
 async function callHomeAssistantAPI(endpoint: string, method: string = 'GET', body?: unknown) {
-  const response = await fetch(`${HOME_ASSISTANT_URL}/api${endpoint}`, {
+  const response = await fetch(`${MCP_CONFIG.homeAssistant.apiUrl}/api${endpoint}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${HOME_ASSISTANT_TOKEN}`,
+      'Authorization': `Bearer ${MCP_CONFIG.homeAssistant.token}`,
       'Content-Type': 'application/json',
     },
     body: body ? JSON.stringify(body) : undefined,

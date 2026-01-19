@@ -4,6 +4,7 @@
  */
 
 import type { Q8Database } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export interface PullOptions {
   lastPulledAt?: string;
@@ -50,7 +51,7 @@ export async function pullChanges(
       newCheckpoint: checkpoint,
     };
   } catch (error) {
-    console.error(`Pull sync error for ${collectionName}:`, error);
+    logger.error('Pull sync error', { module: 'sync-pull', collectionName, error });
     throw error;
   }
 }
@@ -59,7 +60,8 @@ export async function pullChanges(
  * Pull changes for all collections
  */
 export async function pullAllCollections(db: Q8Database, options: PullOptions = {}) {
-  const collections = ['chat_messages', 'user_preferences', 'devices', 'knowledge_base', 'github_prs'];
+  const { SYNCABLE_COLLECTIONS } = await import('./constants');
+  const collections = [...SYNCABLE_COLLECTIONS];
 
   const results = await Promise.allSettled(
     collections.map((name) => pullChanges(db, name, options))

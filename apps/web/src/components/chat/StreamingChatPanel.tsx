@@ -9,6 +9,7 @@ import { StreamingMessage } from './StreamingMessage';
 import { ChatInput } from './ChatInput';
 import { AgentHandoff, AgentBadge } from './AgentHandoff';
 import { Button } from '../ui/button';
+import { logger } from '@/lib/logger';
 
 export interface StreamingChatPanelRef {
   sendMessage: (message: string) => void;
@@ -99,22 +100,22 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
     threadId,
     userProfile,
     onRouting: (agent, reason) => {
-      console.log(`[Chat] Routing to ${agent}: ${reason}`);
+      logger.info('Chat routing to agent', { agent, reason });
     },
     onToolExecution: (tool) => {
-      console.log(`[Chat] Tool executed: ${tool.tool}`, tool.status);
+      logger.debug('Tool executed', { tool: tool.tool, status: tool.status });
     },
     onThreadCreated: (newThreadId) => {
-      console.log(`[Chat] Thread created: ${newThreadId}`);
+      logger.info('Thread created', { threadId: newThreadId });
       onThreadCreated?.(newThreadId);
     },
     onMemoryExtracted: (count) => {
       if (count > 0) {
-        console.log(`[Chat] ${count} memories extracted`);
+        logger.debug('Memories extracted', { count });
       }
     },
     onError: (error) => {
-      console.error('[Chat] Error:', error);
+      logger.error('Chat error', { error });
     },
   });
 

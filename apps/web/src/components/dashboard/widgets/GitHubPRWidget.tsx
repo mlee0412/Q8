@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 interface GitHubPR {
   id: string;
@@ -110,15 +111,20 @@ export function GitHubPRWidget({
         params.set('repo', repository);
       }
 
-      const response = await fetch(`/api/github?${params}`);
+      const response = await fetch(`/api/github?${params}`, {
+        credentials: 'include',
+      });
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Not authenticated');
+        }
         throw new Error('Failed to fetch PRs');
       }
 
       const data = await response.json();
       setPrs((data.prs || []).slice(0, maxItems));
     } catch (err) {
-      console.error('GitHub fetch error:', err);
+      logger.error('GitHub fetch error', { error: err });
       setError(err instanceof Error ? err.message : 'Failed to load PRs');
     } finally {
       setIsLoading(false);

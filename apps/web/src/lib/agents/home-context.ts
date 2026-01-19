@@ -3,6 +3,8 @@
  * Fetches and caches device/entity information from Home Assistant
  */
 
+import { logger } from '@/lib/logger';
+
 const HOME_ASSISTANT_URL = process.env.HASS_URL || 'http://homeassistant.local:8123';
 const HOME_ASSISTANT_TOKEN = process.env.HASS_TOKEN;
 
@@ -35,7 +37,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 async function fetchEntities(): Promise<HAEntity[]> {
   if (!HOME_ASSISTANT_TOKEN) {
-    console.warn('HASS_TOKEN not configured');
+    logger.warn('HASS_TOKEN not configured');
     return [];
   }
 
@@ -53,7 +55,7 @@ async function fetchEntities(): Promise<HAEntity[]> {
 
     return response.json();
   } catch (error) {
-    console.error('Error fetching HA entities:', error);
+    logger.error('Error fetching HA entities', { url: HOME_ASSISTANT_URL, error });
     return [];
   }
 }
@@ -71,7 +73,7 @@ async function fetchAreas(): Promise<HAArea[]> {
     // Fallback: return empty and let entities provide context
     return [];
   } catch (error) {
-    console.error('Error fetching HA areas:', error);
+    logger.error('Error fetching HA areas', { error });
     return [];
   }
 }

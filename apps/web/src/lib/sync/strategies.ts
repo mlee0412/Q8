@@ -13,6 +13,7 @@ import type {
   CollectionSyncConfig,
 } from './types';
 import { createSyncError, getOrCreateDeviceId } from './types';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // STRATEGY INTERFACE
@@ -334,13 +335,14 @@ export function logConflict<T extends SyncMetadata>(
     conflictLogs.pop();
   }
 
-  // Log to console in development
+  // Log in development
   if (process.env.NODE_ENV === 'development') {
-    console.log('[Sync] Conflict resolved:', {
+    logger.debug('Conflict resolved', {
+      module: 'sync-strategies',
       collection,
       strategy: resolution.strategy,
-      winner: resolution.winner.id,
-      loser: resolution.loser?.id,
+      winnerId: resolution.winner.id,
+      loserId: resolution.loser?.id,
     });
   }
 }
