@@ -7,6 +7,7 @@ import { createRxDatabase, addRxPlugin, RxDatabase, RxCollection } from 'rxdb';
 import { getRxStorageDexie } from 'rxdb/plugins/storage-dexie';
 import { RxDBDevModePlugin } from 'rxdb/plugins/dev-mode';
 import { RxDBQueryBuilderPlugin } from 'rxdb/plugins/query-builder';
+import { RxDBMigrationSchemaPlugin } from 'rxdb/plugins/migration-schema';
 import {
   usersSchema,
   chatMessageSchema,
@@ -20,6 +21,7 @@ import {
 
 // Add essential plugins
 addRxPlugin(RxDBQueryBuilderPlugin);
+addRxPlugin(RxDBMigrationSchemaPlugin);
 
 // Add dev mode plugin in development
 if (process.env.NODE_ENV === 'development') {
@@ -56,6 +58,7 @@ export async function initDatabase() {
     name: 'q8_db',
     storage: getRxStorageDexie(),
     multiInstance: false,
+    ignoreDuplicate: true,
   }).then(async (db) => {
     // Create collections
     await db.addCollections({
@@ -82,6 +85,12 @@ export async function initDatabase() {
       },
       tasks: {
         schema: taskSchema,
+        migrationStrategies: {
+          // Migration strategies: no data changes needed, just schema fixes
+          1: (oldDoc) => oldDoc,
+          2: (oldDoc) => oldDoc,
+          3: (oldDoc) => oldDoc,
+        },
       },
     });
 

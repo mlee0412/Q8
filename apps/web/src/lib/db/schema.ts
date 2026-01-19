@@ -398,19 +398,26 @@ export const calendarEventSchema: RxJsonSchema<{
 };
 
 /**
- * Tasks Schema
+ * Tasks Schema - Enhanced for Kanban board task management
  */
 export const taskSchema: RxJsonSchema<{
   id: string;
   userId: string;
-  text: string;
-  completed: boolean;
-  priority: 'low' | 'medium' | 'high';
-  due_date?: string;
-  created_at: string;
+  title: string;
+  description?: string;
+  status: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  dueDate?: string;
+  tags?: string[];
+  projectId?: string;
+  parentTaskId?: string;
+  sortOrder: number;
+  estimatedMinutes?: number;
+  completedAt?: string;
+  createdAt: string;
   updatedAt: string;
 }> = {
-  version: 0,
+  version: 3,
   primaryKey: 'id',
   type: 'object',
   properties: {
@@ -422,25 +429,63 @@ export const taskSchema: RxJsonSchema<{
       type: 'string',
       maxLength: 100,
     },
-    text: {
+    title: {
       type: 'string',
-      maxLength: 1000,
+      maxLength: 500,
     },
-    completed: {
-      type: 'boolean',
-      default: false,
+    description: {
+      type: 'string',
+      maxLength: 5000,
+    },
+    status: {
+      type: 'string',
+      enum: ['backlog', 'todo', 'in_progress', 'review', 'done'],
+      default: 'todo',
+      maxLength: 20,
     },
     priority: {
       type: 'string',
-      enum: ['low', 'medium', 'high'],
+      enum: ['low', 'medium', 'high', 'urgent'],
       default: 'medium',
+      maxLength: 10,
     },
-    due_date: {
+    dueDate: {
       type: 'string',
       format: 'date-time',
       maxLength: 50,
     },
-    created_at: {
+    tags: {
+      type: 'array',
+      items: {
+        type: 'string',
+        maxLength: 50,
+      },
+      maxItems: 10,
+    },
+    projectId: {
+      type: 'string',
+      maxLength: 100,
+    },
+    parentTaskId: {
+      type: 'string',
+      maxLength: 100,
+    },
+    sortOrder: {
+      type: 'number',
+      default: 0,
+      minimum: -9999999,
+      maximum: 9999999,
+      multipleOf: 1,
+    },
+    estimatedMinutes: {
+      type: 'number',
+    },
+    completedAt: {
+      type: 'string',
+      format: 'date-time',
+      maxLength: 50,
+    },
+    createdAt: {
       type: 'string',
       format: 'date-time',
       maxLength: 50,
@@ -451,6 +496,6 @@ export const taskSchema: RxJsonSchema<{
       maxLength: 50,
     },
   },
-  required: ['id', 'userId', 'text', 'completed', 'priority', 'created_at', 'updatedAt'],
-  indexes: ['userId', 'completed', 'created_at'],
+  required: ['id', 'userId', 'title', 'status', 'priority', 'sortOrder', 'createdAt', 'updatedAt'],
+  indexes: ['userId', 'status', 'priority', 'dueDate', 'projectId', 'parentTaskId', 'sortOrder'],
 };

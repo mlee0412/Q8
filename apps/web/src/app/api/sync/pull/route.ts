@@ -192,11 +192,20 @@ function transformToCamelCase(
     case 'tasks':
       return {
         ...base,
+        title: doc.title,
+        description: doc.description,
         text: doc.text,
-        completed: doc.completed,
-        priority: doc.priority,
-        due_date: doc.due_date,
-        created_at: doc.created_at,
+        status: doc.status || 'todo',
+        completed: doc.completed || false,
+        priority: doc.priority || 'medium',
+        dueDate: doc.due_date,
+        tags: doc.tags || [],
+        projectId: doc.project_id,
+        parentTaskId: doc.parent_task_id,
+        sortOrder: doc.sort_order || 0,
+        estimatedMinutes: doc.estimated_minutes,
+        completedAt: doc.completed_at,
+        createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       };
 

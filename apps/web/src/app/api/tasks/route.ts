@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
       tags: task.tags,
       projectId: task.project_id,
       parentTaskId: task.parent_task_id,
+      sortOrder: task.sort_order,
+      estimatedMinutes: task.estimated_minutes,
       completedAt: task.completed_at,
       createdAt: task.created_at,
       updatedAt: task.updated_at,
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse(result.error);
     }
 
-    const { title, description, dueDate, priority, status, tags, projectId, parentTaskId } = result.data;
+    const { title, description, dueDate, priority, status, tags, projectId, parentTaskId, sortOrder, estimatedMinutes } = result.data;
 
     const { data, error } = await supabase
       .from('tasks')
@@ -130,6 +132,8 @@ export async function POST(request: NextRequest) {
         tags,
         project_id: projectId,
         parent_task_id: parentTaskId,
+        sort_order: sortOrder,
+        estimated_minutes: estimatedMinutes,
       })
       .select()
       .single();
@@ -150,6 +154,8 @@ export async function POST(request: NextRequest) {
       tags: data.tags,
       projectId: data.project_id,
       parentTaskId: data.parent_task_id,
+      sortOrder: data.sort_order,
+      estimatedMinutes: data.estimated_minutes,
       completedAt: data.completed_at,
       createdAt: data.created_at,
       updatedAt: data.updated_at,

@@ -2,11 +2,26 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useFinanceHubStore } from '@/lib/stores/financehub';
-import type { FinanceAccount, FinanceTransaction } from '@/types/finance';
+import type { FinanceAccount, FinanceTransaction, RecurringItem, FinanceSnapshot } from '@/types/finance';
 import { categorizeTransaction } from '@/types/finance';
 import type { PlaidLinkOnSuccessMetadata } from 'react-plaid-link';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Safely parse JSON from a response, returning null if it fails
+ */
+async function safeJsonParse<T>(response: Response): Promise<T | null> {
+  try {
+    const text = await response.text();
+    if (!text || text.startsWith('<!DOCTYPE') || text.startsWith('<html')) {
+      return null;
+    }
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Create a content-based key for a transaction
@@ -114,28 +129,36 @@ export function useFinanceHub() {
       ]);
 
       if (accountsRes.ok) {
-        const accountsData = await accountsRes.json();
-        setAccounts(Array.isArray(accountsData) ? accountsData : []);
+        const accountsData = await safeJsonParse<FinanceAccount[]>(accountsRes);
+        if (accountsData) {
+          setAccounts(Array.isArray(accountsData) ? accountsData : []);
+        }
       }
 
       if (transactionsRes.ok) {
-        const txData = await transactionsRes.json();
-        const rawTransactions = txData.transactions || [];
-        // Apply auto-categorization to uncategorized transactions
-        const processedTransactions = processTransactionsWithCategories(rawTransactions);
-        setTransactions(processedTransactions);
+        const txData = await safeJsonParse<{ transactions?: FinanceTransaction[] }>(transactionsRes);
+        if (txData) {
+          const rawTransactions = txData.transactions || [];
+          // Apply auto-categorization to uncategorized transactions
+          const processedTransactions = processTransactionsWithCategories(rawTransactions);
+          setTransactions(processedTransactions);
+        }
       }
 
       if (recurringRes.ok) {
-        const recurringData = await recurringRes.json();
-        setRecurring(Array.isArray(recurringData) ? recurringData : []);
+        const recurringData = await safeJsonParse<RecurringItem[]>(recurringRes);
+        if (recurringData) {
+          setRecurring(Array.isArray(recurringData) ? recurringData : []);
+        }
       }
 
       // Fetch snapshots for the last 30 days
       const snapshotsRes = await fetch(`/api/finance/snapshots?userId=${userId}&days=30`);
       if (snapshotsRes.ok) {
-        const snapshotsData = await snapshotsRes.json();
-        setSnapshots(Array.isArray(snapshotsData) ? snapshotsData : []);
+        const snapshotsData = await safeJsonParse<FinanceSnapshot[]>(snapshotsRes);
+        if (snapshotsData) {
+          setSnapshots(Array.isArray(snapshotsData) ? snapshotsData : []);
+        }
       }
 
       recalculateTotals();
@@ -367,13 +390,13 @@ export function useFinanceHub() {
         body: JSON.stringify({ userId, dryRun: false }),
       });
 
-      if (!cleanupResponse.ok) {
-        const errorData = await cleanupResponse.json();
-        throw new Error(errorData.error || 'Cleanup failed');
+      let cleanupResult = null;
+      if (cleanupResponse.ok) {
+        cleanupResult = await safeJsonParse<{ deleted?: number }>(cleanupResponse);
+        if (cleanupResult) {
+          console.log('Cleanup result:', cleanupResult);
+        }
       }
-
-      const cleanupResult = await cleanupResponse.json();
-      console.log('Cleanup result:', cleanupResult);
 
       // Fetch fresh data from API
       await fetchFinanceData(userId);

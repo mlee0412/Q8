@@ -1,20 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { useRxQuery, useRxDB } from '@/hooks/useRxDB';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Plus } from 'lucide-react';
+import { CheckSquare, Plus, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logger } from '@/lib/logger';
 import { TaskItem, AddTaskInput, EmptyState } from './components';
+import { useTaskData, useTaskMutations } from './hooks';
+import { TaskCommandCenter } from './expanded';
 import type { Task, TaskWidgetProps } from './types';
 
 /**
  * Task Management Widget
  *
- * Displays quick tasks and reminders with completion tracking
- * and AI-powered task suggestions.
+ * Displays quick tasks and reminders with completion tracking.
+ * Expands into a full Kanban board for detailed task management.
  */
 export function TaskWidget({
   maxItems = 5,
@@ -25,76 +25,42 @@ export function TaskWidget({
 }: TaskWidgetProps) {
   const [newTaskText, setNewTaskText] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const { db } = useRxDB();
-  const { userId } = useAuth();
+  const { tasks, isLoading: isFetching, taskCounts } = useTaskData({
+    filters: showCompleted ? undefined : { status: ['backlog', 'todo', 'in_progress', 'review'] },
+    limit: maxItems,
+    parentTaskId: null,
+  });
 
-  // Fetch tasks from RxDB
-  const { data: tasks, isLoading: isFetching } = useRxQuery<Task>(
-    'tasks',
-    (collection) => {
-      let query = collection.find().where('userId').eq(userId || '');
+  const { createTask, toggleTaskStatus, deleteTask } = useTaskMutations();
 
-      if (!showCompleted) {
-        query = query.where('completed').eq(false);
-      }
-
-      return query.limit(maxItems).sort({ created_at: 'desc' });
-    }
-  );
+  const toggleExpanded = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
 
   const handleAddTask = async () => {
-    if (!newTaskText.trim() || !db || !userId) return;
+    if (!newTaskText.trim()) return;
 
-    try {
-      const now = new Date().toISOString();
-      await db.tasks.insert({
-        id: crypto.randomUUID(),
-        userId,
-        text: newTaskText.trim(),
-        completed: false,
-        priority: 'medium',
-        created_at: now,
-        updatedAt: now,
-      });
+    await createTask({
+      title: newTaskText.trim(),
+      status: 'todo',
+      priority: 'medium',
+    });
 
-      setNewTaskText('');
-      setIsAddingTask(false);
-    } catch (error) {
-      logger.error('Failed to add task', { error });
-    }
+    setNewTaskText('');
+    setIsAddingTask(false);
   };
 
-  const toggleTaskCompletion = async (task: Task) => {
-    if (!db || !userId) return;
-
-    try {
-      const doc = await db.tasks.findOne(task.id).exec();
-      if (doc) {
-        await doc.patch({
-          completed: !task.completed,
-          updatedAt: new Date().toISOString(),
-        });
-      }
-    } catch (error) {
-      logger.error('Failed to toggle task', { error });
-    }
+  const handleToggleTask = async (task: Task) => {
+    await toggleTaskStatus(task);
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    if (!db) return;
-
-    try {
-      const doc = await db.tasks.findOne(taskId).exec();
-      if (doc) {
-        await doc.remove();
-      }
-    } catch (error) {
-      logger.error('Failed to delete task', { error });
-    }
+    await deleteTask(taskId);
   };
 
-  const incompleteTasks = tasks?.filter((t) => !t.completed) || [];
+  const incompleteTasks = tasks?.filter((t) => t.status !== 'done') || [];
 
   const colSpanClasses: Record<number, string> = {
     1: 'col-span-1',
@@ -111,6 +77,7 @@ export function TaskWidget({
   };
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -138,6 +105,13 @@ export function TaskWidget({
             aria-label="Add task"
           >
             <Plus className="h-4 w-4" />
+          </button>
+          <button
+            className="btn-icon btn-icon-sm focus-ring"
+            onClick={toggleExpanded}
+            aria-label="Expand to Kanban board"
+          >
+            <Maximize2 className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -174,13 +148,25 @@ export function TaskWidget({
               key={task.id}
               task={task}
               index={index}
-              onToggle={toggleTaskCompletion}
+              onToggle={handleToggleTask}
               onDelete={handleDeleteTask}
             />
           ))}
         </div>
       )}
     </motion.div>
+
+      {/* Expanded TaskCommandCenter - Portal to body */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {isExpanded && (
+              <TaskCommandCenter onClose={toggleExpanded} />
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+    </>
   );
 }
 

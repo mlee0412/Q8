@@ -56,6 +56,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       tags: data.tags,
       projectId: data.project_id,
       parentTaskId: data.parent_task_id,
+      sortOrder: data.sort_order,
+      estimatedMinutes: data.estimated_minutes,
       completedAt: data.completed_at,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -126,11 +128,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       // Auto-set completedAt when marking as done
       if (updates.status === 'done' && !updates.completedAt) {
         updateData.completed_at = new Date().toISOString();
+      } else if (updates.status !== 'done') {
+        // Clear completedAt when moving away from done
+        updateData.completed_at = null;
       }
     }
     if (updates.tags !== undefined) updateData.tags = updates.tags;
     if (updates.projectId !== undefined) updateData.project_id = updates.projectId;
     if (updates.parentTaskId !== undefined) updateData.parent_task_id = updates.parentTaskId;
+    if (updates.sortOrder !== undefined) updateData.sort_order = updates.sortOrder;
+    if (updates.estimatedMinutes !== undefined) updateData.estimated_minutes = updates.estimatedMinutes;
     if (updates.completedAt !== undefined) updateData.completed_at = updates.completedAt;
 
     const { data, error } = await supabase
@@ -156,6 +163,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       tags: data.tags,
       projectId: data.project_id,
       parentTaskId: data.parent_task_id,
+      sortOrder: data.sort_order,
+      estimatedMinutes: data.estimated_minutes,
       completedAt: data.completed_at,
       createdAt: data.created_at,
       updatedAt: data.updated_at,

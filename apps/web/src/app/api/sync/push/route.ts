@@ -85,6 +85,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    logger.info('[Sync Push] Processing documents', { 
+      collection, 
+      tableName, 
+      documentCount: documents.length,
+      userId: user.id 
+    });
+
     // Transform and upsert each document
     for (const doc of documents) {
       try {
@@ -93,20 +100,35 @@ export async function POST(request: NextRequest) {
         transformedDoc.user_id = user.id;
         transformedDoc.updated_at = new Date().toISOString();
 
+        logger.debug('[Sync Push] Upserting document', { 
+          tableName, 
+          docId: doc.id,
+          transformedDoc 
+        });
+
         const { error } = await supabaseAdmin
           .from(tableName)
           .upsert(transformedDoc, { onConflict: 'id' });
 
         if (error) {
-          // Skip column errors silently - schema mismatch
-          if (error.code === '42703') {
-            logger.warn('[Sync Push] Schema mismatch, skipping doc', { tableName, docId: doc.id });
-          }
+          logger.error('[Sync Push] Upsert error', { 
+            tableName, 
+            docId: doc.id, 
+            error: error.message,
+            code: error.code,
+            details: error.details
+          });
           errors.push({ id: doc.id as string, error: error.message });
         } else {
+          logger.info('[Sync Push] Document upserted successfully', { tableName, docId: doc.id });
           success.push(doc.id as string);
         }
       } catch (err) {
+        logger.error('[Sync Push] Exception during upsert', { 
+          tableName, 
+          docId: doc.id, 
+          error: err 
+        });
         errors.push({
           id: doc.id as string,
           error: err instanceof Error ? err.message : 'Unknown error',
@@ -208,11 +230,20 @@ function transformToSnakeCase(
     case 'tasks':
       return {
         ...base,
-        text: doc.text,
-        completed: doc.completed,
-        priority: doc.priority,
-        due_date: doc.due_date,
-        created_at: doc.created_at || new Date().toISOString(),
+        title: doc.title,
+        description: doc.description || null,
+        text: doc.text || doc.title,
+        status: doc.status || 'todo',
+        completed: doc.status === 'done' || doc.completed || false,
+        priority: doc.priority || 'medium',
+        due_date: doc.dueDate || doc.due_date || null,
+        tags: doc.tags || [],
+        project_id: doc.projectId || doc.project_id || null,
+        parent_task_id: doc.parentTaskId || doc.parent_task_id || null,
+        sort_order: doc.sortOrder || doc.sort_order || 0,
+        estimated_minutes: doc.estimatedMinutes || doc.estimated_minutes || null,
+        completed_at: doc.completedAt || doc.completed_at || null,
+        created_at: doc.createdAt || doc.created_at || new Date().toISOString(),
       };
 
     default:
