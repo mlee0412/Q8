@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Calendar, DollarSign, Tag, Building2, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFinanceHubStore, useFinanceAccounts } from '@/lib/stores/financehub';
@@ -160,7 +161,11 @@ export function AddTransactionForm({
           body: JSON.stringify(transactionData),
         }).catch((syncErr) => {
           // Log but don't fail - local state is already updated
-          console.error('Failed to sync transaction to API:', syncErr);
+          logger.error('Failed to sync transaction to API', {
+            error: syncErr,
+            transactionId: transactionData.id,
+            userId
+          });
         });
       }
 

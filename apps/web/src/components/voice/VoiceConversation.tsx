@@ -2,10 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  X, 
-  Mic, 
-  Volume2, 
+import {
+  X,
+  Mic,
+  Volume2,
   VolumeX,
   Settings,
   MessageSquare,
@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useVoice, type Voice } from '@/hooks/useVoice';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/button';
+import { logger } from '@/lib/logger';
 
 interface VoiceConversationProps {
   /**
@@ -88,7 +89,7 @@ export function VoiceConversation({
     voice: selectedVoice,
     onTranscription: handleTranscription,
     onError: (error) => {
-      console.error('[VoiceConversation] Voice error:', error);
+      logger.error('Voice error in VoiceConversation', { error, component: 'VoiceConversation' });
     },
   });
 

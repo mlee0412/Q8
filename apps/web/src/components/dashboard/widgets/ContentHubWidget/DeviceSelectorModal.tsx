@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 
 export interface SpotifyDevice {
@@ -91,7 +92,7 @@ export function DeviceSelectorModal({
       }
     } catch (err) {
       setError('Failed to fetch devices. Please try again.');
-      console.error('Error fetching devices:', err);
+      logger.error('Error fetching devices', { error: err });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -130,7 +131,7 @@ export function DeviceSelectorModal({
     } catch (err) {
       setError('Failed to transfer playback. Please try again.');
       setSelectedDeviceId(null);
-      console.error('Error selecting device:', err);
+      logger.error('Error selecting device', { error: err, deviceId: device.id, deviceName: device.name });
     }
   };
 

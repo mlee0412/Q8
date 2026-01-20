@@ -15,6 +15,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFinanceHub } from '../hooks/useFinanceHub';
@@ -143,7 +144,7 @@ export function LinkAccountModal({
     onSuccess: onPlaidSuccess,
     onExit: (err) => {
       if (err) {
-        console.error('Plaid Link error:', err);
+        logger.error('Plaid Link error', { error: err, displayMessage: err.display_message });
         setErrorMessage(err.display_message || 'Connection was interrupted');
       }
       setStep('select');

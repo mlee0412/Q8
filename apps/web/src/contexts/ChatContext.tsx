@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useCallback, useRef, type ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 
 interface ChatContextValue {
   /**
@@ -54,7 +55,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
       }
       chatHandlerRef.current(formattedMessage);
     } else {
-      console.warn('[ChatContext] No chat handler registered. Message not sent:', message);
+      logger.warn('No chat handler registered', { component: 'ChatContext', message });
     }
   }, []);
 
@@ -89,6 +90,6 @@ export function useOptionalChatContext() {
 export function useSendToChat() {
   const context = useContext(ChatContext);
   return context?.sendMessage ?? (() => {
-    console.warn('[useSendToChat] No ChatProvider found. Message not sent.');
+    logger.warn('No ChatProvider found', { hook: 'useSendToChat' });
   });
 }

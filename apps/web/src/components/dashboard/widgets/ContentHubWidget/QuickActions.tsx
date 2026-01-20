@@ -13,6 +13,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { useContentHubStore } from '@/lib/stores/contenthub';
 import type { ContentMode } from '@/types/contenthub';
@@ -113,7 +114,7 @@ export function QuickActions({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('Cast button clicked in QuickActions');
+              logger.info('Cast button clicked in QuickActions', { action: 'smartHome' });
               onSmartHome();
             }}
           >

@@ -13,6 +13,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { clientEnv } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   // Handle OAuth/magic link errors
   if (error) {
-    console.error('[Auth Callback] Error:', error, errorDescription);
+    logger.error('Auth callback error', { error, errorDescription, route: 'auth/callback' });
     const errorMessage = encodeURIComponent(errorDescription || error);
     return NextResponse.redirect(`${origin}/login?error=${errorMessage}`);
   }
@@ -71,11 +72,11 @@ export async function GET(request: NextRequest) {
       // Successfully authenticated - redirect to intended destination
       // Default to dashboard (/) if no specific redirect
       const redirectPath = next === '/' ? '/' : next;
-      console.log('[Auth Callback] Success, redirecting to:', redirectPath);
+      logger.info('Auth callback success', { redirectPath, route: 'auth/callback' });
       return NextResponse.redirect(`${origin}${redirectPath}`);
     }
 
-    console.error('[Auth Callback] Code exchange error:', exchangeError);
+    logger.error('Auth code exchange error', { error: exchangeError, route: 'auth/callback' });
     const errorMessage = encodeURIComponent(exchangeError.message);
     return NextResponse.redirect(`${origin}/login?error=${errorMessage}`);
   }

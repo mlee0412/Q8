@@ -22,7 +22,7 @@ export function RxDBProvider({ children }: RxDBProviderProps) {
           setDb(database);
         }
       } catch (error) {
-        console.error('Failed to initialize RxDB:', error);
+        logger.error('Failed to initialize RxDB', { error });
       }
     }
 

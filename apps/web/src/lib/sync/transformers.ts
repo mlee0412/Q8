@@ -4,6 +4,8 @@
  * Ensures seamless real-time sync between local and remote databases
  */
 
+import { logger } from '@/lib/logger';
+
 /**
  * Convert camelCase to snake_case
  */
@@ -181,7 +183,7 @@ export function transformForPull<T extends Record<string, unknown>>(
 
     // Ensure required RxDB fields exist
     if (!transformed.id && transformed.id !== '') {
-      console.warn(`Document missing id field in collection ${collectionName}`);
+      logger.warn('Document missing id field', { collectionName, service: 'sync-transformers' });
     }
 
     return transformed;

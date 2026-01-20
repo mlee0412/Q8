@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useContentHubStore } from '@/lib/stores/contenthub';
@@ -157,7 +158,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
         setError('No recommendations found. Try again later.');
       }
     } catch (err) {
-      console.error('AI Discover error:', err);
+      logger.error('AI Discover error', { error: err });
       setError('Failed to get AI recommendations');
     } finally {
       setAiDiscoverLoading(false);
@@ -251,7 +252,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
 
   // Voice control handler
   const handleVoice = useCallback(() => {
-    console.log('Voice control triggered');
+    logger.debug('Voice control triggered', { component: 'ContentHubWidget' });
   }, []);
 
   // Add to playlist handler

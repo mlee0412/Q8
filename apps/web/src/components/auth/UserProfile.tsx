@@ -122,7 +122,7 @@ export function UserProfile({
       onLogout?.();
       router.push('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      logger.error('Logout failed', { error });
     }
   };
 

@@ -108,7 +108,7 @@ export function ProtectedRoute({
         setIsAuthorized(true);
         setIsLoading(false);
       } catch (error) {
-        console.error('Auth check failed:', error);
+        logger.error('Auth check failed', { error, redirectTo, pathname });
         router.push(redirectTo);
       }
     };

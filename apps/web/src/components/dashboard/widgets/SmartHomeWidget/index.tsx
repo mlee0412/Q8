@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { ENTITIES } from './constants';
 import { LightControlModal } from './modals';
 import { HomeTab, LightsTab, MediaTab, ClimateTab } from './tabs';
@@ -100,13 +101,13 @@ export function SmartHomeWidget({
       });
       const result = await response.json();
       if (!response.ok) {
-        console.error('Service call failed:', result.error);
+        logger.error('Service call failed', { error: result.error, domain, service, entityId });
         return false;
       }
       setTimeout(fetchStates, 500);
       return true;
     } catch (err) {
-      console.error('Service call failed:', err);
+      logger.error('Service call failed', { error: err, domain, service, entityId });
       return false;
     }
   };

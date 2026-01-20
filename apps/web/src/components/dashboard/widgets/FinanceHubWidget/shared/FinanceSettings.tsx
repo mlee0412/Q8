@@ -13,6 +13,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -99,7 +100,7 @@ export function FinanceSettings({
           return true;
         }
       } catch (error) {
-        console.error('Failed to update cash balance:', error);
+        logger.error('Failed to update cash balance', { error, accountId: cashAccount.id });
       }
     } else {
       // Create new cash account
@@ -122,7 +123,7 @@ export function FinanceSettings({
           return true;
         }
       } catch (error) {
-        console.error('Failed to create cash account:', error);
+        logger.error('Failed to create cash account', { error, userId });
       }
     }
     return false;

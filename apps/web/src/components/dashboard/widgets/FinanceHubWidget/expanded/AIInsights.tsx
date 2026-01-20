@@ -21,6 +21,7 @@ import {
   User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -280,7 +281,7 @@ export function AIInsights({ className }: AIInsightsProps) {
           }
         }
       } catch (err) {
-        console.warn('Could not fetch AI insights:', err);
+        logger.warn('Could not fetch AI insights', { error: err, userId });
         // Continue with local insights only
       }
     }
@@ -347,7 +348,7 @@ export function AIInsights({ className }: AIInsightsProps) {
 
       setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
-      console.error('Chat error:', err);
+      logger.error('Chat error', { error: err, userId, messageContent: userMessage.content });
       setAiError('Failed to get AI response. Using local fallback.');
 
       // Fallback to local response

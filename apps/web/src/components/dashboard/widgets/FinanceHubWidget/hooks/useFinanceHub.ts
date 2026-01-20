@@ -5,6 +5,7 @@ import { useFinanceHubStore } from '@/lib/stores/financehub';
 import type { FinanceAccount, FinanceTransaction, RecurringItem, FinanceSnapshot } from '@/types/finance';
 import { categorizeTransaction } from '@/types/finance';
 import type { PlaidLinkOnSuccessMetadata } from 'react-plaid-link';
+import { logger } from '@/lib/logger';
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -163,7 +164,7 @@ export function useFinanceHub() {
 
       recalculateTotals();
     } catch (err) {
-      console.error('Failed to fetch finance data:', err);
+      logger.error('Failed to fetch finance data', { error: err });
       setError('Failed to load finance data');
     } finally {
       setLoading(false);
@@ -177,7 +178,7 @@ export function useFinanceHub() {
     // Prevent rapid re-syncing
     const now = Date.now();
     if (now - lastSyncRef.current < 30000 && !fullSync) {
-      console.log('Sync skipped - too soon since last sync');
+      logger.debug('Sync skipped - too soon since last sync', { lastSync: lastSyncRef.current, now });
       return;
     }
 
@@ -198,12 +199,12 @@ export function useFinanceHub() {
       }
 
       const result = await response.json();
-      console.log('Sync complete:', result);
+      logger.info('Sync complete', { result });
 
       // Refetch data after sync
       await fetchFinanceData(userId);
     } catch (err) {
-      console.error('Sync error:', err);
+      logger.error('Sync error', { error: err, userId });
       setError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
       setSyncing(false);
@@ -229,13 +230,13 @@ export function useFinanceHub() {
       const data = await response.json();
       
       if (!data.linkToken) {
-        console.warn('Plaid not configured:', data.message);
+        logger.warn('Plaid not configured', { message: data.message });
         return null;
       }
 
       return data.linkToken;
     } catch (err) {
-      console.error('Create link token error:', err);
+      logger.error('Create link token error', { error: err });
       setError(err instanceof Error ? err.message : 'Failed to create link token');
       return null;
     }
@@ -262,13 +263,13 @@ export function useFinanceHub() {
       }
 
       const result = await response.json();
-      console.log('Account linked:', result);
+      logger.info('Account linked', { result });
 
       // Refetch data after linking
       await fetchFinanceData(userId);
       return true;
     } catch (err) {
-      console.error('Exchange token error:', err);
+      logger.error('Exchange token error', { error: err, userId });
       setError(err instanceof Error ? err.message : 'Failed to link account');
       return false;
     }
@@ -296,13 +297,13 @@ export function useFinanceHub() {
       const data = await response.json();
 
       if (!data.redirectUrl) {
-        console.warn('SnapTrade not configured:', data.message);
+        logger.warn('SnapTrade not configured', { message: data.message });
         return null;
       }
 
       return data.redirectUrl;
     } catch (err) {
-      console.error('SnapTrade connect error:', err);
+      logger.error('SnapTrade connect error', { error: err, userId, broker });
       setError(err instanceof Error ? err.message : 'Failed to connect to SnapTrade');
       return null;
     }
@@ -335,7 +336,7 @@ export function useFinanceHub() {
       
       return newAccount;
     } catch (err) {
-      console.error('Add account error:', err);
+      logger.error('Add account error', { error: err, userId, accountData });
       setError(err instanceof Error ? err.message : 'Failed to add account');
       return null;
     }
@@ -380,7 +381,7 @@ export function useFinanceHub() {
       // Clear localStorage cache to remove any stale duplicate data
       if (typeof window !== 'undefined') {
         localStorage.removeItem('financehub-storage');
-        console.log('Cleared financehub localStorage cache');
+        logger.debug('Cleared financehub localStorage cache', { userId });
       }
 
       // Clean up duplicates in the database
@@ -394,7 +395,7 @@ export function useFinanceHub() {
       if (cleanupResponse.ok) {
         cleanupResult = await safeJsonParse<{ deleted?: number }>(cleanupResponse);
         if (cleanupResult) {
-          console.log('Cleanup result:', cleanupResult);
+          logger.info('Cleanup result', { cleanupResult, userId });
         }
       }
 
@@ -403,7 +404,7 @@ export function useFinanceHub() {
 
       return cleanupResult;
     } catch (err) {
-      console.error('Cleanup error:', err);
+      logger.error('Cleanup error', { error: err, userId });
       setError(err instanceof Error ? err.message : 'Cleanup failed');
       return null;
     } finally {

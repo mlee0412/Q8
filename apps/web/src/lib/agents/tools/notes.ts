@@ -4,6 +4,7 @@
  */
 
 import type { ChatCompletionTool } from 'openai/resources/chat/completions';
+import { logger } from '@/lib/logger';
 
 /**
  * OpenAI function definitions for notes tools
@@ -453,7 +454,7 @@ export async function getNoteContextForAgent(
 
     return lines.join('\n');
   } catch (error) {
-    console.error('Failed to get note context:', error);
+    logger.error('Failed to get note context for agent', { error, userId, tool: 'notes' });
     return '';
   }
 }

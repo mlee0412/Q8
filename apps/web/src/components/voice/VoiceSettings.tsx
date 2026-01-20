@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '../ui/button';
 
 interface VoiceSettingsProps {
@@ -214,7 +215,7 @@ export function VoiceSettings({
       setMicrophones(mics);
       setSpeakers(spkrs);
     } catch (error) {
-      console.error('Failed to load audio devices:', error);
+      logger.error('Failed to load audio devices', { error });
     } finally {
       setIsLoadingDevices(false);
     }

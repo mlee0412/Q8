@@ -27,6 +27,7 @@ import { SettingsPanel } from '@/components/settings';
 import { ToastProvider, toast } from '@/components/ui/toast';
 import { AnimatedBackground } from '@/components/shared/AnimatedBackground';
 import { ChatProvider } from '@/contexts/ChatContext';
+import { logger } from '@/lib/logger';
 
 function DashboardContent() {
   // SECURITY: Get userId from authenticated session, not hardcoded
@@ -177,7 +178,7 @@ function DashboardContent() {
                   userId={userId}
                   sessionId="suggestions-session"
                   onSuggestionClick={(action) => {
-                    console.log('Suggestion clicked:', action);
+                    logger.debug('Suggestion clicked', { action });
                   }}
                 />
               </BentoItem>

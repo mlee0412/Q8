@@ -12,6 +12,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFinanceHubStore } from '@/lib/stores/financehub';
@@ -121,7 +122,12 @@ export function TransactionCategoryModal({
         setPreview(data);
       }
     } catch (err) {
-      console.error('Preview error:', err);
+      logger.error('Preview error', {
+        error: err,
+        merchantName: transaction?.merchantName,
+        matchType,
+        userId
+      });
     } finally {
       setIsPreviewLoading(false);
     }

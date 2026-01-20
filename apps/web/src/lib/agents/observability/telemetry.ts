@@ -5,6 +5,7 @@
  */
 
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { logger } from '@/lib/logger';
 import type { ExtendedAgentType, RoutingDecision } from '../orchestration/types';
 
 /**
@@ -195,7 +196,7 @@ class TelemetryCollector {
         }))
       );
     } catch (error) {
-      console.error('[Telemetry] Failed to flush events:', error);
+      logger.error('Failed to flush telemetry events', { error, eventCount: events.length, service: 'telemetry' });
       // Re-add failed events to buffer (with size limit)
       this.buffer = [...events.slice(0, this.maxBufferSize / 2), ...this.buffer];
     }
@@ -209,7 +210,7 @@ class TelemetryCollector {
       clearInterval(this.flushInterval);
       this.flushInterval = null;
     }
-    this.flush().catch(console.error);
+    this.flush().catch((error) => logger.error('Telemetry flush failed on stop', { error, service: 'telemetry' }));
   }
 }
 

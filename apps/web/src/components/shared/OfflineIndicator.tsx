@@ -95,7 +95,9 @@ export function OfflineIndicator({
       // Trigger sync when back online
       const syncEngine = getSyncEngine();
       if (syncEngine) {
-        syncEngine.sync().catch(console.error);
+        syncEngine.sync().catch((error) => {
+          logger.error('Sync failed on reconnection', { error });
+        });
       }
 
       // Auto-dismiss success message
@@ -136,7 +138,7 @@ export function OfflineIndicator({
         await syncEngine.sync();
       }
     } catch (error) {
-      console.error('Sync retry failed:', error);
+      logger.error('Sync retry failed', { error });
     } finally {
       setIsSyncing(false);
     }

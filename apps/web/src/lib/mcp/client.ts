@@ -3,6 +3,8 @@
  * Connects to Model Context Protocol servers for tool integrations
  */
 
+import { logger } from '@/lib/logger';
+
 export interface MCPTool {
   name: string;
   description: string;
@@ -37,7 +39,7 @@ export class MCPClient {
         tools,
       });
     } catch (error) {
-      console.error(`Error registering MCP server ${name}:`, error);
+      logger.error('Error registering MCP server', { error, serverName: name, url, service: 'mcp-client' });
       throw error;
     }
   }

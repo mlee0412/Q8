@@ -107,7 +107,7 @@ export function SettingsPanel({
           }
         }
       } catch (error) {
-        console.error('Failed to load preferences:', error);
+        logger.error('Failed to load preferences', { error, userId });
       }
     };
 
@@ -131,7 +131,7 @@ export function SettingsPanel({
       setSavedPreferences(preferences);
       onPreferencesChange?.(preferences);
     } catch (error) {
-      console.error('Failed to save preferences:', error);
+      logger.error('Failed to save preferences', { error, userId });
     } finally {
       setIsSaving(false);
     }

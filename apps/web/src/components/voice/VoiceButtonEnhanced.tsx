@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, Loader2, AlertCircle, Volume2, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useVoice, type Voice } from '@/hooks/useVoice';
+import { logger } from '@/lib/logger';
 
 interface VoiceButtonEnhancedProps {
   /**
@@ -94,7 +95,7 @@ export function VoiceButtonEnhanced({
       }
     },
     onError: (err) => {
-      console.error('[VoiceButton] Error:', err);
+      logger.error('Voice button error', { error: err, component: 'VoiceButtonEnhanced' });
     },
   });
 

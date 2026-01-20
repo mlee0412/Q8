@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 type VisualizationStyle = 'bars' | 'waveform' | 'circular';
 
@@ -296,7 +297,7 @@ export function AudioVisualizer({
       // Start visualization
       visualize();
     } catch (error) {
-      console.error('Failed to initialize audio visualizer:', error);
+      logger.error('Failed to initialize audio visualizer', { error, style, smoothing });
       cleanup();
     }
 

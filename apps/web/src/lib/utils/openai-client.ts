@@ -4,6 +4,7 @@
  */
 
 import OpenAI from 'openai';
+import { logger } from '@/lib/logger';
 
 interface ClientConfig {
   apiKey?: string;
@@ -109,7 +110,7 @@ class OpenAIClientPool {
     // All clients in use, wait for one to become available
     // In a real implementation, you might want to implement a queue
     // For now, create a temporary client
-    console.warn('[OpenAIClientPool] Pool exhausted, creating temporary client');
+    logger.warn('OpenAI client pool exhausted, creating temporary client', { maxPoolSize: this.maxPoolSize, configKey: key });
     return new OpenAI({
       apiKey: config.apiKey || process.env.OPENAI_API_KEY,
       baseURL: config.baseURL,
