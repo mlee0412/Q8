@@ -30,3 +30,20 @@ export {
   getNoteContextForAgent,
   type NotesToolContext,
 } from './notes';
+
+// Image tools (Nano Banana - Gemini image generation)
+export {
+  imageTools,
+  getImageToolsByCapability,
+  isImageTool,
+} from './image-tools';
+
+export {
+  executeImageTool,
+  type ImageGenerationResult,
+  type ImageAnalysisResult,
+  type DiagramResult,
+} from './image-executor';
+
+// Finance tools
+export { financeTools } from './finance-tools';

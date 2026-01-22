@@ -7,9 +7,10 @@ import type { AgentType } from '../model_factory';
 import type { EnrichedContext } from '../types';
 
 /**
- * Extended agent types including finance advisor
+ * Extended agent types including finance advisor and image generation
+ * Note: AgentType from model_factory now includes 'imagegen'
  */
-export type ExtendedAgentType = AgentType | 'finance';
+export type ExtendedAgentType = AgentType;
 
 /**
  * Routing decision with structured output
@@ -61,12 +62,16 @@ export interface ToolEvent {
 export type OrchestrationEvent =
   | { type: 'routing'; decision: RoutingDecision }
   | { type: 'agent_start'; agent: ExtendedAgentType }
+  | { type: 'handoff'; from: ExtendedAgentType; to: ExtendedAgentType; reason: string }
   | { type: 'tool_start'; tool: string; args: Record<string, unknown>; id: string }
   | { type: 'tool_end'; tool: string; success: boolean; result?: unknown; id: string; duration?: number }
   | { type: 'content'; delta: string }
+  | { type: 'tts_chunk'; text: string; isComplete: boolean }
   | { type: 'citation'; source: string; url?: string; relevance?: number }
   | { type: 'memory_used'; memoryId: string; content: string; relevance: number }
-  | { type: 'done'; fullContent: string; agent: ExtendedAgentType; threadId: string }
+  | { type: 'image_generated'; imageData: string; mimeType: string; caption?: string; model?: string }
+  | { type: 'image_analyzed'; analysis: string; imageUrl?: string }
+  | { type: 'done'; fullContent: string; agent: ExtendedAgentType; threadId: string; images?: Array<{ data: string; mimeType: string; caption?: string }> }
   | { type: 'thread_created'; threadId: string }
   | { type: 'memory_extracted'; count: number }
   | { type: 'error'; message: string; recoverable?: boolean };
@@ -74,6 +79,12 @@ export type OrchestrationEvent =
 /**
  * Orchestration request input
  */
+/** Input method for the message */
+export type InputMethod = 'keyboard' | 'microphone' | 'hotkey';
+
+/** Conversation mode */
+export type ConversationMode = 'text' | 'voice' | 'ambient';
+
 export interface OrchestrationRequest {
   message: string;
   userId: string;
@@ -87,6 +98,12 @@ export interface OrchestrationRequest {
   forceAgent?: ExtendedAgentType;
   /** Include tool execution visibility */
   showToolExecutions?: boolean;
+  /** How the message was input */
+  inputMethod?: InputMethod;
+  /** Enable streaming TTS chunks for voice mode */
+  enableStreamingTTS?: boolean;
+  /** Current conversation mode */
+  mode?: ConversationMode;
 }
 
 /**

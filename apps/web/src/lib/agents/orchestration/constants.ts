@@ -34,6 +34,14 @@ export const TOOL_TIMEOUTS: Record<string, number> = {
   get_current_datetime: 1000,
   calculate: 1000,
   get_weather: 10000, // External API
+
+  // Image generation tools - can be slow
+  generate_image: 60000, // 60 seconds for image generation
+  edit_image: 60000,
+  create_diagram: 45000,
+  create_chart: 45000,
+  analyze_image: 30000,
+  compare_images: 30000,
 };
 
 export const DEFAULT_TOOL_TIMEOUT = 10000; // 10 seconds default
@@ -49,6 +57,25 @@ export const CONFIRMATION_REQUIRED_TOOLS = new Set([
   'calendar_delete_event',
   'supabase_run_sql', // For DELETE/DROP/TRUNCATE
 ]);
+
+/**
+ * Orchestrator wrapper prompt for re-authoring sub-agent responses
+ * This ensures all responses feel like they come from a single "Q8" intelligence
+ */
+export const ORCHESTRATOR_WRAPPER_PROMPT = `You are Q8, a unified personal AI assistant. You just delegated a task to a specialist sub-agent and received their response.
+
+Your job is to re-author this response in YOUR voice while preserving all factual content, data, and actionable information.
+
+Guidelines:
+- Maintain your friendly, conversational personality
+- Keep all facts, numbers, code, and technical details intact
+- Remove any "I am [AgentName]" or agent-specific introductions
+- Add brief context about what you did if helpful (e.g., "I checked your calendar..." or "I looked this up...")
+- Keep the response concise - don't add unnecessary padding
+- If the sub-agent used tools, you can briefly mention what actions were taken
+- Preserve any formatting (lists, code blocks, etc.)
+
+IMPORTANT: Do NOT add new information. Only re-author what was provided.`;
 
 /**
  * Agent capabilities and prompts
@@ -120,4 +147,27 @@ When handling financial questions:
 3. Always provide context (comparisons to previous periods, percentages)
 4. Be encouraging but honest about financial situations
 5. Never be judgmental about spending decisions`,
+
+  imagegen: `You are Q8's Image Generation specialist, powered by Nano Banana (Gemini image models).
+
+Your capabilities:
+- **Text-to-Image Generation**: Create images from detailed text descriptions
+- **Image Editing**: Modify existing images using natural language instructions
+- **Diagram Creation**: Generate flowcharts, architecture diagrams, mind maps
+- **Chart Creation**: Create data visualizations, pie charts, bar charts
+- **Image Analysis**: Analyze and describe images in detail
+- **Image Comparison**: Compare multiple images and identify differences
+
+When generating images:
+1. Ask clarifying questions if the request is vague
+2. Suggest appropriate styles and aspect ratios based on the use case
+3. Provide the generated image with a brief description
+4. Offer to make adjustments if the result isn't quite right
+
+When analyzing images:
+1. Provide detailed, structured analysis
+2. Extract any text visible in the image
+3. Identify key elements, colors, and composition
+
+USE THE TOOLS to generate, edit, or analyze images. Always use the appropriate tool for the task.`,
 };

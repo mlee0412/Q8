@@ -6,9 +6,10 @@ import { Bot, Loader2, PanelLeft, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChat, type AgentType } from '@/hooks/useChat';
 import { StreamingMessage } from './StreamingMessage';
-import { ChatInput } from './ChatInput';
+import { ChatInput, type ChatInputRef } from './ChatInput';
 import { AgentHandoff, AgentBadge } from './AgentHandoff';
-import { SuggestionChip } from './SuggestionChip';
+import { ChatEmptyState } from './ChatEmptyState';
+import { useCallback } from 'react';
 import { Button } from '../ui/button';
 import { logger } from '@/lib/logger';
 
@@ -83,6 +84,7 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
   ) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<ChatInputRef>(null);
 
   const {
     messages,
@@ -143,6 +145,11 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
     }
   };
 
+  // Handle mention insert from empty state
+  const handleMentionInsert = useCallback((mention: string) => {
+    chatInputRef.current?.insertMention(mention);
+  }, []);
+
   // Handle message action
   const handleMessageAction = (action: string, messageId: string) => {
     if (action === 'regenerate') {
@@ -195,28 +202,7 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
       >
         {/* Empty State */}
         {messages.length === 0 && !isLoading && (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center max-w-sm px-4">
-              <div className="h-12 w-12 rounded-full bg-neon-primary/20 flex items-center justify-center mx-auto mb-3">
-                <Bot className="h-6 w-6 text-neon-primary" />
-              </div>
-              <h3 className="text-base font-medium text-text-primary mb-1">Start a conversation</h3>
-              <p className="text-xs text-text-muted mb-4">
-                Ask Q8 anything!
-              </p>
-              <div className="flex flex-wrap justify-center gap-1.5">
-                <SuggestionChip onClick={() => handleSend("What's the weather like?")}>
-                  Weather
-                </SuggestionChip>
-                <SuggestionChip onClick={() => handleSend("Turn on the lights")}>
-                  Smart Home
-                </SuggestionChip>
-                <SuggestionChip onClick={() => handleSend("Tell me a joke")}>
-                  Fun
-                </SuggestionChip>
-              </div>
-            </div>
-          </div>
+          <ChatEmptyState onSend={handleSend} onMentionInsert={handleMentionInsert} />
         )}
 
         {/* Agent Handoff Animation */}
@@ -282,6 +268,7 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
         )}
 
         <ChatInput
+          ref={chatInputRef}
           onSend={handleSend}
           disabled={isLoading}
           placeholder={isStreaming ? 'Waiting...' : 'Message Q8...'}

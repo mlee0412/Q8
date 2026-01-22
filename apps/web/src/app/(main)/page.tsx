@@ -18,8 +18,7 @@ import {
   SmartHomeWidget,
   FinanceHubWidget,
 } from '@/components/dashboard/widgets';
-import { ChatWithThreads, ChatWithThreadsRef } from '@/components/chat/ChatWithThreads';
-import { VoiceConversation } from '@/components/voice';
+import { UnifiedChatWithThreads, UnifiedChatWithThreadsRef } from '@/components/chat/UnifiedChatWithThreads';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,10 +33,9 @@ function DashboardContent() {
   // SECURITY: Get userId from authenticated session, not hardcoded
   const { userId, fullName, isLoading } = useAuth();
 
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const chatRef = useRef<ChatWithThreadsRef>(null);
+  const chatRef = useRef<UnifiedChatWithThreadsRef>(null);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -104,11 +102,11 @@ function DashboardContent() {
               <span className="text-sm">Knowledge</span>
             </Link>
 
-            {/* Voice Mode Button */}
+            {/* Voice Mode Button - switches chat to voice mode */}
             <button
-              onClick={() => setIsVoiceMode(true)}
+              onClick={() => chatRef.current?.switchMode('voice')}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-primary/20 hover:bg-neon-primary/30 transition-colors border border-neon-primary/30"
-              title="Voice Mode"
+              title="Switch to Voice Mode"
             >
               <Mic className="h-4 w-4" />
               <span className="text-sm font-medium">Voice</span>
@@ -126,14 +124,6 @@ function DashboardContent() {
             <UserProfile />
           </div>
         </header>
-
-        {/* Voice Conversation Overlay */}
-        <VoiceConversation
-          isOpen={isVoiceMode}
-          onClose={() => setIsVoiceMode(false)}
-          userId={userId}
-          threadId="voice-session"
-        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Dashboard Widgets */}
@@ -209,7 +199,7 @@ function DashboardContent() {
           {/* Right Column - Chat Interface */}
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-6 surface-matte rounded-2xl h-[calc(100vh-12rem)] overflow-hidden">
-              <ChatWithThreads
+              <UnifiedChatWithThreads
                 ref={chatRef}
                 userId={userId}
                 userProfile={{
@@ -217,6 +207,7 @@ function DashboardContent() {
                   timezone: 'America/New_York',
                   communicationStyle: 'concise',
                 }}
+                defaultMode="text"
               />
             </div>
           </div>
@@ -229,7 +220,7 @@ function DashboardContent() {
         onClose={() => setIsCommandPaletteOpen(false)}
         onSendMessage={handleSendMessage}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenVoice={() => setIsVoiceMode(true)}
+        onOpenVoice={() => chatRef.current?.switchMode('voice')}
       />
 
       {/* Settings Panel */}

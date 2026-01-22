@@ -5,15 +5,17 @@
  * - Environment-driven model overrides (Q8_ROUTER_MODEL, Q8_CODER_MODEL, etc.)
  * - Automatic fallback chains when primary models are unavailable
  * - OpenAI SDK-compatible endpoints for all providers
+ * - Nano Banana image generation support (Gemini 3 Pro Image / 2.5 Flash Image)
  *
- * Model Strategy (as of Jan 2026):
- * - Router: gpt-4o-mini (fast, cheap for classification)
- * - DevBot: Claude Opus 4.5 → Sonnet 4.5 → gpt-4o
- * - ResearchBot: Perplexity sonar-pro → sonar
- * - SecretaryBot: Gemini 3.0 Pro → Gemini 2.0 Flash
- * - HomeBot: gpt-5.1 → gpt-4o (needs tool calling)
- * - FinanceBot: Gemini 3.0 Pro → gpt-4o
- * - PersonalityBot: grok-4-1 → gpt-4o
+ * Model Strategy (as of Jan 2026 - UPDATED):
+ * - Orchestrator: GPT-5.2 (best agentic) → GPT-5-mini → GPT-4.1
+ * - DevBot: Claude Opus 4.5 → Sonnet 4.5 → GPT-5.2
+ * - ResearchBot: Perplexity sonar-reasoning-pro → sonar-pro → sonar
+ * - SecretaryBot: Gemini 3 Pro → Gemini 3 Flash → Gemini 2.5 Flash
+ * - HomeBot: GPT-5.2 → GPT-5-mini (needs tool calling)
+ * - FinanceBot: Gemini 3 Pro → Gemini 3 Flash
+ * - PersonalityBot: Grok-4 → GPT-5.2
+ * - ImageGen: Gemini 3 Pro Image (Nano Banana Pro) → Gemini 2.5 Flash Image
  */
 
 import { logger } from '@/lib/logger';
@@ -29,10 +31,11 @@ export type AgentType =
   | 'secretary'
   | 'personality'
   | 'home'
-  | 'finance';
+  | 'finance'
+  | 'imagegen';
 
 export interface ModelConfig {
-  /** Model identifier (e.g., 'gpt-4o', 'claude-sonnet-4-5') */
+  /** Model identifier (e.g., 'gpt-5.2', 'claude-opus-4-5-20250929') */
   model: string;
   /** Optional base URL for non-OpenAI providers */
   baseURL?: string;
@@ -42,6 +45,14 @@ export interface ModelConfig {
   provider?: string;
   /** Whether this is a fallback model */
   isFallback?: boolean;
+  /** Whether this model supports image/vision input */
+  supportsVision?: boolean;
+  /** Whether this model can generate images */
+  supportsImageGen?: boolean;
+  /** Maximum number of images for input (for vision models) */
+  maxImageInputs?: number;
+  /** Maximum output resolution for image generation */
+  maxImageResolution?: '1k' | '2k' | '4k';
 }
 
 interface ModelDefinition {
@@ -61,41 +72,47 @@ interface ModelDefinition {
  */
 const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
   orchestrator: {
-    model: 'gpt-5.1-chat-latest',
+    model: 'gpt-5.2',
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   coder: {
-    model: 'claude-opus-4-5-20250514',
+    model: 'claude-opus-4-5-20250929',
     baseURL: 'https://api.anthropic.com/v1/',
     envKey: 'ANTHROPIC_API_KEY',
     provider: 'anthropic',
   },
   researcher: {
-    model: 'sonar-pro',
+    model: 'sonar-reasoning-pro',
     baseURL: 'https://api.perplexity.ai',
     envKey: 'PERPLEXITY_API_KEY',
     provider: 'perplexity',
   },
   secretary: {
-    model: 'gemini-2.5-pro-preview-06-05',
+    model: 'gemini-3-pro-preview',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
   },
   personality: {
-    model: 'grok-4-1-fast-non-reasoning',
+    model: 'grok-4-latest',
     baseURL: 'https://api.x.ai/v1',
     envKey: 'XAI_API_KEY',
     provider: 'xai',
   },
   home: {
-    model: 'gpt-5.1-chat-latest',
+    model: 'gpt-5.2',
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   finance: {
-    model: 'gemini-2.5-pro-preview-06-05',
+    model: 'gemini-3-pro-preview',
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    envKey: 'GOOGLE_GENERATIVE_AI_KEY',
+    provider: 'google',
+  },
+  imagegen: {
+    model: 'gemini-3-pro-image-preview',
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
@@ -108,52 +125,77 @@ const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
  */
 const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
   orchestrator: [
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4.1', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   coder: [
     {
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       baseURL: 'https://api.anthropic.com/v1/',
       envKey: 'ANTHROPIC_API_KEY',
       provider: 'anthropic',
     },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   researcher: [
+    {
+      model: 'sonar-pro',
+      baseURL: 'https://api.perplexity.ai',
+      envKey: 'PERPLEXITY_API_KEY',
+      provider: 'perplexity',
+    },
     {
       model: 'sonar',
       baseURL: 'https://api.perplexity.ai',
       envKey: 'PERPLEXITY_API_KEY',
       provider: 'perplexity',
     },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   secretary: [
     {
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-flash',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    {
+      model: 'gemini-2.5-flash',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
+      provider: 'google',
+    },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   personality: [
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   home: [
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4.1', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   finance: [
     {
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-flash',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+  ],
+  imagegen: [
+    {
+      model: 'gemini-2.5-flash-image',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
+      provider: 'google',
+    },
   ],
 };
 
@@ -169,6 +211,7 @@ const MODEL_ENV_OVERRIDES: Record<AgentType, string> = {
   personality: 'Q8_PERSONALITY_MODEL',
   home: 'Q8_HOME_MODEL',
   finance: 'Q8_FINANCE_MODEL',
+  imagegen: 'Q8_IMAGEGEN_MODEL',
 };
 
 // =============================================================================
@@ -331,8 +374,62 @@ export function getAvailableModels(agentType: AgentType): ModelConfig[] {
 /**
  * Check model health (API key present)
  */
+/**
+ * Get image generation model configuration
+ * @param mode - 'fast' for quick generation (Nano Banana), 'pro' for high quality (Nano Banana Pro)
+ */
+export function getImageModel(mode: 'fast' | 'pro' = 'fast'): ModelConfig {
+  const imageModels = {
+    fast: {
+      model: 'gemini-2.5-flash-image',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
+      provider: 'google',
+      supportsImageGen: true,
+      maxImageInputs: 3,
+      maxImageResolution: '1k' as const,
+    },
+    pro: {
+      model: 'gemini-3-pro-image-preview',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
+      provider: 'google',
+      supportsImageGen: true,
+      maxImageInputs: 14,
+      maxImageResolution: '4k' as const,
+    },
+  };
+
+  const selected = imageModels[mode];
+  
+  if (!hasApiKey(selected.envKey)) {
+    logger.warn(`[ModelFactory] Image model ${mode} API key not available`);
+  }
+
+  return {
+    model: selected.model,
+    baseURL: selected.baseURL,
+    apiKey: getApiKey(selected.envKey),
+    provider: selected.provider,
+    supportsImageGen: selected.supportsImageGen,
+    maxImageInputs: selected.maxImageInputs,
+    maxImageResolution: selected.maxImageResolution,
+  };
+}
+
+/**
+ * Check if a model supports vision (image input)
+ */
+export function supportsVision(agentType: AgentType): boolean {
+  const visionCapableAgents: AgentType[] = ['coder', 'secretary', 'finance', 'imagegen'];
+  return visionCapableAgents.includes(agentType);
+}
+
+/**
+ * Check model health (API key present)
+ */
 export function checkModelHealth(): Record<AgentType, { available: boolean; model: string; provider: string }> {
-  const agents: AgentType[] = ['orchestrator', 'coder', 'researcher', 'secretary', 'personality', 'home', 'finance'];
+  const agents: AgentType[] = ['orchestrator', 'coder', 'researcher', 'secretary', 'personality', 'home', 'finance', 'imagegen'];
   const result: Record<string, { available: boolean; model: string; provider: string }> = {};
 
   for (const agent of agents) {

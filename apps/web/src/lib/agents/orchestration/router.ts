@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_ROUTING_POLICY } from './types';
 import { getRoutingMetrics } from './metrics';
 import { logger } from '@/lib/logger';
+import type { RoutingContext } from './topic-tracker';
 
 /**
  * Agent capability definitions for routing decisions
@@ -130,6 +131,28 @@ export const AGENT_CAPABILITIES: AgentCapability[] = [
       'feel', 'recommend', 'suggest', 'idea', 'creative', 'write',
     ],
     tools: [],
+  },
+  {
+    agent: 'imagegen',
+    name: 'ImageGen',
+    description: 'AI image generation and analysis using Nano Banana (Gemini)',
+    capabilities: [
+      'Text-to-image generation',
+      'Image editing with natural language',
+      'Diagram and flowchart creation',
+      'Chart and data visualization',
+      'Image analysis and description',
+      'Multi-image comparison',
+    ],
+    keywords: [
+      'generate image', 'create image', 'draw', 'visualize', 'diagram',
+      'chart', 'graph', 'picture', 'illustration', 'infographic',
+      'flowchart', 'screenshot', 'analyze image', 'describe image',
+      'make a picture', 'show me', 'create visual', 'design',
+      'mockup', 'sketch', 'render', 'generate a', 'create a diagram',
+      'pie chart', 'bar chart', 'architecture diagram', 'mindmap',
+    ],
+    tools: ['generate_image', 'edit_image', 'create_diagram', 'create_chart', 'analyze_image', 'compare_images'],
   },
 ];
 
@@ -255,9 +278,9 @@ Respond with JSON only:
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Use a fast model for routing
+    // Use the fastest, cheapest model for routing
     const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-nano',
       messages: [
         { role: 'system', content: 'You are a routing classifier. Respond with valid JSON only.' },
         { role: 'user', content: routerPrompt },
@@ -318,9 +341,10 @@ Respond with JSON only:
  * Unified routing function
  *
  * Routing priority:
- * 1. Vector routing (semantic similarity) - fastest, most accurate for known patterns
- * 2. LLM routing (with timeout) - handles novel queries
- * 3. Heuristic routing (keyword matching) - fallback
+ * 1. Topic context bias (if continuing same topic)
+ * 2. Vector routing (semantic similarity) - fastest, most accurate for known patterns
+ * 3. LLM routing (with timeout) - handles novel queries
+ * 4. Heuristic routing (keyword matching) - fallback
  */
 export async function route(
   message: string,
@@ -329,6 +353,7 @@ export async function route(
     forceHeuristic?: boolean;
     enableVector?: boolean;
     timeout?: number;
+    routingContext?: RoutingContext;
   } = {}
 ): Promise<RoutingDecision> {
   const {
@@ -336,11 +361,40 @@ export async function route(
     forceHeuristic = false,
     enableVector = true,
     timeout = 1000,
+    routingContext,
   } = options;
 
   // Use heuristic only if forced or no API key
   if (forceHeuristic || !process.env.OPENAI_API_KEY) {
-    return heuristicRoute(message);
+    return applyTopicBias(heuristicRoute(message), routingContext);
+  }
+
+  // 0. Check topic context for strong continuation signal
+  if (routingContext?.topicSwitch && !routingContext.topicSwitch.isSwitch) {
+    const { suggestedAgent, confidence, reason } = routingContext.topicSwitch;
+
+    // If high confidence continuation and suggested agent is not personality
+    if (suggestedAgent && suggestedAgent !== 'personality' && confidence >= 0.6) {
+      logger.info('Topic continuation detected, biasing toward previous agent', {
+        suggestedAgent,
+        confidence,
+        reason,
+      });
+
+      // Still run heuristic to validate
+      const heuristicResult = heuristicRoute(message);
+
+      // If heuristic agrees or is ambiguous, use topic suggestion
+      if (heuristicResult.agent === suggestedAgent || heuristicResult.confidence < 0.7) {
+        return {
+          agent: suggestedAgent,
+          confidence: Math.min(0.95, confidence + 0.1),
+          rationale: `Topic continuation: ${reason}`,
+          fallbackAgent: heuristicResult.agent !== suggestedAgent ? heuristicResult.agent : 'personality',
+          source: 'heuristic',
+        };
+      }
+    }
   }
 
   // 1. Try vector routing first (fast semantic search)
@@ -357,7 +411,7 @@ export async function route(
           agent: vectorResult.agent,
           confidence: vectorResult.confidence,
         });
-        return vectorResult;
+        return applyTopicBias(vectorResult, routingContext);
       }
     } catch (error) {
       logger.warn('Vector routing failed, trying LLM', { error });
@@ -373,11 +427,11 @@ export async function route(
   if (result === null) {
     logger.warn('LLM routing timed out, using heuristic', { timeout });
     const heuristicResult = heuristicRoute(message);
-    return {
+    return applyTopicBias({
       ...heuristicResult,
       source: 'fallback',
       rationale: `LLM routing timed out, using heuristic: ${heuristicResult.rationale}`,
-    };
+    }, routingContext);
   }
 
   // Check confidence threshold
@@ -385,21 +439,55 @@ export async function route(
     const heuristicResult = heuristicRoute(message);
     // If heuristic agrees, boost confidence
     if (heuristicResult.agent === result.agent) {
-      return {
+      return applyTopicBias({
         ...result,
         confidence: Math.min(1, result.confidence + 0.15),
         rationale: `${result.rationale} (confirmed by heuristic)`,
-      };
+      }, routingContext);
     }
     // If they disagree and LLM confidence is very low, prefer heuristic
     if (result.confidence < 0.5) {
-      return {
+      return applyTopicBias({
         ...heuristicResult,
         source: 'fallback',
         rationale: `LLM confidence too low (${result.confidence}), using heuristic: ${heuristicResult.rationale}`,
-      };
+      }, routingContext);
     }
   }
 
-  return result;
+  return applyTopicBias(result, routingContext);
+}
+
+/**
+ * Apply topic context bias to routing decision
+ * Adjusts confidence based on topic continuity
+ */
+function applyTopicBias(
+  decision: RoutingDecision,
+  routingContext?: RoutingContext
+): RoutingDecision {
+  if (!routingContext?.topicContext) {
+    return decision;
+  }
+
+  const { topicContext, topicSwitch } = routingContext;
+
+  // If continuing same agent, boost confidence slightly
+  if (!topicSwitch.isSwitch && decision.agent === topicContext.lastAgent) {
+    return {
+      ...decision,
+      confidence: Math.min(0.98, decision.confidence + 0.05),
+      rationale: `${decision.rationale} (topic continuity boost)`,
+    };
+  }
+
+  // If switching topics, note it in rationale
+  if (topicSwitch.isSwitch) {
+    return {
+      ...decision,
+      rationale: `${decision.rationale} (topic switch from ${topicContext.currentTopic})`,
+    };
+  }
+
+  return decision;
 }

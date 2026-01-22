@@ -124,6 +124,20 @@ export interface AgentResponse {
     to: string;
     reason: string;
   };
+  /** Generated images from image tools */
+  images?: Array<{
+    /** Base64-encoded image data */
+    data: string;
+    /** MIME type (e.g., 'image/png', 'image/jpeg') */
+    mimeType: string;
+    /** Alt text for accessibility */
+    alt?: string;
+    /** Caption or description */
+    caption?: string;
+    /** Image dimensions if known */
+    width?: number;
+    height?: number;
+  }>;
 }
 
 export interface Tool {

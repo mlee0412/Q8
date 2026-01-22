@@ -18,6 +18,8 @@ import {
   fetchMemoryContext,
   getDocumentContext,
 } from './context-builder';
+import { ORCHESTRATOR_WRAPPER_PROMPT } from './constants';
+import { getRoutingContext, updateTopicContext } from './topic-tracker';
 import {
   getAgentTools,
   executeAgentTool,
@@ -33,7 +35,15 @@ import type {
 import { route } from './router';
 import { logRoutingTelemetry, recordImplicitFeedback } from './metrics';
 import { getConversationContext } from '@/lib/documents/processor';
+import { detectHandoffSignal, stripHandoffMarkers, processHandoff } from './handoff';
 
+/**
+ * Generate a unique message ID
+ * Uses crypto.randomUUID() for consistent, collision-free IDs
+ */
+function generateMessageId(): string {
+  return crypto.randomUUID();
+}
 
 /**
  * Agent system prompts
@@ -111,13 +121,144 @@ function classifyError(error: unknown): { code: string; recoverable: boolean } {
   return { code: 'UNKNOWN_ERROR', recoverable: false };
 }
 
+// =============================================================================
+// ORCHESTRATOR WRAPPER - UNIFIED Q8 VOICE
+// =============================================================================
+
 /**
- * Execute a tool for an agent with timeout and error boundaries
- * All tool executors return ToolResult for consistent handling
+ * Agents that should bypass the wrapper (already speak as Q8 or are the orchestrator)
  */
+const WRAPPER_BYPASS_AGENTS = new Set<ExtendedAgentType>(['personality', 'orchestrator']);
 
+/**
+ * Wrap a sub-agent response in the orchestrator's unified voice
+ * This ensures all responses feel like they come from a single "Q8" intelligence
+ */
+async function wrapResponseAsOrchestrator(
+  subAgentResponse: string,
+  subAgent: ExtendedAgentType,
+  toolsUsed: string[],
+  userMessage: string
+): Promise<string> {
+  // Skip wrapping for personality/orchestrator agents
+  if (WRAPPER_BYPASS_AGENTS.has(subAgent)) {
+    return subAgentResponse;
+  }
 
+  // Skip wrapping for very short responses (likely simple acknowledgments)
+  if (subAgentResponse.length < 50) {
+    return subAgentResponse;
+  }
 
+  try {
+    const { OpenAI } = await import('openai');
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const toolContext = toolsUsed.length > 0
+      ? `\nTools used by sub-agent: ${toolsUsed.join(', ')}`
+      : '';
+
+    const wrapperMessages = [
+      { role: 'system' as const, content: ORCHESTRATOR_WRAPPER_PROMPT },
+      {
+        role: 'user' as const,
+        content: `User's original request: "${userMessage}"
+
+Sub-agent (${subAgent}) response:
+${subAgentResponse}
+${toolContext}
+
+Re-author this response in Q8's voice:`,
+      },
+    ];
+
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini', // Fast, cheap model for wrapper
+      messages: wrapperMessages,
+      max_tokens: 1500,
+      temperature: 0.7,
+    });
+
+    const wrappedContent = completion.choices[0]?.message?.content;
+    if (wrappedContent && wrappedContent.length > 0) {
+      return wrappedContent;
+    }
+
+    // Fallback to original if wrapper fails
+    return subAgentResponse;
+  } catch (error) {
+    logger.warn('Orchestrator wrapper failed, using original response', { subAgent, error });
+    return subAgentResponse;
+  }
+}
+
+/**
+ * Stream the orchestrator wrapper response
+ * Returns an async generator of content deltas
+ */
+async function* streamWrapResponseAsOrchestrator(
+  subAgentResponse: string,
+  subAgent: ExtendedAgentType,
+  toolsUsed: string[],
+  userMessage: string
+): AsyncGenerator<string> {
+  // Skip wrapping for personality/orchestrator agents
+  if (WRAPPER_BYPASS_AGENTS.has(subAgent)) {
+    yield subAgentResponse;
+    return;
+  }
+
+  // Skip wrapping for very short responses
+  if (subAgentResponse.length < 50) {
+    yield subAgentResponse;
+    return;
+  }
+
+  try {
+    const { OpenAI } = await import('openai');
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    const toolContext = toolsUsed.length > 0
+      ? `\nTools used by sub-agent: ${toolsUsed.join(', ')}`
+      : '';
+
+    const wrapperMessages = [
+      { role: 'system' as const, content: ORCHESTRATOR_WRAPPER_PROMPT },
+      {
+        role: 'user' as const,
+        content: `User's original request: "${userMessage}"
+
+Sub-agent (${subAgent}) response:
+${subAgentResponse}
+${toolContext}
+
+Re-author this response in Q8's voice:`,
+      },
+    ];
+
+    const stream = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: wrapperMessages,
+      max_tokens: 1500,
+      temperature: 0.7,
+      stream: true,
+    });
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || '';
+      if (delta) {
+        yield delta;
+      }
+    }
+  } catch (error) {
+    logger.warn('Orchestrator wrapper streaming failed, using original response', { subAgent, error });
+    yield subAgentResponse;
+  }
+}
 
 /**
  * Process a message through the orchestration system (non-streaming)
@@ -164,13 +305,17 @@ export async function processMessage(
 
     // Save user message to Supabase
     await supabaseAdmin.from('chat_messages').insert({
+      id: generateMessageId(),
       thread_id: threadId,
       user_id: userId,
       role: 'user',
       content: message,
     } as ChatMessageInsert);
 
-    // Route the message
+    // Get routing context from topic tracker
+    const routingContext = await getRoutingContext(threadId, message);
+
+    // Route the message with topic context
     let routingDecision: RoutingDecision;
     if (forceAgent) {
       routingDecision = {
@@ -180,7 +325,7 @@ export async function processMessage(
         source: 'heuristic',
       };
     } else {
-      routingDecision = await route(message);
+      routingDecision = await route(message, { routingContext });
     }
 
     const targetAgent = routingDecision.agent as AgentType;
@@ -330,10 +475,20 @@ export async function processMessage(
         'Sorry, I received an empty response. Please try again.';
     }
 
+    // Wrap response in orchestrator voice (unified Q8 personality)
+    const toolsUsed = toolExecutions.map((t) => t.tool);
+    responseContent = await wrapResponseAsOrchestrator(
+      responseContent,
+      routingDecision.agent,
+      toolsUsed,
+      message
+    );
+
     // Save assistant response
     addMessage(sessionId, 'assistant', responseContent, routingDecision.agent);
 
     await supabaseAdmin.from('chat_messages').insert({
+      id: generateMessageId(),
       thread_id: threadId,
       user_id: userId,
       role: 'assistant',
@@ -354,6 +509,14 @@ export async function processMessage(
       toolsUsed: toolExecutions.map((t) => t.tool),
       fallbackUsed: routingDecision.source === 'fallback',
     });
+
+    // Update topic context for future routing
+    await updateTopicContext(
+      threadId,
+      routingDecision.agent,
+      message,
+      routingContext.topicContext
+    );
 
     return {
       content: responseContent,
@@ -426,13 +589,17 @@ export async function* streamMessage(
     addMessage(sessionId, 'user', message);
 
     await supabaseAdmin.from('chat_messages').insert({
+      id: generateMessageId(),
       thread_id: threadId,
       user_id: userId,
       role: 'user',
       content: message,
     } as ChatMessageInsert);
 
-    // Route the message
+    // Get routing context from topic tracker
+    const routingContext = await getRoutingContext(threadId, message);
+
+    // Route the message with topic context
     let routingDecision: RoutingDecision;
     if (forceAgent) {
       routingDecision = {
@@ -442,7 +609,7 @@ export async function* streamMessage(
         source: 'heuristic',
       };
     } else {
-      routingDecision = await route(message);
+      routingDecision = await route(message, { routingContext });
     }
 
     yield { type: 'routing', decision: routingDecision };
@@ -573,62 +740,83 @@ export async function* streamMessage(
           });
         }
 
-        // Stream follow-up response
-        const followUpStream = await client.chat.completions.create({
+        // Get follow-up response (non-streaming to collect for wrapper)
+        const followUp = await client.chat.completions.create({
           model: modelConfig.model,
           messages: [
             ...messages,
             { role: 'assistant', content: null, tool_calls: toolCalls },
             ...toolMessages,
           ] as Parameters<typeof client.chat.completions.create>[0]['messages'],
-          stream: true,
           max_completion_tokens: 1000,
         });
 
-        for await (const chunk of followUpStream) {
-          const delta = chunk.choices[0]?.delta?.content || '';
-          if (delta) {
-            fullContent += delta;
-            yield { type: 'content', delta };
-          }
-        }
+        fullContent = followUp.choices[0]?.message?.content || 'I executed the requested actions.';
       } else if (assistantMessage?.content) {
         // No tools called, just content
         fullContent = assistantMessage.content;
-        // Simulate streaming for consistency
-        const words = fullContent.split(' ');
-        for (const word of words) {
-          yield { type: 'content', delta: word + ' ' };
-        }
       }
     } else {
-      // Standard streaming completion
-      const stream = await client.chat.completions.create({
+      // Standard completion (non-streaming to collect for wrapper)
+      const completion = await client.chat.completions.create({
         model: modelConfig.model,
         messages,
-        stream: true,
         max_tokens: 1000,
       });
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content || '';
-        if (delta) {
-          fullContent += delta;
-          yield { type: 'content', delta };
-        }
-      }
+      fullContent = completion.choices[0]?.message?.content || '';
     }
 
     // Ensure we have content
     if (!fullContent) {
       fullContent = 'I apologize, but I couldn\'t generate a response. Please try again.';
       yield { type: 'content', delta: fullContent };
+    } else {
+      // Check for hand-off signals before wrapping
+      const handoffSignal = detectHandoffSignal(fullContent);
+
+      if (handoffSignal) {
+        // Emit hand-off event for UI notification
+        yield {
+          type: 'handoff',
+          from: routingDecision.agent,
+          to: handoffSignal.target,
+          reason: handoffSignal.reason,
+        };
+
+        // Strip hand-off markers from content
+        fullContent = stripHandoffMarkers(fullContent);
+
+        logger.info('Hand-off detected', {
+          from: routingDecision.agent,
+          to: handoffSignal.target,
+          reason: handoffSignal.reason,
+        });
+      }
+
+      // Stream the wrapped response in orchestrator voice
+      const toolsUsed = toolExecutions.map((t) => t.tool);
+      let wrappedContent = '';
+
+      for await (const delta of streamWrapResponseAsOrchestrator(
+        fullContent,
+        routingDecision.agent,
+        toolsUsed,
+        message
+      )) {
+        wrappedContent += delta;
+        yield { type: 'content', delta };
+      }
+
+      // Use wrapped content for saving
+      fullContent = wrappedContent || fullContent;
     }
 
     // Save response
     addMessage(sessionId, 'assistant', fullContent, routingDecision.agent);
 
     await supabaseAdmin.from('chat_messages').insert({
+      id: generateMessageId(),
       thread_id: threadId,
       user_id: userId,
       role: 'assistant',
@@ -649,6 +837,14 @@ export async function* streamMessage(
       toolsUsed: toolExecutions.map((t) => t.tool),
       fallbackUsed: routingDecision.source === 'fallback',
     });
+
+    // Update topic context for future routing
+    await updateTopicContext(
+      threadId,
+      routingDecision.agent,
+      message,
+      routingContext.topicContext
+    );
 
     // Trigger async memory extraction
     extractMemoriesAsync(userId, threadId, message, fullContent);

@@ -12,6 +12,7 @@ export { VoiceConversation } from './VoiceConversation';
 
 // Audio visualization
 export { AudioVisualizer } from './AudioVisualizer';
+export { AudioLevelIndicator } from './AudioLevelIndicator';
 
 // Transcription display
 export { TranscriptionDisplay } from './TranscriptionDisplay';

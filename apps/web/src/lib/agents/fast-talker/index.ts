@@ -211,6 +211,7 @@ function generateActionPreviewResponse(
     researcher: `${prefix}Searching for that information...`,
     personality: `${prefix}Let me help with that...`,
     orchestrator: `${prefix}Processing your request...`,
+    imagegen: `${prefix}Creating that visual for you...`,
   };
 
   return responses[agent] || `${prefix}Working on it...`;
@@ -248,6 +249,11 @@ function generateAcknowledgmentResponse(agent: ExtendedAgentType, userName?: str
     ],
     orchestrator: [
       `${prefix}Processing your request...`,
+    ],
+    imagegen: [
+      `${prefix}Generating that image for you...`,
+      `${prefix}Creating your visual now...`,
+      `${prefix}Let me draw that up...`,
     ],
   };
 
@@ -390,7 +396,7 @@ export async function fastTalk(request: FastTalkerRequest): Promise<FastTalkerRe
 
     // 7. Save user message to chat_messages
     await supabaseAdmin.from('chat_messages').insert({
-      id: `msg_${Date.now()}_user`,
+      id: crypto.randomUUID(),
       thread_id: threadId,
       user_id: userId,
       role: 'user',
@@ -399,7 +405,7 @@ export async function fastTalk(request: FastTalkerRequest): Promise<FastTalkerRe
 
     // 8. Save fast response as assistant message
     await supabaseAdmin.from('chat_messages').insert({
-      id: `msg_${Date.now()}_fast`,
+      id: crypto.randomUUID(),
       thread_id: threadId,
       user_id: userId,
       role: 'assistant',

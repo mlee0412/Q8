@@ -3,7 +3,7 @@
  * Centralized styling and display properties for all agent types
  */
 
-import { Bot, Code2, Home, User, Search, Calendar } from 'lucide-react';
+import { Bot, Code2, Home, User, Search, Calendar, DollarSign, ImageIcon } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export type AgentRole =
@@ -13,6 +13,8 @@ export type AgentRole =
   | 'secretary'
   | 'personality'
   | 'home'
+  | 'finance'
+  | 'imagegen'
   | 'user';
 
 export interface AgentDisplayConfig {
@@ -69,6 +71,20 @@ export const AGENT_DISPLAY_CONFIG: Record<AgentRole, AgentDisplayConfig> = {
     iconColor: 'text-cyan-500',
     bgColor: 'bg-cyan-500/20',
     description: 'Smart home control',
+  },
+  finance: {
+    name: 'Finance Advisor',
+    icon: DollarSign,
+    iconColor: 'text-emerald-500',
+    bgColor: 'bg-emerald-500/20',
+    description: 'Personal finance and budgeting',
+  },
+  imagegen: {
+    name: 'ImageGen',
+    icon: ImageIcon,
+    iconColor: 'text-pink-500',
+    bgColor: 'bg-pink-500/20',
+    description: 'AI image generation and analysis',
   },
   user: {
     name: 'You',

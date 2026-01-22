@@ -5,6 +5,7 @@ import { coderAgentConfig, executeCoderTool } from '../sub-agents/coder';
 import { secretaryAgentConfig, executeGoogleTool } from '../sub-agents/secretary';
 import { researcherAgentConfig } from '../sub-agents/researcher';
 import { executeDefaultTool, defaultTools } from '../tools/default-tools';
+import { imageTools, executeImageTool } from '../tools';
 import { logger } from '@/lib/logger';
 import type { ToolResult } from '../types';
 import { TOOL_TIMEOUTS, DEFAULT_TOOL_TIMEOUT, CONFIRMATION_REQUIRED_TOOLS } from './constants';
@@ -28,6 +29,8 @@ export function getAgentTools(agent: ExtendedAgentType): Array<{
       return secretaryAgentConfig.openaiTools;
     case 'researcher':
       return researcherAgentConfig.openaiTools;
+    case 'imagegen':
+      return imageTools;
     case 'personality':
       return defaultTools;
     default:
@@ -135,6 +138,8 @@ export async function executeAgentTool(
           return executeCoderTool(toolName, args);
         case 'secretary':
           return executeGoogleTool(toolName, args);
+        case 'imagegen':
+          return executeImageTool(toolName, args);
         case 'researcher':
         case 'personality':
         default:

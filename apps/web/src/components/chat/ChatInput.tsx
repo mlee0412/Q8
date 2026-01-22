@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent, useCallback } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { motion } from 'framer-motion';
 import {
   Send,
@@ -16,6 +16,11 @@ import { FileUploadZone } from '../documents/FileUploadZone';
 import type { Document } from '@/lib/documents/types';
 import { SelectedFilesList } from './SelectedFilesList';
 import { AgentMentionsDropdown, type Agent } from './AgentMentionsDropdown';
+
+export interface ChatInputRef {
+  insertMention: (mention: string) => void;
+  focus: () => void;
+}
 
 interface ChatInputProps {
   /**
@@ -116,7 +121,7 @@ interface ChatInputProps {
  * />
  * ```
  */
-export function ChatInput({
+export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(function ChatInput({
   onSend,
   onVoiceToggle,
   onFileUpload,
@@ -129,7 +134,7 @@ export function ChatInput({
   enableAgentMentions = true,
   maxLength = 4000,
   className,
-}: ChatInputProps) {
+}, ref) {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
@@ -138,12 +143,25 @@ export function ChatInput({
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Agent mentions
+  // Expose methods via ref for external components
+  useImperativeHandle(ref, () => ({
+    insertMention: (mention: string) => {
+      setMessage((prev) => prev + mention);
+      textareaRef.current?.focus();
+    },
+    focus: () => {
+      textareaRef.current?.focus();
+    },
+  }), []);
+
+  // Agent mentions - all available agents
   const agents: Agent[] = [
-    { id: 'coder', name: 'DevBot (Claude)', icon: '💻' },
-    { id: 'researcher', name: 'Research Agent (Perplexity)', icon: '🔍' },
-    { id: 'secretary', name: 'Secretary (Gemini)', icon: '📅' },
-    { id: 'personality', name: 'Grok', icon: '🤖' },
+    { id: 'home', name: 'HomeBot', icon: '🏠' },
+    { id: 'secretary', name: 'Secretary', icon: '📅' },
+    { id: 'researcher', name: 'ResearchBot', icon: '🔍' },
+    { id: 'finance', name: 'FinanceBot', icon: '💰' },
+    { id: 'coder', name: 'DevBot', icon: '💻' },
+    { id: 'personality', name: 'Q8', icon: '✨' },
   ];
 
   // Handle text change
@@ -349,6 +367,6 @@ export function ChatInput({
       </div>
     </div>
   );
-}
+});
 
 ChatInput.displayName = 'ChatInput';

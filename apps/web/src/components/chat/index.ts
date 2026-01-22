@@ -22,6 +22,12 @@ export { ThreadSidebar } from './ThreadSidebar';
 export { ThreadHeader } from './ThreadHeader';
 export { ChatWithThreads } from './ChatWithThreads';
 
+// Unified conversation (Phase 7 - Voice/Text Consolidation)
+export { UnifiedConversation } from './UnifiedConversation';
+export type { UnifiedConversationRef } from './UnifiedConversation';
+export { UnifiedChatWithThreads } from './UnifiedChatWithThreads';
+export type { UnifiedChatWithThreadsRef } from './UnifiedChatWithThreads';
+
 // Supporting components
 export { AgentIndicator } from './AgentIndicator';
 export { MessageActions } from './MessageActions';
@@ -31,3 +37,10 @@ export { AgentMarker, AgentSegmentDivider, CompactAgentBadge } from './AgentMark
 
 // Citations for research responses (AI Enhancement)
 export { InlineCitation, CitationList, parseCitations, type CitationSource } from './Citation';
+
+// Preset suggestions and agent cards (Smart Presets)
+export { PresetSuggestions, PresetSuggestionsCompact } from './PresetSuggestions';
+export { AgentCard, AgentCardMini, AGENT_INFO, type AgentInfo } from './AgentCard';
+export { AgentCarousel, AgentList } from './AgentCarousel';
+export { ChatEmptyState } from './ChatEmptyState';
+export type { ChatInputRef } from './ChatInput';

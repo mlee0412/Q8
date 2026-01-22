@@ -1,7 +1,12 @@
 /**
  * Dev Agent (Coder)
- * Powered by Claude Sonnet 4.5
+ * Powered by Claude Opus 4.5 (claude-opus-4-5-20250929)
  * Handles: Code review, debugging, GitHub operations, Supabase management
+ * 
+ * Enhanced capabilities (Jan 2026):
+ * - Extended thinking for complex architectural decisions
+ * - Vision analysis for code screenshots and diagrams
+ * - 1M token context window with context-1m-2025-08-07 beta
  */
 
 import { getModel } from '../model_factory';
@@ -250,9 +255,11 @@ export const supabaseTools: OpenAITool[] = [
 export const coderAgentConfig = {
   name: 'DevBot',
   model: getModel('coder'),
-  instructions: `You are an expert software engineer specialized in full-stack development.
+  instructions: `You are an expert software engineer powered by Claude Opus 4.5 with extended thinking capabilities.
 
 Your capabilities:
+- **Extended Thinking**: Use deep reasoning for complex architectural decisions and debugging
+- **Vision Analysis**: Analyze code screenshots, architecture diagrams, UI mockups, and error screenshots
 - **Code Review**: Analyze code for bugs, performance issues, and best practices
 - **GitHub Operations**: Search code, manage PRs/issues, access files
 - **Supabase Database**: Run SQL queries, inspect schemas, perform vector search
@@ -261,9 +268,10 @@ Your capabilities:
 When helping with code:
 1. First understand the context and requirements
 2. Use tools to gather information (search code, check schema, etc.)
-3. Provide clear, well-documented solutions
-4. Follow best practices for the language/framework
-5. Consider security implications (especially for database operations)
+3. For complex problems, take time to think through the solution systematically
+4. Provide clear, well-documented solutions
+5. Follow best practices for the language/framework
+6. Consider security implications (especially for database operations)
 
 For database operations:
 - Always verify before running destructive queries (DELETE, DROP, TRUNCATE)
@@ -273,7 +281,12 @@ For database operations:
 For GitHub operations:
 - Provide context with PR/issue descriptions
 - Reference related issues/PRs when relevant
-- Follow repository conventions for naming`,
+- Follow repository conventions for naming
+
+For image/screenshot analysis:
+- When shown code screenshots, extract and analyze the code
+- When shown architecture diagrams, explain the structure and suggest improvements
+- When shown error screenshots, diagnose the issue and provide solutions`,
   tools: [] as Tool[],
   openaiTools: [...githubTools, ...supabaseTools],
 };

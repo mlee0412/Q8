@@ -9,10 +9,12 @@ import {
   Sparkles,
   Home,
   ArrowRight,
+  DollarSign,
+  ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home';
+type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home' | 'finance' | 'imagegen';
 
 interface AgentHandoffProps {
   /**
@@ -98,6 +100,20 @@ function getAgentConfig(role: AgentRole | string | undefined) {
       bgColor: 'bg-cyan-500/20',
       iconColor: 'text-cyan-400',
       borderColor: 'border-cyan-500/30',
+    },
+    finance: {
+      name: 'Finance Advisor',
+      icon: DollarSign,
+      bgColor: 'bg-emerald-500/20',
+      iconColor: 'text-emerald-400',
+      borderColor: 'border-emerald-500/30',
+    },
+    imagegen: {
+      name: 'ImageGen',
+      icon: ImageIcon,
+      bgColor: 'bg-pink-500/20',
+      iconColor: 'text-pink-400',
+      borderColor: 'border-pink-500/30',
     },
   };
 
