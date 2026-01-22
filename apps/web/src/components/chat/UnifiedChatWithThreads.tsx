@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
+import { useState, useCallback, forwardRef, useImperativeHandle, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ThreadSidebar } from './ThreadSidebar';
 import { UnifiedConversation, UnifiedConversationRef } from './UnifiedConversation';
 import { useThreads } from '@/hooks/useThreads';
 import { useOptionalChatContext } from '@/contexts/ChatContext';
+import { useUserContext } from '@/hooks/useUserContext';
 import { logger } from '@/lib/logger';
 import type { ConversationMode } from '@/lib/agents/orchestration/types';
 
@@ -25,6 +26,17 @@ interface UnifiedChatWithThreadsProps {
     name?: string;
     timezone?: string;
     communicationStyle?: 'concise' | 'detailed';
+    location?: {
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      zipCode?: string;
+      coordinates?: {
+        lat: number;
+        long: number;
+      };
+    };
   };
   defaultMode?: ConversationMode;
   className?: string;
@@ -39,6 +51,25 @@ export const UnifiedChatWithThreads = forwardRef<UnifiedChatWithThreadsRef, Unif
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
     const conversationRef = useRef<UnifiedConversationRef>(null);
+
+    // Get dynamic user context (timezone, location) from browser
+    const userContext = useUserContext({ enableGeolocation: true });
+
+    // Merge user-provided profile with dynamic context
+    const enrichedUserProfile = useMemo(() => ({
+      name: userProfile?.name || 'User',
+      timezone: userProfile?.timezone || userContext.timezone,
+      communicationStyle: userProfile?.communicationStyle || 'concise' as const,
+      location: userProfile?.location || (userContext.isLocationEnabled ? userContext.location : undefined),
+    }), [userProfile, userContext.timezone, userContext.location, userContext.isLocationEnabled]);
+
+    // Request location on first mount (will prompt user)
+    useEffect(() => {
+      if (!userProfile?.location && !userContext.isLocationEnabled && !userContext.isLocationLoading) {
+        // Auto-request location for better context
+        userContext.requestLocation();
+      }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Expose methods via ref for external components
     useImperativeHandle(
@@ -160,7 +191,7 @@ export const UnifiedChatWithThreads = forwardRef<UnifiedChatWithThreadsRef, Unif
             ref={conversationRef}
             userId={userId}
             threadId={currentThreadId}
-            userProfile={userProfile}
+            userProfile={enrichedUserProfile}
             defaultMode={defaultMode}
             onThreadCreated={handleThreadCreated}
             showSidebarToggle={true}

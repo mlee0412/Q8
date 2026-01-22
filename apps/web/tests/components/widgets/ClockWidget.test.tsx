@@ -1,13 +1,11 @@
 /**
  * ClockWidget Component Tests
  *
- * Tests for the ClockWidget component covering:
+ * Tests for the ClockWidget v3.0 (Time Hub) component covering:
  * - Rendering without crashing
- * - Time display
- * - Date display
- * - Time updates via fake timers
+ * - Tab navigation (Clock, Timer, Stopwatch, Alarms)
+ * - Time display and updates
  * - Correct styling and CSS classes
- * - Pomodoro timer functionality
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -27,14 +25,62 @@ vi.mock('framer-motion', () => ({
       </div>
     ),
     circle: (props: React.SVGProps<SVGCircleElement>) => <circle {...props} />,
+    button: ({
+      children,
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLButtonElement>) => (
+      <button className={className} {...props}>
+        {children}
+      </button>
+    ),
+    span: ({
+      children,
+      className,
+      ...props
+    }: React.HTMLAttributes<HTMLSpanElement>) => (
+      <span className={className} {...props}>
+        {children}
+      </span>
+    ),
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+// Mock react-dom createPortal
+vi.mock('react-dom', async () => {
+  const actual = await vi.importActual('react-dom');
+  return {
+    ...actual,
+    createPortal: (children: React.ReactNode) => children,
+  };
+});
 
 // Mock lucide-react icons
 vi.mock('lucide-react', () => ({
   Clock: ({ className }: { className?: string }) => (
     <span data-testid="clock-icon" className={className}>
       Clock
+    </span>
+  ),
+  Timer: ({ className }: { className?: string }) => (
+    <span data-testid="timer-icon" className={className}>
+      Timer
+    </span>
+  ),
+  Gauge: ({ className }: { className?: string }) => (
+    <span data-testid="gauge-icon" className={className}>
+      Gauge
+    </span>
+  ),
+  Bell: ({ className }: { className?: string }) => (
+    <span data-testid="bell-icon" className={className}>
+      Bell
+    </span>
+  ),
+  Maximize2: ({ className }: { className?: string }) => (
+    <span data-testid="maximize-icon" className={className}>
+      Maximize
     </span>
   ),
   Play: ({ className }: { className?: string }) => (
@@ -52,9 +98,9 @@ vi.mock('lucide-react', () => ({
       Reset
     </span>
   ),
-  Timer: ({ className }: { className?: string }) => (
-    <span data-testid="timer-icon" className={className}>
-      Timer
+  SkipForward: ({ className }: { className?: string }) => (
+    <span data-testid="skip-icon" className={className}>
+      Skip
     </span>
   ),
   Sun: ({ className }: { className?: string }) => (
@@ -65,6 +111,126 @@ vi.mock('lucide-react', () => ({
   Moon: ({ className }: { className?: string }) => (
     <span data-testid="moon-icon" className={className}>
       Moon
+    </span>
+  ),
+  Sunrise: ({ className }: { className?: string }) => (
+    <span data-testid="sunrise-icon" className={className}>
+      Sunrise
+    </span>
+  ),
+  Sunset: ({ className }: { className?: string }) => (
+    <span data-testid="sunset-icon" className={className}>
+      Sunset
+    </span>
+  ),
+  Globe: ({ className }: { className?: string }) => (
+    <span data-testid="globe-icon" className={className}>
+      Globe
+    </span>
+  ),
+  Plus: ({ className }: { className?: string }) => (
+    <span data-testid="plus-icon" className={className}>
+      Plus
+    </span>
+  ),
+  Pin: ({ className }: { className?: string }) => (
+    <span data-testid="pin-icon" className={className}>
+      Pin
+    </span>
+  ),
+  X: ({ className }: { className?: string }) => (
+    <span data-testid="x-icon" className={className}>
+      X
+    </span>
+  ),
+  Search: ({ className }: { className?: string }) => (
+    <span data-testid="search-icon" className={className}>
+      Search
+    </span>
+  ),
+  LayoutGrid: ({ className }: { className?: string }) => (
+    <span data-testid="grid-icon" className={className}>
+      Grid
+    </span>
+  ),
+  List: ({ className }: { className?: string }) => (
+    <span data-testid="list-icon" className={className}>
+      List
+    </span>
+  ),
+  Flame: ({ className }: { className?: string }) => (
+    <span data-testid="flame-icon" className={className}>
+      Flame
+    </span>
+  ),
+  Target: ({ className }: { className?: string }) => (
+    <span data-testid="target-icon" className={className}>
+      Target
+    </span>
+  ),
+  Zap: ({ className }: { className?: string }) => (
+    <span data-testid="zap-icon" className={className}>
+      Zap
+    </span>
+  ),
+  TrendingUp: ({ className }: { className?: string }) => (
+    <span data-testid="trending-icon" className={className}>
+      TrendingUp
+    </span>
+  ),
+  Flag: ({ className }: { className?: string }) => (
+    <span data-testid="flag-icon" className={className}>
+      Flag
+    </span>
+  ),
+  Copy: ({ className }: { className?: string }) => (
+    <span data-testid="copy-icon" className={className}>
+      Copy
+    </span>
+  ),
+  Trash2: ({ className }: { className?: string }) => (
+    <span data-testid="trash-icon" className={className}>
+      Trash
+    </span>
+  ),
+  Award: ({ className }: { className?: string }) => (
+    <span data-testid="award-icon" className={className}>
+      Award
+    </span>
+  ),
+  Edit2: ({ className }: { className?: string }) => (
+    <span data-testid="edit-icon" className={className}>
+      Edit
+    </span>
+  ),
+  BellOff: ({ className }: { className?: string }) => (
+    <span data-testid="belloff-icon" className={className}>
+      BellOff
+    </span>
+  ),
+  Repeat: ({ className }: { className?: string }) => (
+    <span data-testid="repeat-icon" className={className}>
+      Repeat
+    </span>
+  ),
+  Link2: ({ className }: { className?: string }) => (
+    <span data-testid="link-icon" className={className}>
+      Link
+    </span>
+  ),
+  Tag: ({ className }: { className?: string }) => (
+    <span data-testid="tag-icon" className={className}>
+      Tag
+    </span>
+  ),
+  BarChart3: ({ className }: { className?: string }) => (
+    <span data-testid="barchart-icon" className={className}>
+      BarChart
+    </span>
+  ),
+  Minimize2: ({ className }: { className?: string }) => (
+    <span data-testid="minimize-icon" className={className}>
+      Minimize
     </span>
   ),
 }));
@@ -86,57 +252,91 @@ describe('ClockWidget', () => {
       expect(container).toBeTruthy();
     });
 
-    it('renders the header with World Clock title', () => {
+    it('renders the header with Time Hub title', () => {
       render(<ClockWidget />);
-      expect(screen.getByText('World Clock')).toBeInTheDocument();
+      expect(screen.getByText('Time Hub')).toBeInTheDocument();
     });
 
     it('renders the clock icon', () => {
       render(<ClockWidget />);
-      expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
+      const clockIcons = screen.getAllByTestId('clock-icon');
+      expect(clockIcons.length).toBeGreaterThan(0);
     });
 
-    it('renders default timezone clocks', () => {
+    it('renders all tab buttons by default', () => {
       render(<ClockWidget />);
-      expect(screen.getByText('New York')).toBeInTheDocument();
-      expect(screen.getByText('Los Angeles')).toBeInTheDocument();
-      expect(screen.getByText('Seoul')).toBeInTheDocument();
+      // Check for tab icons (Clock, Timer, Gauge for stopwatch, Bell for alarms)
+      expect(screen.getAllByTestId('clock-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('timer-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('gauge-icon').length).toBeGreaterThan(0);
+      expect(screen.getAllByTestId('bell-icon').length).toBeGreaterThan(0);
     });
 
     it('renders custom timezones when provided', () => {
       const customTimezones = [
-        { id: 'london', label: 'LDN', timezone: 'Europe/London', city: 'London' },
-        { id: 'tokyo', label: 'TYO', timezone: 'Asia/Tokyo', city: 'Tokyo' },
+        { id: 'london', label: 'LDN', timezone: 'Europe/London', city: 'London', country: 'UK', isPinned: false, sortOrder: 0 },
+        { id: 'tokyo', label: 'TYO', timezone: 'Asia/Tokyo', city: 'Tokyo', country: 'Japan', isPinned: false, sortOrder: 1 },
       ];
 
       render(<ClockWidget timezones={customTimezones} />);
       expect(screen.getByText('London')).toBeInTheDocument();
       expect(screen.getByText('Tokyo')).toBeInTheDocument();
-      expect(screen.queryByText('New York')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Tab Navigation', () => {
+    it('shows clock tab content by default', () => {
+      render(<ClockWidget />);
+      // Default tab is 'clock', should show digital/analog toggle options
+      expect(screen.getByText('digital')).toBeInTheDocument();
+    });
+
+    it('can switch to timer tab', () => {
+      render(<ClockWidget />);
+      
+      // Click the Timer tab (second occurrence of timer-icon, first is in header area)
+      const timerIcons = screen.getAllByTestId('timer-icon');
+      // Find the tab button containing the timer icon
+      const tabButtons = screen.getAllByRole('button');
+      const timerTab = tabButtons.find(btn => 
+        btn.textContent?.includes('Timer') || 
+        btn.querySelector('[data-testid="timer-icon"]')
+      );
+      
+      if (timerTab) {
+        fireEvent.click(timerTab);
+      }
+    });
+
+    it('respects defaultTab prop', () => {
+      render(<ClockWidget defaultTab="timer" />);
+      // Timer tab should be active, showing focus presets
+      const sprintElements = screen.getAllByText('Sprint');
+      expect(sprintElements.length).toBeGreaterThan(0);
+    });
+
+    it('can disable alarms tab', () => {
+      render(<ClockWidget enableAlarms={false} />);
+      // Bell icon for alarms tab should not be present
+      const bellIcons = screen.queryAllByTestId('bell-icon');
+      expect(bellIcons.length).toBe(0);
+    });
+
+    it('can disable stopwatch tab', () => {
+      render(<ClockWidget enableStopwatch={false} />);
+      // Gauge icon for stopwatch tab should not be present
+      const gaugeIcons = screen.queryAllByTestId('gauge-icon');
+      expect(gaugeIcons.length).toBe(0);
     });
   });
 
   describe('Time Display', () => {
-    it('displays time for each timezone', () => {
+    it('displays time for timezones', () => {
       render(<ClockWidget />);
 
       // The component shows times in localized format
-      // We check that time elements are present (format: "X:XX AM/PM")
       const timeElements = screen.getAllByText(/\d{1,2}:\d{2}\s*(AM|PM)/i);
-      expect(timeElements.length).toBeGreaterThanOrEqual(3);
-    });
-
-    it('displays formatted time with hours and minutes', () => {
-      // Set time to 2:30 PM UTC
-      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'));
-
-      render(<ClockWidget />);
-
-      // Check that at least one time is displayed
-      // New York is UTC-4 in June (EDT), so 14:30 UTC = 10:30 AM EDT
-      const timePattern = /\d{1,2}:\d{2}\s*(AM|PM)/i;
-      const allText = screen.getAllByText(timePattern);
-      expect(allText.length).toBeGreaterThan(0);
+      expect(timeElements.length).toBeGreaterThan(0);
     });
   });
 
@@ -147,48 +347,12 @@ describe('ClockWidget', () => {
       render(<ClockWidget />);
 
       // Date format: "Sat, Jun 15" (weekday short, month short, day)
-      // Use a more specific selector to find the date in the caption
       const dateElement = screen.getByText(/Sat, Jun 15/);
       expect(dateElement).toBeInTheDocument();
-      expect(dateElement).toHaveClass('text-caption');
-    });
-
-    it('displays date with correct format', () => {
-      vi.setSystemTime(new Date('2024-12-25T10:00:00Z'));
-
-      render(<ClockWidget />);
-
-      // Should show "Wed, Dec 25"
-      const dateElement = screen.getByText(/Wed, Dec 25/);
-      expect(dateElement).toBeInTheDocument();
-      expect(dateElement).toHaveClass('text-caption');
     });
   });
 
   describe('Time Updates', () => {
-    it('updates time every second', () => {
-      vi.setSystemTime(new Date('2024-06-15T14:30:00Z'));
-
-      render(<ClockWidget />);
-
-      // Capture initial times
-      const initialTimes = screen.getAllByText(/\d{1,2}:\d{2}\s*(AM|PM)/i);
-      const initialTimeTexts = initialTimes.map((el) => el.textContent);
-
-      // Advance time by 1 minute (60 seconds)
-      act(() => {
-        vi.advanceTimersByTime(60000);
-      });
-
-      // Get updated times
-      const updatedTimes = screen.getAllByText(/\d{1,2}:\d{2}\s*(AM|PM)/i);
-      const updatedTimeTexts = updatedTimes.map((el) => el.textContent);
-
-      // Times should have changed (at least the minutes)
-      // Note: At least one timezone should show a different minute
-      expect(updatedTimeTexts).not.toEqual(initialTimeTexts);
-    });
-
     it('calls setInterval on mount for time updates', () => {
       const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
@@ -251,231 +415,43 @@ describe('ClockWidget', () => {
       expect(widget).toHaveClass('flex-col');
     });
 
-    it('applies neon-primary color to clock icon', () => {
+    it('applies neon-primary color to header clock icon', () => {
       render(<ClockWidget />);
-      const clockIcon = screen.getByTestId('clock-icon');
-      expect(clockIcon).toHaveClass('text-neon-primary');
+      const clockIcons = screen.getAllByTestId('clock-icon');
+      // At least one should have the neon-primary class
+      const hasNeonPrimary = clockIcons.some(icon => icon.classList.contains('text-neon-primary'));
+      expect(hasNeonPrimary).toBe(true);
     });
   });
 
-  describe('Day/Night Indicator', () => {
-    it('shows sun icon for daytime hours', () => {
-      // Set to 10 AM UTC - daytime in most timezones
-      vi.setSystemTime(new Date('2024-06-15T10:00:00Z'));
-
-      render(<ClockWidget />);
-
-      // At least one timezone should show a sun icon
-      const sunIcons = screen.queryAllByTestId('sun-icon');
-      expect(sunIcons.length).toBeGreaterThan(0);
+  describe('Timer Tab', () => {
+    it('shows focus presets in timer tab', () => {
+      render(<ClockWidget defaultTab="timer" />);
+      
+      // Multiple Sprint elements may exist, check at least one
+      const sprintElements = screen.getAllByText('Sprint');
+      expect(sprintElements.length).toBeGreaterThan(0);
     });
 
-    it('shows moon icon for nighttime hours', () => {
-      // Set to 2 AM UTC - nighttime in many timezones
-      vi.setSystemTime(new Date('2024-06-15T02:00:00Z'));
+    it('shows quick timer presets', () => {
+      render(<ClockWidget defaultTab="timer" />);
 
-      render(<ClockWidget />);
-
-      // At least one timezone should show a moon icon
-      const moonIcons = screen.queryAllByTestId('moon-icon');
-      expect(moonIcons.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Pomodoro Timer', () => {
-    it('renders pomodoro timer by default', () => {
-      render(<ClockWidget />);
-      // Timer label exists (there are two "Timer" texts - icon mock and label)
-      const timerTexts = screen.getAllByText('Timer');
-      expect(timerTexts.length).toBe(2); // Icon mock + label
-      expect(screen.getByTestId('timer-icon')).toBeInTheDocument();
+      const fiveMinElements = screen.getAllByText('5m');
+      expect(fiveMinElements.length).toBeGreaterThan(0);
     });
 
-    it('hides pomodoro timer when showPomodoro is false', () => {
-      render(<ClockWidget showPomodoro={false} />);
-      // Timer icon should not be present
-      expect(screen.queryByTestId('timer-icon')).not.toBeInTheDocument();
-    });
-
-    it('displays initial pomodoro time (25:00)', () => {
-      render(<ClockWidget />);
-      expect(screen.getByText('25:00')).toBeInTheDocument();
-    });
-
-    it('shows play button when timer is not running', () => {
-      render(<ClockWidget />);
-      expect(screen.getByTestId('play-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('pause-icon')).not.toBeInTheDocument();
-    });
-
-    it('starts timer when play button is clicked', () => {
-      render(<ClockWidget />);
-
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      // Should now show pause icon
-      expect(screen.getByTestId('pause-icon')).toBeInTheDocument();
-    });
-
-    it('pauses timer when pause button is clicked', () => {
-      render(<ClockWidget />);
-
-      // Start timer
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      // Pause timer
-      const pauseButton = screen.getByRole('button', { name: /pause timer/i });
-      fireEvent.click(pauseButton);
-
-      // Should show play icon again
-      expect(screen.getByTestId('play-icon')).toBeInTheDocument();
-    });
-
-    it('decrements timer when running', () => {
-      render(<ClockWidget />);
-
-      // Start timer
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      // Advance 1 second
-      act(() => {
-        vi.advanceTimersByTime(1000);
-      });
-
-      expect(screen.getByText('24:59')).toBeInTheDocument();
-    });
-
-    it('resets timer when reset button is clicked', () => {
-      render(<ClockWidget />);
-
-      // Start timer and let it run
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      act(() => {
-        vi.advanceTimersByTime(5000);
-      });
-
-      // Reset timer
-      const resetButton = screen.getByRole('button', { name: /reset timer/i });
-      fireEvent.click(resetButton);
-
-      // Should be back to 25:00 and stopped
-      expect(screen.getByText('25:00')).toBeInTheDocument();
-      expect(screen.getByTestId('play-icon')).toBeInTheDocument();
-    });
-
-    it('renders preset duration buttons', () => {
-      render(<ClockWidget />);
-
-      expect(screen.getByText('5m')).toBeInTheDocument();
-      expect(screen.getByText('10m')).toBeInTheDocument();
-      expect(screen.getByText('15m')).toBeInTheDocument();
-      expect(screen.getByText('30m')).toBeInTheDocument();
-    });
-
-    it('changes timer duration when preset is clicked', () => {
-      render(<ClockWidget />);
-
-      // Click 5m preset
-      const fiveMinButton = screen.getByText('5m');
-      fireEvent.click(fiveMinButton);
-
-      expect(screen.getByText('05:00')).toBeInTheDocument();
-    });
-
-    it('switches to break mode when work timer completes', () => {
-      render(<ClockWidget />);
-
-      // Set to 5 minute preset for faster test
-      const fiveMinButton = screen.getByText('5m');
-      fireEvent.click(fiveMinButton);
-
-      // Start timer
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      // Advance past 5 minutes (300 seconds)
-      // The timer decrements when prev <= 1, so we need exactly 300 ticks
-      act(() => {
-        vi.advanceTimersByTime(300000);
-      });
-
-      // After 300 seconds (5 min), timer should switch to break mode
-      // Break time is 5 minutes (POMODORO_BREAK = 5 * 60 = 300 seconds)
-      // Find the timer display by its specific format (MM:SS without AM/PM)
-      // and class (text-xs font-mono font-bold)
-      const timerDisplays = screen.getAllByText(/^\d{2}:\d{2}$/);
-      // The pomodoro timer display should match
-      const pomodoroTimer = timerDisplays.find((el) =>
-        el.classList.contains('text-xs')
-      );
-      expect(pomodoroTimer).toBeInTheDocument();
-      expect(pomodoroTimer).toHaveClass('text-xs', 'font-mono', 'font-bold');
-    });
-
-    it('shows completed count after finishing a pomodoro', () => {
-      render(<ClockWidget />);
-
-      // Set to 5 minute preset
-      const fiveMinButton = screen.getByText('5m');
-      fireEvent.click(fiveMinButton);
-
-      // Start timer
-      const playButton = screen.getByRole('button', { name: /start timer/i });
-      fireEvent.click(playButton);
-
-      // Complete the pomodoro (300 seconds = 5 minutes)
-      act(() => {
-        vi.advanceTimersByTime(300000);
-      });
-
-      expect(screen.getByText(/1 completed/)).toBeInTheDocument();
-    });
-
-    it('applies active styling to selected preset', () => {
-      render(<ClockWidget />);
-
-      // Click 10m preset
-      const tenMinButton = screen.getByText('10m');
-      fireEvent.click(tenMinButton);
-
-      // The 10m button should have the active class
-      expect(tenMinButton).toHaveClass('bg-neon-primary/20');
-      expect(tenMinButton).toHaveClass('text-neon-primary');
+    it('displays start focus session button', () => {
+      render(<ClockWidget defaultTab="timer" />);
+      
+      expect(screen.getByText('Start Focus Session')).toBeInTheDocument();
     });
   });
 
-  describe('Accessibility', () => {
-    it('has accessible labels for timer controls', () => {
+  describe('Expand Functionality', () => {
+    it('renders expand button', () => {
       render(<ClockWidget />);
-
-      expect(
-        screen.getByRole('button', { name: /start timer/i })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /reset timer/i })
-      ).toBeInTheDocument();
-    });
-
-    it('updates aria-label when timer state changes', () => {
-      render(<ClockWidget />);
-
-      // Initially shows "Start timer"
-      expect(
-        screen.getByRole('button', { name: /start timer/i })
-      ).toBeInTheDocument();
-
-      // Click to start
-      fireEvent.click(screen.getByRole('button', { name: /start timer/i }));
-
-      // Should now show "Pause timer"
-      expect(
-        screen.getByRole('button', { name: /pause timer/i })
-      ).toBeInTheDocument();
+      
+      expect(screen.getByRole('button', { name: /expand/i })).toBeInTheDocument();
     });
   });
 

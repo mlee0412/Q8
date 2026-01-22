@@ -34,6 +34,17 @@ export interface UserProfile {
   timezone: string;
   communicationStyle: 'concise' | 'detailed';
   preferences: Record<string, unknown>;
+  location?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+    coordinates?: {
+      lat: number;
+      long: number;
+    };
+  };
 }
 
 /**

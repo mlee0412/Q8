@@ -14,7 +14,6 @@ import {
   SuggestionsWidget,
   ClockWidget,
   QuickNotesWidget,
-  FocusWidget,
   SmartHomeWidget,
   FinanceHubWidget,
 } from '@/components/dashboard/widgets';
@@ -129,9 +128,9 @@ function DashboardContent() {
           {/* Left Column - Dashboard Widgets */}
           <div className="lg:col-span-2 space-y-6">
             <BentoGrid>
-              {/* Clock Widget - World Time + Pomodoro */}
-              <BentoItem colSpan={2} rowSpan={1}>
-                <ClockWidget />
+              {/* Time Hub - World Clocks, Timer, Stopwatch, Alarms */}
+              <BentoItem colSpan={2} rowSpan={2}>
+                <ClockWidget colSpan={2} rowSpan={2} />
               </BentoItem>
 
               {/* Weather Widget - Enhanced with forecast */}
@@ -143,21 +142,6 @@ function DashboardContent() {
                 />
               </BentoItem>
 
-              {/* Focus Widget - Productivity tracking */}
-              <BentoItem colSpan={2} rowSpan={1}>
-                <FocusWidget />
-              </BentoItem>
-
-              {/* ContentHub Widget - Unified Media Hub */}
-              <BentoItem colSpan={2} rowSpan={2}>
-                <ContentHubWidget />
-              </BentoItem>
-
-              {/* Quick Notes */}
-              <BentoItem colSpan={2} rowSpan={2}>
-                <QuickNotesWidget userId={userId} />
-              </BentoItem>
-
               {/* Task Widget */}
               <BentoItem colSpan={2} rowSpan={2}>
                 <TaskWidget />
@@ -166,6 +150,16 @@ function DashboardContent() {
               {/* Calendar Widget */}
               <BentoItem colSpan={2} rowSpan={1}>
                 <CalendarWidget maxItems={3} />
+              </BentoItem>
+
+              {/* Quick Notes */}
+              <BentoItem colSpan={2} rowSpan={2}>
+                <QuickNotesWidget userId={userId} />
+              </BentoItem>
+
+              {/* ContentHub Widget - Unified Media Hub */}
+              <BentoItem colSpan={2} rowSpan={2}>
+                <ContentHubWidget />
               </BentoItem>
 
               {/* GitHub PR Widget */}

@@ -7,29 +7,44 @@ import { getWeather, type WeatherData } from './tools/weather';
 import { logger } from '@/lib/logger';
 import type { EnrichedContext, UserProfile, SessionState } from './types';
 
-// User's home location (configured)
-const USER_LOCATION = {
-  address: '125 W. 31st Street, New York, NY 10001',
-  city: 'New York',
-  state: 'NY',
-  country: 'USA',
-  zipCode: '10001',
+// Default location (used when user location is not available)
+const DEFAULT_LOCATION = {
+  address: 'Location not set',
+  city: 'Unknown',
+  state: '',
+  country: '',
+  zipCode: '',
   coordinates: {
-    lat: 40.7472,
-    long: -73.9903,
+    lat: 0,
+    long: 0,
   },
 } as const;
 
-// Default user profile (can be overridden from Supabase)
+// Default user profile (can be overridden from user settings or browser detection)
 const DEFAULT_USER_PROFILE: UserProfile = {
   name: 'User',
-  timezone: 'America/New_York',
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   communicationStyle: 'concise',
   preferences: {},
 };
 
+/**
+ * Detect timezone from browser/system
+ */
+export function detectTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return 'UTC';
+  }
+}
+
 // Cache weather data (refresh every 15 minutes)
-let weatherCache: { data: WeatherData | null; timestamp: number } = {
+interface CachedWeather extends WeatherData {
+  cachedLat: number;
+  cachedLong: number;
+}
+let weatherCache: { data: CachedWeather | null; timestamp: number } = {
   data: null,
   timestamp: 0,
 };
@@ -109,22 +124,32 @@ function isWeekend(date: Date, timezone: string): boolean {
 /**
  * Fetch weather with caching
  */
-async function getCachedWeather(): Promise<WeatherData | null> {
+async function getCachedWeather(lat: number, long: number): Promise<WeatherData | null> {
+  // Skip if no valid coordinates
+  if (!lat || !long || (lat === 0 && long === 0)) {
+    return null;
+  }
+
   const now = Date.now();
 
-  if (weatherCache.data && now - weatherCache.timestamp < WEATHER_CACHE_TTL) {
+  // Check if cache is still valid for these coordinates
+  if (
+    weatherCache.data &&
+    now - weatherCache.timestamp < WEATHER_CACHE_TTL &&
+    weatherCache.data.cachedLat === lat &&
+    weatherCache.data.cachedLong === long
+  ) {
     return weatherCache.data;
   }
 
   try {
-    const weather = await getWeather(
-      USER_LOCATION.coordinates.lat,
-      USER_LOCATION.coordinates.long
-    );
-    weatherCache = { data: weather, timestamp: now };
+    const weather = await getWeather(lat, long);
+    // Store coordinates with weather data for cache validation
+    const cachedWeather: CachedWeather = { ...weather, cachedLat: lat, cachedLong: long };
+    weatherCache = { data: cachedWeather, timestamp: now };
     return weather;
   } catch (error) {
-    logger.error('Failed to fetch weather', { lat: USER_LOCATION.coordinates.lat, long: USER_LOCATION.coordinates.long, error });
+    logger.error('Failed to fetch weather', { lat, long, error });
     return weatherCache.data; // Return stale data if available
   }
 }
@@ -141,42 +166,52 @@ export async function buildEnrichedContext(
   const profile = { ...DEFAULT_USER_PROFILE, ...userProfile };
   const now = new Date();
 
+  // Use user's timezone or detect from system
+  const timezone = profile.timezone || detectTimezone();
+
   // Get hour in user's timezone
   const hourString = now.toLocaleTimeString('en-US', {
     hour: 'numeric',
     hour12: false,
-    timeZone: profile.timezone,
+    timeZone: timezone,
   });
   const hour = parseInt(hourString, 10);
 
-  // Fetch weather (cached)
-  const weather = await getCachedWeather();
+  // Build location from user profile or use default
+  const userLocation = profile.location || {};
+  const location = {
+    address: userLocation.address || DEFAULT_LOCATION.address,
+    city: userLocation.city || DEFAULT_LOCATION.city,
+    state: userLocation.state || DEFAULT_LOCATION.state,
+    country: userLocation.country || DEFAULT_LOCATION.country,
+    zipCode: userLocation.zipCode || DEFAULT_LOCATION.zipCode,
+    coordinates: userLocation.coordinates || DEFAULT_LOCATION.coordinates,
+  };
+
+  // Fetch weather based on user's actual location (cached)
+  const weather = await getCachedWeather(
+    location.coordinates.lat,
+    location.coordinates.long
+  );
 
   return {
     // IDs
     userId,
     sessionId,
 
-    // Temporal context
+    // Temporal context (uses actual current time)
     currentTime: now,
-    timezone: profile.timezone,
-    localTimeFormatted: formatTime(now, profile.timezone),
-    localDateFormatted: formatDate(now, profile.timezone),
-    dayOfWeek: getDayOfWeek(now, profile.timezone),
-    isWeekend: isWeekend(now, profile.timezone),
+    timezone,
+    localTimeFormatted: formatTime(now, timezone),
+    localDateFormatted: formatDate(now, timezone),
+    dayOfWeek: getDayOfWeek(now, timezone),
+    isWeekend: isWeekend(now, timezone),
     timeOfDay: getTimeOfDay(hour),
 
-    // Location context
-    location: {
-      address: USER_LOCATION.address,
-      city: USER_LOCATION.city,
-      state: USER_LOCATION.state,
-      country: USER_LOCATION.country,
-      zipCode: USER_LOCATION.zipCode,
-      coordinates: USER_LOCATION.coordinates,
-    },
+    // Location context (from user profile)
+    location,
 
-    // Weather context
+    // Weather context (based on user's location)
     weather: weather
       ? {
           temp: weather.temp,
@@ -194,7 +229,7 @@ export async function buildEnrichedContext(
     // User profile
     user: {
       name: profile.name,
-      timezone: profile.timezone,
+      timezone,
       communicationStyle: profile.communicationStyle,
       preferences: profile.preferences,
     },

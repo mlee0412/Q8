@@ -36,6 +36,10 @@ import { route } from './router';
 import { logRoutingTelemetry, recordImplicitFeedback } from './metrics';
 import { getConversationContext } from '@/lib/documents/processor';
 import { detectHandoffSignal, stripHandoffMarkers, processHandoff } from './handoff';
+import { getResponseCache, isCacheable, calculateTTL } from './response-cache';
+import { maybeCompress, needsCompression } from './context-compressor';
+import { getQualityScorer, getFeedbackTracker, scoreResponse } from './quality-scorer';
+import { generateSuggestions, getTimeOfDay, type Suggestion } from './proactive-suggestions';
 
 /**
  * Generate a unique message ID
@@ -596,6 +600,19 @@ export async function* streamMessage(
       content: message,
     } as ChatMessageInsert);
 
+    // Check response cache first (for fast repeat queries)
+    const cache = getResponseCache();
+    const cachedResponse = await cache.get(message, { userId });
+
+    if (cachedResponse) {
+      logger.debug('Cache hit - returning cached response', { message: message.slice(0, 50) });
+      yield { type: 'routing', decision: { agent: cachedResponse.agent, confidence: 1, rationale: 'Cached response', source: 'heuristic' as const } };
+      yield { type: 'agent_start', agent: cachedResponse.agent };
+      yield { type: 'content', delta: cachedResponse.response };
+      yield { type: 'done', fullContent: cachedResponse.response, agent: cachedResponse.agent, threadId };
+      return;
+    }
+
     // Get routing context from topic tracker
     const routingContext = await getRoutingContext(threadId, message);
 
@@ -845,6 +862,27 @@ export async function* streamMessage(
       message,
       routingContext.topicContext
     );
+
+    // Score response quality and cache if good
+    const qualityScore = scoreResponse(fullContent, message);
+    if (isCacheable(message, routingDecision.agent) && qualityScore.overall >= 0.7) {
+      cache.set(message, fullContent, routingDecision.agent, {
+        userId,
+        ttl: calculateTTL(message, routingDecision.agent),
+        metadata: { latency, quality: qualityScore.overall },
+      });
+    }
+
+    // Track quality metrics asynchronously
+    getFeedbackTracker().recordQuality(
+      userId,
+      threadId,
+      generateMessageId(),
+      routingDecision.agent,
+      message,
+      fullContent,
+      latency
+    ).catch((err) => logger.debug('Quality tracking failed', { error: err }));
 
     // Trigger async memory extraction
     extractMemoriesAsync(userId, threadId, message, fullContent);

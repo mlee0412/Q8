@@ -45,6 +45,17 @@ interface UseChatOptions {
     name?: string;
     timezone?: string;
     communicationStyle?: 'concise' | 'detailed';
+    location?: {
+      address?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      zipCode?: string;
+      coordinates?: {
+        lat: number;
+        long: number;
+      };
+    };
   };
   onMessage?: (message: StreamingMessage) => void;
   onToolExecution?: (tool: ToolExecution) => void;
