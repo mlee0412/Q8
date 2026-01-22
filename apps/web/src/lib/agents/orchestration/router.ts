@@ -316,24 +316,55 @@ Respond with JSON only:
 
 /**
  * Unified routing function
- * Tries LLM routing first, falls back to heuristic if needed
+ *
+ * Routing priority:
+ * 1. Vector routing (semantic similarity) - fastest, most accurate for known patterns
+ * 2. LLM routing (with timeout) - handles novel queries
+ * 3. Heuristic routing (keyword matching) - fallback
  */
 export async function route(
   message: string,
   options: {
     policy?: RoutingPolicy;
     forceHeuristic?: boolean;
+    enableVector?: boolean;
     timeout?: number;
   } = {}
 ): Promise<RoutingDecision> {
-  const { policy = DEFAULT_ROUTING_POLICY, forceHeuristic = false, timeout = 1000 } = options;
+  const {
+    policy = DEFAULT_ROUTING_POLICY,
+    forceHeuristic = false,
+    enableVector = true,
+    timeout = 1000,
+  } = options;
 
-  // Use heuristic only if forced or LLM unavailable
+  // Use heuristic only if forced or no API key
   if (forceHeuristic || !process.env.OPENAI_API_KEY) {
     return heuristicRoute(message);
   }
 
-  // Race LLM routing against timeout
+  // 1. Try vector routing first (fast semantic search)
+  if (enableVector) {
+    try {
+      const { vectorRoute } = await import('./vector-router');
+      const vectorPromise = vectorRoute(message);
+      const vectorTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 500));
+
+      const vectorResult = await Promise.race([vectorPromise, vectorTimeout]);
+
+      if (vectorResult && vectorResult.confidence >= 0.7) {
+        logger.info('Vector routing succeeded', {
+          agent: vectorResult.agent,
+          confidence: vectorResult.confidence,
+        });
+        return vectorResult;
+      }
+    } catch (error) {
+      logger.warn('Vector routing failed, trying LLM', { error });
+    }
+  }
+
+  // 2. Try LLM routing (with timeout)
   const llmPromise = llmRoute(message, policy);
   const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeout));
 

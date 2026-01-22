@@ -162,3 +162,72 @@ export interface OpenAITool {
     };
   };
 }
+
+// =============================================================================
+// TOOL RESULT TYPES
+// =============================================================================
+
+/**
+ * Standard result envelope for all tool executions
+ * Provides consistent structure for success/failure across all agents
+ */
+export interface ToolResult<T = unknown> {
+  /** Whether the tool execution succeeded */
+  success: boolean;
+  /** Human-readable message describing the outcome */
+  message: string;
+  /** Optional data payload from the tool execution */
+  data?: T;
+  /** Error details if success is false */
+  error?: {
+    code?: string;
+    details?: string;
+  };
+  /** Execution metadata */
+  meta?: {
+    /** Execution duration in milliseconds */
+    durationMs?: number;
+    /** Trace ID for debugging */
+    traceId?: string;
+    /** Source of the tool execution */
+    source?: string;
+  };
+}
+
+/**
+ * Helper function to create a successful tool result
+ */
+export function toolSuccess<T>(message: string, data?: T, meta?: ToolResult['meta']): ToolResult<T> {
+  return {
+    success: true,
+    message,
+    data,
+    meta,
+  };
+}
+
+/**
+ * Helper function to create a failed tool result
+ */
+export function toolError(message: string, error?: { code?: string; details?: string }, meta?: ToolResult['meta']): ToolResult<never> {
+  return {
+    success: false,
+    message,
+    error,
+    meta,
+  };
+}
+
+/**
+ * Type guard to check if a tool result was successful
+ */
+export function isToolSuccess<T>(result: ToolResult<T>): result is ToolResult<T> & { success: true; data: T } {
+  return result.success === true;
+}
+
+/**
+ * Type guard to check if a tool result was a failure
+ */
+export function isToolError(result: ToolResult): result is ToolResult & { success: false } {
+  return result.success === false;
+}

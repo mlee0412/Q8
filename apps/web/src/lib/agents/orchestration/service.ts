@@ -10,11 +10,14 @@ import { addMessage, getConversationHistory } from '../conversation-store';
 import { buildDeviceSummary } from '../home-context';
 import { homeAssistantTools, executeHomeAssistantTool } from '../home-tools';
 import { financeAdvisorConfig, executeFinanceAdvisorTool, getFinancialContext } from '../sub-agents/finance-advisor';
-import { executeDefaultTool } from '../tools/default-tools';
+import { coderAgentConfig, executeCoderTool } from '../sub-agents/coder';
+import { secretaryAgentConfig, executeGoogleTool } from '../sub-agents/secretary';
+import { researcherAgentConfig } from '../sub-agents/researcher';
+import { executeDefaultTool, defaultTools } from '../tools/default-tools';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { logger } from '@/lib/logger';
 import type { ChatMessageInsert } from '@/lib/supabase/types';
-import type { EnrichedContext } from '../types';
+import type { EnrichedContext, ToolResult } from '../types';
 import type {
   ExtendedAgentType,
   RoutingDecision,
@@ -25,6 +28,7 @@ import type {
 } from './types';
 import { route } from './router';
 import { logRoutingTelemetry, recordImplicitFeedback } from './metrics';
+import { getConversationContext } from '@/lib/documents/processor';
 
 /**
  * Agent system prompts
@@ -104,7 +108,8 @@ When handling financial questions:
 async function buildSystemPrompt(
   agent: ExtendedAgentType,
   context: EnrichedContext,
-  memoryContext: string = ''
+  memoryContext: string = '',
+  documentContext: string = ''
 ): Promise<string> {
   const basePrompt = AGENT_PROMPTS[agent] || AGENT_PROMPTS.personality;
   const contextBlock = buildContextSummary(context);
@@ -132,11 +137,17 @@ ${contextBlock}`;
     prompt += `\n\n${memoryContext}`;
   }
 
+  // Add document context if available (from uploaded documents/knowledge base)
+  if (documentContext) {
+    prompt += `\n\n## Relevant Documents\nThe following content is from the user's uploaded documents and knowledge base. Use this information to provide more accurate and contextual responses:\n\n${documentContext}`;
+  }
+
   return prompt;
 }
 
 /**
  * Get tools for an agent
+ * Each agent has a specific set of tools available for function calling
  */
 function getAgentTools(agent: ExtendedAgentType): Array<{
   type: 'function';
@@ -147,28 +158,241 @@ function getAgentTools(agent: ExtendedAgentType): Array<{
       return homeAssistantTools;
     case 'finance':
       return financeAdvisorConfig.openaiTools;
+    case 'coder':
+      // GitHub + Supabase tools for development tasks
+      return coderAgentConfig.openaiTools;
+    case 'secretary':
+      // Google Workspace (Gmail, Calendar, Drive, YouTube) tools
+      return secretaryAgentConfig.openaiTools;
+    case 'researcher':
+      // Utility tools (date/time, calculations, weather)
+      // Note: Perplexity Sonar has native web search built-in
+      return researcherAgentConfig.openaiTools;
+    case 'personality':
+      // Personality agent uses default utility tools for context
+      return defaultTools;
     default:
-      return [];
+      return defaultTools;
+  }
+}
+
+// =============================================================================
+// TOOL EXECUTION WITH TIMEOUTS AND ERROR BOUNDARIES
+// =============================================================================
+
+/**
+ * Per-tool timeout configuration (in milliseconds)
+ * Tools that call external APIs get longer timeouts
+ */
+const TOOL_TIMEOUTS: Record<string, number> = {
+  // GitHub tools - external API
+  github_search_code: 15000,
+  github_get_file: 10000,
+  github_list_prs: 10000,
+  github_create_issue: 15000,
+  github_create_pr: 20000,
+
+  // Supabase tools - database
+  supabase_run_sql: 30000, // SQL can be slow
+  supabase_get_schema: 10000,
+  supabase_vector_search: 15000,
+
+  // Google Workspace - external API
+  gmail_list_messages: 15000,
+  gmail_send_message: 20000,
+  calendar_list_events: 10000,
+  calendar_create_event: 15000,
+  drive_search_files: 15000,
+
+  // Home Assistant - local network
+  control_device: 5000,
+  set_climate: 5000,
+  activate_scene: 5000,
+  get_device_state: 5000,
+
+  // Default utilities - fast local execution
+  get_current_datetime: 1000,
+  calculate: 1000,
+  get_weather: 10000, // External API
+};
+
+const DEFAULT_TOOL_TIMEOUT = 10000; // 10 seconds default
+
+/**
+ * Tools that require user confirmation before execution
+ * (for future implementation of confirmation flow)
+ */
+const CONFIRMATION_REQUIRED_TOOLS = new Set([
+  'gmail_send_message',
+  'github_create_issue',
+  'github_create_pr',
+  'calendar_delete_event',
+  'supabase_run_sql', // For DELETE/DROP/TRUNCATE
+]);
+
+/**
+ * Execute a promise with timeout
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  toolName: string
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout>;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`Tool '${toolName}' timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutHandle!);
+    return result;
+  } catch (error) {
+    clearTimeout(timeoutHandle!);
+    throw error;
   }
 }
 
 /**
- * Execute a tool for an agent
+ * Classify error type for better error handling
+ */
+function classifyError(error: unknown): { code: string; recoverable: boolean } {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes('timed out')) {
+    return { code: 'TIMEOUT', recoverable: true };
+  }
+  if (message.includes('Failed to fetch') || message.includes('ECONNREFUSED')) {
+    return { code: 'CONNECTION_ERROR', recoverable: true };
+  }
+  if (message.includes('not found') || message.includes('404')) {
+    return { code: 'NOT_FOUND', recoverable: false };
+  }
+  if (message.includes('Unauthorized') || message.includes('401') || message.includes('403')) {
+    return { code: 'AUTH_ERROR', recoverable: false };
+  }
+  if (message.includes('rate limit') || message.includes('429')) {
+    return { code: 'RATE_LIMITED', recoverable: true };
+  }
+  if (message.includes('Validation') || message.includes('Invalid')) {
+    return { code: 'VALIDATION_ERROR', recoverable: false };
+  }
+
+  return { code: 'UNKNOWN_ERROR', recoverable: false };
+}
+
+/**
+ * Execute a tool for an agent with timeout and error boundaries
+ * All tool executors return ToolResult for consistent handling
  */
 async function executeAgentTool(
   agent: ExtendedAgentType,
   toolName: string,
   args: Record<string, unknown>,
   userId: string
-): Promise<{ success: boolean; message: string; data?: unknown }> {
-  switch (agent) {
-    case 'home':
-      return executeHomeAssistantTool(toolName, args);
-    case 'finance':
-      return executeFinanceAdvisorTool(toolName, args, userId);
-    default:
-      return executeDefaultTool(toolName, args);
+): Promise<ToolResult> {
+  const startTime = Date.now();
+  const timeout = TOOL_TIMEOUTS[toolName] ?? DEFAULT_TOOL_TIMEOUT;
+  const traceId = `${agent}-${toolName}-${Date.now()}`;
+
+  // Log tool execution start
+  logger.info('[ToolExecution] Starting', {
+    agent,
+    tool: toolName,
+    traceId,
+    timeout,
+  });
+
+  try {
+    // Get the appropriate executor
+    const executorPromise = (async (): Promise<ToolResult> => {
+      switch (agent) {
+        case 'home':
+          return executeHomeAssistantTool(toolName, args);
+        case 'finance':
+          return executeFinanceAdvisorTool(toolName, args, userId);
+        case 'coder':
+          return executeCoderTool(toolName, args);
+        case 'secretary':
+          return executeGoogleTool(toolName, args);
+        case 'researcher':
+        case 'personality':
+        default:
+          return executeDefaultTool(toolName, args);
+      }
+    })();
+
+    // Execute with timeout
+    const result = await withTimeout(executorPromise, timeout, toolName);
+    const durationMs = Date.now() - startTime;
+
+    // Log success
+    logger.info('[ToolExecution] Completed', {
+      agent,
+      tool: toolName,
+      traceId,
+      success: result.success,
+      durationMs,
+    });
+
+    // Enrich with metadata
+    return {
+      ...result,
+      meta: {
+        ...result.meta,
+        durationMs,
+        source: agent,
+        traceId,
+      },
+    };
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    const { code, recoverable } = classifyError(error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    // Log failure
+    logger.error('[ToolExecution] Failed', {
+      agent,
+      tool: toolName,
+      traceId,
+      errorCode: code,
+      recoverable,
+      durationMs,
+      error: errorMessage,
+    });
+
+    return {
+      success: false,
+      message: `Tool '${toolName}' failed: ${errorMessage}`,
+      error: {
+        code,
+        details: error instanceof Error ? error.stack : undefined,
+      },
+      meta: {
+        durationMs,
+        source: agent,
+        traceId,
+      },
+    };
   }
+}
+
+/**
+ * Check if a tool requires user confirmation
+ */
+export function requiresConfirmation(toolName: string, args: Record<string, unknown>): boolean {
+  if (CONFIRMATION_REQUIRED_TOOLS.has(toolName)) {
+    // Special case: SQL only needs confirmation for destructive operations
+    if (toolName === 'supabase_run_sql') {
+      const query = (args.query as string || '').toUpperCase();
+      return /\b(DELETE|DROP|TRUNCATE|ALTER|UPDATE)\b/.test(query);
+    }
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -262,16 +486,33 @@ export async function processMessage(
 
     const targetAgent = routingDecision.agent as AgentType;
 
-    // Get model configuration
-    const modelConfig = getModel(targetAgent === 'finance' ? 'secretary' : targetAgent);
+    // Get model configuration (finance has its own model in model_factory)
+    const modelConfig = getModel(targetAgent);
 
     if (!modelConfig.apiKey) {
       throw new Error(`API key not configured for ${targetAgent}`);
     }
 
-    // Build system prompt with memory context
+    // Build system prompt with memory and document context
     const memoryContext = await fetchMemoryContext(userId);
-    const systemPrompt = await buildSystemPrompt(routingDecision.agent, context, memoryContext);
+
+    // Fetch relevant document context for the query
+    let documentContext = '';
+    try {
+      const docContext = await getConversationContext(userId, threadId, message, 4000);
+      if (docContext.content) {
+        documentContext = docContext.content;
+        logger.debug('Document context retrieved', {
+          userId,
+          threadId,
+          sourceCount: docContext.sources.length,
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch document context', { userId, threadId, error });
+    }
+
+    const systemPrompt = await buildSystemPrompt(routingDecision.agent, context, memoryContext, documentContext);
 
     // Get conversation history
     const { data: dbMessages } = await supabaseAdmin
@@ -509,16 +750,33 @@ export async function* streamMessage(
     yield { type: 'agent_start', agent: routingDecision.agent };
 
     const targetAgent = routingDecision.agent as AgentType;
-    const modelConfig = getModel(targetAgent === 'finance' ? 'secretary' : targetAgent);
+    const modelConfig = getModel(targetAgent);
 
     if (!modelConfig.apiKey) {
       yield { type: 'error', message: `API key not configured for ${targetAgent}`, recoverable: false };
       return;
     }
 
-    // Build system prompt
+    // Build system prompt with memory and document context
     const memoryContext = await fetchMemoryContext(userId);
-    const systemPrompt = await buildSystemPrompt(routingDecision.agent, context, memoryContext);
+
+    // Fetch relevant document context for the query
+    let documentContext = '';
+    try {
+      const docContext = await getConversationContext(userId, threadId, message, 4000);
+      if (docContext.content) {
+        documentContext = docContext.content;
+        logger.debug('Document context retrieved for streaming', {
+          userId,
+          threadId,
+          sourceCount: docContext.sources.length,
+        });
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch document context', { userId, threadId, error });
+    }
+
+    const systemPrompt = await buildSystemPrompt(routingDecision.agent, context, memoryContext, documentContext);
 
     // Get conversation history
     const { data: dbMessages } = await supabaseAdmin

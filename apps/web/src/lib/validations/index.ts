@@ -25,6 +25,7 @@ export * from './voice';
 export * from './contenthub';
 export * from './tasks';
 export * from './threads';
+export * from './tools';
 
 /**
  * Helper function to create validation error response

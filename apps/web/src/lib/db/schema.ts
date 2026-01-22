@@ -682,6 +682,9 @@ export const noteFoldersSchema: RxJsonSchema<{
     sortOrder: {
       type: 'number',
       default: 0,
+      multipleOf: 1,
+      minimum: -9999999,
+      maximum: 9999999,
     },
     createdAt: {
       type: 'string',
@@ -802,11 +805,13 @@ export const agentMemoriesSchema: RxJsonSchema<{
     memoryType: {
       type: 'string',
       enum: ['fact', 'preference', 'task', 'event', 'relationship'],
+      maxLength: 20,
     },
     importance: {
       type: 'string',
       enum: ['low', 'medium', 'high', 'critical'],
       default: 'medium',
+      maxLength: 20,
     },
     sourceThreadId: {
       type: 'string',

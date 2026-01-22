@@ -1,13 +1,14 @@
 /**
  * Chat API Route
  * Server-side LLM processing with agent orchestration
- * Now with enriched context (time, location, weather)
+ * Uses unified orchestration service (non-streaming fallback)
+ *
+ * NOTE: Prefer /api/chat/stream for real-time streaming responses.
+ * This endpoint is maintained for backward compatibility.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { processMessage } from '@/lib/agents';
-import { buildEnrichedContext } from '@/lib/agents/context-provider';
-import type { AgentMessage } from '@/lib/agents/types';
+import { processMessage, type ExtendedAgentType } from '@/lib/agents/orchestration';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth/api-auth';
 import { chatMessageSchema, validationErrorResponse } from '@/lib/validations';
 import { logger } from '@/lib/logger';
@@ -30,69 +31,63 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse(parseResult.error);
     }
 
-    const { message, conversationId, userProfile } = parseResult.data;
-    const userId = user.id; // Use authenticated user ID
-
-    logger.info('[Chat API] Received request', { message, userId, conversationId });
-
-    // Create agent message
-    const agentMessage: AgentMessage = {
-      content: message,
-      role: 'user',
+    const { message, conversationId, userProfile, forceAgent } = parseResult.data as {
+      message: string;
+      conversationId?: string;
+      userProfile?: {
+        name?: string;
+        timezone?: string;
+        communicationStyle?: 'concise' | 'detailed';
+      };
+      forceAgent?: ExtendedAgentType;
     };
+    const userId = user.id;
 
-    // Build enriched context with time, location, weather
-    const sessionId = conversationId || Date.now().toString();
-    const enrichedContext = await buildEnrichedContext(
+    logger.info('[Chat API] Received request', {
+      messageLength: message.length,
       userId,
-      sessionId,
-      userProfile ? {
-        name: userProfile.name,
-        timezone: userProfile.timezone,
-        communicationStyle: userProfile.communicationStyle,
-        preferences: {},
-      } : undefined
-    );
-
-    logger.info('[Chat API] Enriched context built', {
-      time: enrichedContext.localTimeFormatted,
-      location: enrichedContext.location.city,
-      weather: enrichedContext.weather?.condition,
+      threadId: conversationId,
     });
 
-    logger.info('[Chat API] Processing message through orchestrator');
-
-    // Process message through agent orchestrator with enriched context
-    const response = await processMessage(agentMessage, enrichedContext);
+    // Process through unified orchestration service
+    const response = await processMessage({
+      message,
+      userId,
+      threadId: conversationId,
+      userProfile,
+      forceAgent,
+      showToolExecutions: true,
+    });
 
     logger.info('[Chat API] Response received', {
       agent: response.agent,
       contentLength: response.content.length,
+      routingSource: response.routing.source,
+      routingConfidence: response.routing.confidence,
     });
 
-    // Return response with context metadata
+    // Return response in backward-compatible format with additional fields
     return NextResponse.json({
       content: response.content,
       agent: response.agent,
-      metadata: {
-        ...response.metadata,
-        context: {
-          time: enrichedContext.localTimeFormatted,
-          date: enrichedContext.localDateFormatted,
-          location: enrichedContext.location.city,
-          weather: enrichedContext.weather ? {
-            temp: enrichedContext.weather.temp,
-            condition: enrichedContext.weather.condition,
-          } : null,
-        },
+      threadId: response.threadId,
+      routing: {
+        agent: response.routing.agent,
+        confidence: response.routing.confidence,
+        rationale: response.routing.rationale,
       },
+      toolExecutions: response.toolExecutions?.map(t => ({
+        tool: t.tool,
+        success: t.success,
+        duration: t.duration,
+      })),
+      memoriesUsed: response.memoriesUsed,
+      citations: response.citations,
+      metadata: response.metadata,
     });
   } catch (error) {
-    logger.error('[Chat API] Error', { error: error });
+    logger.error('[Chat API] Error', { error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
-
-    logger.error('[Chat API] Error details', { errorMessage, errorStack });
 
     return NextResponse.json(
       {

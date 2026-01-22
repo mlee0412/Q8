@@ -13,7 +13,7 @@ export type ExtendedAgentType = AgentType | 'finance';
 
 /**
  * Routing decision with structured output
- * Phase 2 enhancement: includes performance-based routing
+ * Phase 2/3 enhancement: includes performance and vector routing metrics
  */
 export interface RoutingDecision {
   /** Selected agent for the task */
@@ -27,12 +27,17 @@ export interface RoutingDecision {
   /** Planned tools to use (if known) */
   toolPlan?: string[];
   /** Source of routing decision */
-  source: 'llm' | 'heuristic' | 'fallback';
-  /** Performance metrics that influenced this decision */
+  source: 'llm' | 'heuristic' | 'fallback' | 'vector';
+  /** Performance/vector metrics that influenced this decision */
   performanceContext?: {
+    // LLM/Heuristic metrics
     agentSuccessRate?: number;
     avgLatency?: number;
     recentFailures?: number;
+    // Vector routing metrics
+    matchCount?: number;
+    avgSimilarity?: number;
+    avgQuality?: number;
   };
 }
 
@@ -144,4 +149,100 @@ export const DEFAULT_ROUTING_POLICY: RoutingPolicy = {
   costWeight: 0.15,
   minLLMConfidence: 0.7,
   maxLLMRoutingLatency: 500,
+};
+
+// =============================================================================
+// UNIFIED AGENT DEFINITION
+// =============================================================================
+
+import type { OpenAITool, ToolResult } from '../types';
+import type { ModelConfig } from '../model_factory';
+
+/**
+ * Tool executor function signature
+ * All tool executors follow this pattern for consistency
+ */
+export type ToolExecutor = (
+  toolName: string,
+  args: Record<string, unknown>,
+  context?: { userId?: string; sessionId?: string }
+) => Promise<ToolResult>;
+
+/**
+ * System prompt builder function
+ * Allows dynamic prompt construction based on context
+ */
+export type SystemPromptBuilder = (
+  context?: EnrichedContext,
+  additionalContext?: string
+) => string | Promise<string>;
+
+/**
+ * Unified Agent Definition
+ * Standard interface for all agent types in the swarm
+ *
+ * This interface ensures consistent structure across:
+ * - Tool definitions and execution
+ * - System prompt generation
+ * - Model configuration
+ * - Background processing capabilities
+ */
+export interface AgentDefinition {
+  /** Unique agent identifier (matches ExtendedAgentType) */
+  id: ExtendedAgentType;
+
+  /** Display name for the agent */
+  name: string;
+
+  /** Brief description of agent capabilities */
+  description: string;
+
+  /** Model configuration (from model_factory) */
+  modelConfig: ModelConfig;
+
+  /** Base system prompt instructions */
+  instructions: string;
+
+  /** Dynamic system prompt builder (optional) */
+  buildSystemPrompt?: SystemPromptBuilder;
+
+  /** OpenAI-compatible tool definitions */
+  tools: OpenAITool[];
+
+  /** Tool execution function */
+  executeTool: ToolExecutor;
+
+  /** Whether this agent can process requests in background */
+  canBackground: boolean;
+
+  /** Maximum tokens for response (for cost management) */
+  maxResponseTokens?: number;
+
+  /** Tool-specific configuration */
+  toolConfig?: {
+    /** Default timeout for tool execution (ms) */
+    defaultTimeoutMs?: number;
+    /** Maximum concurrent tool calls */
+    maxConcurrentCalls?: number;
+    /** Tools that require user confirmation before execution */
+    confirmationRequired?: string[];
+  };
+
+  /** Agent-specific capabilities for routing */
+  capabilities: AgentCapability;
+}
+
+/**
+ * Agent registry for dynamic agent lookup
+ */
+export type AgentRegistry = Map<ExtendedAgentType, AgentDefinition>;
+
+/**
+ * Create a partial agent definition (for building)
+ */
+export type PartialAgentDefinition = Partial<AgentDefinition> & {
+  id: ExtendedAgentType;
+  name: string;
+  tools: OpenAITool[];
+  executeTool: ToolExecutor;
 };

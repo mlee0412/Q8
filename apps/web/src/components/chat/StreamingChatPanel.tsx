@@ -284,6 +284,8 @@ export const StreamingChatPanel = forwardRef<StreamingChatPanelRef, StreamingCha
           onSend={handleSend}
           disabled={isLoading}
           placeholder={isStreaming ? 'Waiting...' : 'Message Q8...'}
+          showFileUpload={true}
+          threadId={currentThreadId || undefined}
         />
       </div>
     </div>

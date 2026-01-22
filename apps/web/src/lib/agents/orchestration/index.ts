@@ -20,6 +20,17 @@ export { DEFAULT_ROUTING_POLICY } from './types';
 // Router
 export { route, heuristicRoute, llmRoute, AGENT_CAPABILITIES } from './router';
 
+// Vector Router
+export {
+  vectorRoute,
+  hybridRoute,
+  submitRoutingFeedback,
+  addRoutingExample,
+  seedExampleEmbeddings,
+  getRoutingStats,
+  getSimilarExamples,
+} from './vector-router';
+
 // Metrics
 export {
   logRoutingTelemetry,

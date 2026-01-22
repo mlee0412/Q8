@@ -4,18 +4,9 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { getDatabase } from '@/lib/db';
+import { destroySyncEngine, initSyncEngine } from '@/lib/sync';
 import { logger } from '@/lib/logger';
 import type { User, Session } from '@supabase/supabase-js';
-import type { RxDatabase } from 'rxdb';
-
-/**
- * Extended Window interface for RxDB sync interval
- */
-declare global {
-  interface Window {
-    __rxdbSyncInterval?: ReturnType<typeof setInterval>;
-  }
-}
 
 interface SessionContextValue {
   user: User | null;
@@ -198,31 +189,14 @@ async function syncUserToRxDB(user: User) {
 async function startReplication(session: Session) {
   try {
     const db = await getDatabase();
+    const syncEngine = initSyncEngine({
+      supabase,
+      db,
+      userId: session.user.id,
+      syncInterval: 30000,
+    });
 
-    // Start background sync with Supabase
-
-    // Pull initial data from Supabase
-    const { pullAllCollections } = await import('@/lib/sync/pull');
-    await pullAllCollections(db);
-
-    // Set up periodic sync (every 30 seconds)
-    const syncInterval = setInterval(async () => {
-      try {
-        const { pushAllCollections } = await import('@/lib/sync/push');
-        const { pullAllCollections } = await import('@/lib/sync/pull');
-
-        // Push local changes
-        await pushAllCollections(db);
-
-        // Pull remote changes
-        await pullAllCollections(db);
-      } catch (error) {
-        logger.error('Sync error', { error });
-      }
-    }, 30000);
-
-    // Store interval ID for cleanup
-    window.__rxdbSyncInterval = syncInterval;
+    await syncEngine.start(true);
   } catch (error) {
     logger.error('Failed to start replication', { error });
   }
@@ -231,12 +205,7 @@ async function startReplication(session: Session) {
 // Helper: Stop RxDB replication
 async function stopReplication() {
   try {
-    // Clear sync interval
-    const syncInterval = window.__rxdbSyncInterval;
-    if (syncInterval) {
-      clearInterval(syncInterval);
-      delete window.__rxdbSyncInterval;
-    }
+    await destroySyncEngine();
   } catch (error) {
     logger.error('Failed to stop replication', { error });
   }

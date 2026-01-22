@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { useState, useRef, KeyboardEvent, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Send,
   Mic,
   MicOff,
-  Paperclip,
   Loader2,
+  FileText,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { FileUploadZone } from '../documents/FileUploadZone';
+import type { Document } from '@/lib/documents/types';
 
 interface ChatInputProps {
   /**
@@ -24,9 +27,19 @@ interface ChatInputProps {
   onVoiceToggle?: (isRecording: boolean) => void;
 
   /**
-   * File upload callback
+   * File upload callback (raw files)
    */
   onFileUpload?: (files: File[]) => void;
+
+  /**
+   * Document upload callback (processed documents)
+   */
+  onDocumentUpload?: (document: Document) => void;
+
+  /**
+   * Thread ID for conversation-scoped document uploads
+   */
+  threadId?: string;
 
   /**
    * Placeholder text
@@ -105,6 +118,8 @@ export function ChatInput({
   onSend,
   onVoiceToggle,
   onFileUpload,
+  onDocumentUpload,
+  threadId,
   placeholder = 'Message Q8...',
   disabled = false,
   showVoice = false,
@@ -117,9 +132,9 @@ export function ChatInput({
   const [isRecording, setIsRecording] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<Document[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Agent mentions
   const agents = [
@@ -187,12 +202,16 @@ export function ChatInput({
     onVoiceToggle?.(newRecordingState);
   };
 
-  // Handle file selection
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setSelectedFiles((prev) => [...prev, ...files]);
-    onFileUpload?.(files);
-  };
+  // Handle document upload complete
+  const handleDocumentUpload = useCallback((document: Document) => {
+    setUploadedDocs((prev) => [...prev, document]);
+    onDocumentUpload?.(document);
+  }, [onDocumentUpload]);
+
+  // Remove uploaded document from display
+  const removeUploadedDoc = useCallback((docId: string) => {
+    setUploadedDocs((prev) => prev.filter((d) => d.id !== docId));
+  }, []);
 
   // Handle mention select
   const handleMentionSelect = (agentId: string) => {
@@ -234,7 +253,32 @@ export function ChatInput({
         </motion.div>
       )}
 
-      {/* Selected Files */}
+      {/* Uploaded Documents */}
+      {uploadedDocs.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {uploadedDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="bg-surface-3 border border-border-subtle px-3 py-2 rounded-lg flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4 text-neon-primary" />
+              <span className="text-sm text-text-primary">{doc.name}</span>
+              <span className="text-xs text-text-muted capitalize">
+                ({doc.status})
+              </span>
+              <button
+                onClick={() => removeUploadedDoc(doc.id)}
+                aria-label={`Remove ${doc.name}`}
+                className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legacy Selected Files (for non-document files) */}
       {selectedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {selectedFiles.map((file, index) => (
@@ -242,7 +286,7 @@ export function ChatInput({
               key={index}
               className="bg-surface-3 border border-border-subtle px-3 py-2 rounded-lg flex items-center gap-2"
             >
-              <Paperclip className="h-4 w-4 text-text-muted" />
+              <FileText className="h-4 w-4 text-text-muted" />
               <span className="text-sm text-text-primary">{file.name}</span>
               <button
                 onClick={() =>
@@ -251,7 +295,7 @@ export function ChatInput({
                 aria-label={`Remove ${file.name}`}
                 className="h-6 w-6 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors focus-ring rounded"
               >
-                <span aria-hidden="true">×</span>
+                <X className="h-3 w-3" />
               </button>
             </div>
           ))}
@@ -260,26 +304,15 @@ export function ChatInput({
 
       {/* Input Container */}
       <div className="bg-surface-2 border border-border-subtle rounded-xl flex items-end gap-2 p-2.5">
-        {/* File Upload */}
+        {/* File Upload with Document Processing */}
         {showFileUpload && (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={handleFileSelect}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="flex-shrink-0"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-          </>
+          <FileUploadZone
+            scope={threadId ? 'conversation' : 'global'}
+            threadId={threadId}
+            onUploadComplete={handleDocumentUpload}
+            compact
+            disabled={disabled}
+          />
         )}
 
         {/* Text Input */}

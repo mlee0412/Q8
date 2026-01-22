@@ -40,7 +40,7 @@ export interface EvalResult {
   expectedAgent: ExtendedAgentType;
   actualAgent: ExtendedAgentType;
   confidence: number;
-  routingSource: 'llm' | 'heuristic' | 'fallback';
+  routingSource: 'llm' | 'heuristic' | 'fallback' | 'vector';
   latencyMs: number;
   toolsPlanned?: string[];
   errors?: string[];

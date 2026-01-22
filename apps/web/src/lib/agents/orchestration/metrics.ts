@@ -29,7 +29,7 @@ export interface RoutingTelemetryEvent {
   threadId: string;
   messageId?: string;
   selectedAgent: ExtendedAgentType;
-  routingSource: 'llm' | 'heuristic' | 'fallback';
+  routingSource: 'llm' | 'heuristic' | 'fallback' | 'vector';
   confidence: number;
   latencyMs: number;
   success: boolean;

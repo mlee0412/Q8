@@ -3,8 +3,9 @@
  * Main orchestrator for RxDB ↔ Supabase synchronization
  */
 
-import type { RxDatabase, RxCollection, RxDocument } from 'rxdb';
+import type { RxCollection } from 'rxdb';
 import { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import type { Q8Database } from '@/lib/db';
 import type {
   SyncMetadata,
   CollectionSyncConfig,
@@ -20,6 +21,7 @@ import {
   createSyncError,
   getOrCreateDeviceId,
 } from './types';
+import { FIELD_MAPPINGS, toRxDBFormat, toSupabaseFormat } from './transformers';
 import { SyncHealthManager, getSyncHealthManager } from './health';
 import { PushQueueManager, getPushQueueManager } from './queue';
 import { getStrategy, logConflict, updateLogicalClock } from './strategies';
@@ -31,7 +33,8 @@ import { logger } from '@/lib/logger';
 
 export interface SyncEngineConfig {
   supabase: SupabaseClient;
-  db: RxDatabase;
+  db: Q8Database;
+  userId: string;
   collections?: CollectionSyncConfig[];
   circuitBreaker?: Partial<CircuitBreakerConfig>;
   autoStart?: boolean;
@@ -39,9 +42,11 @@ export interface SyncEngineConfig {
   syncInterval?: number;
 }
 
+const SNAKE_CASE_COLLECTIONS = new Set(['chat_messages', 'calendar_events']);
+
 export class SyncEngine {
   private supabase: SupabaseClient;
-  private db: RxDatabase;
+  private db: Q8Database;
   private configs: Map<string, CollectionSyncConfig>;
   private circuitBreakerConfig: CircuitBreakerConfig;
   private healthManager: SyncHealthManager;
@@ -51,10 +56,15 @@ export class SyncEngine {
   private syncTimer: ReturnType<typeof setInterval> | null = null;
   private isRunning: boolean = false;
   private deviceId: string;
+  private userId: string;
 
   constructor(config: SyncEngineConfig) {
     this.supabase = config.supabase;
     this.db = config.db;
+    if (!config.userId) {
+      throw new Error('[SyncEngine] userId is required for explicit scoping.');
+    }
+    this.userId = config.userId;
     this.syncInterval = config.syncInterval || 30000;
     this.deviceId = getOrCreateDeviceId();
 
@@ -235,6 +245,7 @@ export class SyncEngine {
     let query = this.supabase
       .from(collectionName)
       .select('*')
+      .eq('user_id', this.userId)
       .order('updated_at', { ascending: true })
       .limit(config.batchSize);
 
@@ -261,7 +272,7 @@ export class SyncEngine {
 
     for (const remoteItem of rawItems) {
       // Transform snake_case to camelCase
-      const transformed = this.transformFromSupabase(remoteItem);
+      const transformed = this.transformFromSupabase(collectionName, remoteItem);
 
       // Update logical clock
       if (transformed.logicalClock) {
@@ -367,8 +378,8 @@ export class SyncEngine {
       await this.queueManager.markInProgress(op.id);
 
       try {
-        const item = op.item as SyncMetadata;
-        const transformed = this.transformToSupabase(item);
+        const item = { ...(op.item as SyncMetadata), userId: this.userId };
+        const transformed = this.transformToSupabase(collectionName, item);
 
         let response;
 
@@ -391,6 +402,7 @@ export class SyncEngine {
                 deleted_at: new Date().toISOString(),
               })
               .eq('id', item.id)
+              .eq('user_id', this.userId)
               .select()
               .single();
             break;
@@ -464,6 +476,7 @@ export class SyncEngine {
           event: '*',
           schema: 'public',
           table: collectionName,
+          filter: `user_id=eq.${this.userId}`,
         },
         async (payload) => {
           await this.handleRealtimeChange(collectionName, payload);
@@ -481,8 +494,8 @@ export class SyncEngine {
     collectionName: string,
     payload: {
       eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-      new: Record<string, unknown>;
-      old: Record<string, unknown>;
+      new: Record<string, unknown> | null;
+      old: Record<string, unknown> | null;
     }
   ): Promise<void> {
     const config = this.configs.get(collectionName);
@@ -492,14 +505,17 @@ export class SyncEngine {
     if (!collection) return;
 
     try {
-      const rawItem = payload.new;
+      const rawItem = payload.eventType === 'DELETE' ? payload.old : payload.new;
+      if (!rawItem) {
+        return;
+      }
 
       // Ignore changes from this device
       if (rawItem.origin_device_id === this.deviceId) {
         return;
       }
 
-      const transformed = this.transformFromSupabase(rawItem);
+      const transformed = this.transformFromSupabase(collectionName, rawItem);
       const strategy = getStrategy(config);
 
       switch (payload.eventType) {
@@ -534,7 +550,7 @@ export class SyncEngine {
         }
 
         case 'DELETE': {
-          const deletedId = payload.old.id as string;
+          const deletedId = transformed.id;
           const doc = await collection.findOne(deletedId).exec();
           if (doc) {
             await doc.incrementalPatch({
@@ -635,42 +651,80 @@ export class SyncEngine {
   /**
    * Transform Supabase snake_case to RxDB camelCase
    */
-  private transformFromSupabase(item: Record<string, unknown>): SyncMetadata {
+  private transformFromSupabase(collectionName: string, item: Record<string, unknown>): SyncMetadata {
+    const formatted = toRxDBFormat(item);
+    const metadata = {
+      id: formatted.id as string,
+      userId: (formatted.userId as string) || this.userId,
+      createdAt: formatted.createdAt as string,
+      updatedAt: formatted.updatedAt as string,
+      deletedAt: (formatted.deletedAt as string) || null,
+      isDeleted: (formatted.isDeleted as boolean) || false,
+      logicalClock: (formatted.logicalClock as number) || 0,
+      originDeviceId: (formatted.originDeviceId as string) || 'unknown',
+    };
+
+    const rest: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(formatted)) {
+      if (
+        ![
+          'id',
+          'userId',
+          'createdAt',
+          'updatedAt',
+          'deletedAt',
+          'isDeleted',
+          'logicalClock',
+          'originDeviceId',
+        ].includes(key)
+      ) {
+        rest[key] = value;
+      }
+    }
+
+    const adjusted = this.applySnakeCaseFieldMappings(collectionName, rest);
+
     return {
-      id: item.id as string,
-      userId: item.user_id as string,
-      createdAt: item.created_at as string,
-      updatedAt: item.updated_at as string,
-      deletedAt: (item.deleted_at as string) || null,
-      isDeleted: (item.is_deleted as boolean) || false,
-      logicalClock: (item.logical_clock as number) || 0,
-      originDeviceId: (item.origin_device_id as string) || 'unknown',
-      // Copy other fields
-      ...Object.fromEntries(
-        Object.entries(item).filter(
-          ([key]) =>
-            !['id', 'user_id', 'created_at', 'updated_at', 'deleted_at', 'is_deleted', 'logical_clock', 'origin_device_id'].includes(key)
-        )
-      ),
+      ...metadata,
+      ...adjusted,
     };
   }
 
   /**
    * Transform RxDB camelCase to Supabase snake_case
    */
-  private transformToSupabase(item: SyncMetadata): Record<string, unknown> {
-    const { userId, createdAt, updatedAt, deletedAt, isDeleted, logicalClock, originDeviceId, ...rest } = item;
+  private transformToSupabase(
+    collectionName: string,
+    item: SyncMetadata & Partial<LocalSyncFields>
+  ): Record<string, unknown> {
+    const { _syncStatus, _lastSyncAttempt, _syncError, ...rest } = item;
+    const payload = { ...rest, userId: this.userId };
 
-    return {
-      ...rest,
-      user_id: userId,
-      created_at: createdAt,
-      updated_at: updatedAt,
-      deleted_at: deletedAt,
-      is_deleted: isDeleted,
-      logical_clock: logicalClock,
-      origin_device_id: originDeviceId,
-    };
+    return toSupabaseFormat(payload as Record<string, unknown>);
+  }
+
+  private applySnakeCaseFieldMappings(
+    collectionName: string,
+    data: Record<string, unknown>
+  ): Record<string, unknown> {
+    if (!SNAKE_CASE_COLLECTIONS.has(collectionName)) {
+      return data;
+    }
+
+    const mapping = FIELD_MAPPINGS[collectionName];
+    if (!mapping) {
+      return data;
+    }
+
+    const result = { ...data };
+    for (const [camelKey, snakeKey] of Object.entries(mapping)) {
+      if (camelKey in result) {
+        result[snakeKey] = result[camelKey];
+        delete result[camelKey];
+      }
+    }
+
+    return result;
   }
 
   /**

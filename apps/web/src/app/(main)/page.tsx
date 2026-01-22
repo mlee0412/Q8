@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Mic, Command } from 'lucide-react';
+import { Settings, Mic, Command, BookOpen } from 'lucide-react';
+import Link from 'next/link';
 import { BentoGrid, BentoItem } from '@/components/dashboard/BentoGrid';
 import {
   StatusWidget,
@@ -92,6 +93,16 @@ function DashboardContent() {
               <Command className="h-4 w-4" />
               <span className="text-sm">⌘K</span>
             </button>
+
+            {/* Knowledge Base Button */}
+            <Link
+              href="/knowledge"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
+              title="Knowledge Base"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="text-sm">Knowledge</span>
+            </Link>
 
             {/* Voice Mode Button */}
             <button

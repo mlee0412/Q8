@@ -100,6 +100,7 @@ vi.mock('@/lib/logger', () => ({
 
 // Import after mocks
 import { SyncEngine, initSyncEngine, getSyncEngine, destroySyncEngine, type SyncEngineConfig } from '@/lib/sync/engine';
+import type { SyncMetadata } from '@/lib/sync/types';
 
 // Mock Supabase client
 const createMockSupabase = () => ({
@@ -198,6 +199,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       expect(engine).toBeDefined();
@@ -208,6 +210,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
         syncInterval: 60000,
       });
 
@@ -220,6 +223,7 @@ describe('SyncEngine', () => {
       new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
         autoStart: true,
         pullOnStart: false,
       });
@@ -234,6 +238,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.start(false);
@@ -246,6 +251,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.start(false);
@@ -258,6 +264,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.start(false);
@@ -281,6 +288,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.sync();
@@ -297,6 +305,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.sync();
@@ -316,6 +325,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.sync();
@@ -330,6 +340,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       const item = {
@@ -356,6 +367,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       const item = {
@@ -386,6 +398,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       await engine.sync();
@@ -404,6 +417,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       // This should close the circuit breaker since reset time has passed
@@ -418,6 +432,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       expect(engine.health).toBe(mockHealthManager);
@@ -427,6 +442,7 @@ describe('SyncEngine', () => {
       const engine = new SyncEngine({
         supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
         db: mockDb as unknown as SyncEngineConfig['db'],
+        userId: 'test-user-id',
       });
 
       expect(engine.queue).toBe(mockQueueManager);
@@ -457,6 +473,7 @@ describe('Singleton functions', () => {
     const engine = initSyncEngine({
       supabase: mockSupabase as unknown as Parameters<typeof initSyncEngine>[0]['supabase'],
       db: mockDb as unknown as Parameters<typeof initSyncEngine>[0]['db'],
+      userId: 'test-user-id',
     });
 
     expect(engine).toBeDefined();
@@ -467,6 +484,7 @@ describe('Singleton functions', () => {
     const engine1 = initSyncEngine({
       supabase: mockSupabase as unknown as Parameters<typeof initSyncEngine>[0]['supabase'],
       db: mockDb as unknown as Parameters<typeof initSyncEngine>[0]['db'],
+      userId: 'test-user-id',
     });
 
     await engine1.start(false);
@@ -474,6 +492,7 @@ describe('Singleton functions', () => {
     const engine2 = initSyncEngine({
       supabase: mockSupabase as unknown as Parameters<typeof initSyncEngine>[0]['supabase'],
       db: mockDb as unknown as Parameters<typeof initSyncEngine>[0]['db'],
+      userId: 'test-user-id',
     });
 
     expect(getSyncEngine()).toBe(engine2);
@@ -488,6 +507,7 @@ describe('Singleton functions', () => {
     initSyncEngine({
       supabase: mockSupabase as unknown as Parameters<typeof initSyncEngine>[0]['supabase'],
       db: mockDb as unknown as Parameters<typeof initSyncEngine>[0]['db'],
+      userId: 'test-user-id',
     });
 
     await destroySyncEngine();
@@ -555,10 +575,11 @@ describe('Data transformation', () => {
     const engine = new SyncEngine({
       supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
       db: mockDb as unknown as SyncEngineConfig['db'],
+      userId: 'test-user-id',
     });
 
     // Access private method for testing
-    const transformed = engine['transformFromSupabase'](supabaseData);
+    const transformed = engine['transformFromSupabase']('threads', supabaseData);
 
     expect(transformed).toMatchObject({
       id: 'test-1',
@@ -586,10 +607,11 @@ describe('Data transformation', () => {
     const engine = new SyncEngine({
       supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
       db: mockDb as unknown as SyncEngineConfig['db'],
+      userId: 'test-user-id',
     });
 
     // Access private method for testing
-    const transformed = engine['transformToSupabase'](localData);
+    const transformed = engine['transformToSupabase']('threads', localData as SyncMetadata);
 
     expect(transformed).toMatchObject({
       id: 'test-1',
@@ -645,6 +667,7 @@ describe('Error handling', () => {
     const engine = new SyncEngine({
       supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
       db: mockDb as unknown as SyncEngineConfig['db'],
+      userId: 'test-user-id',
     });
 
     await expect(engine['pullCollection']('unknown')).rejects.toThrow('Unknown collection');
@@ -654,6 +677,7 @@ describe('Error handling', () => {
     const engine = new SyncEngine({
       supabase: mockSupabase as unknown as SyncEngineConfig['supabase'],
       db: mockDb as unknown as SyncEngineConfig['db'],
+      userId: 'test-user-id',
     });
 
     // Test the error classification directly
