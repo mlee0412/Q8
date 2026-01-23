@@ -85,6 +85,7 @@ export function useLibraryData() {
     fetchRecommendations,
     fetchSpotifyLibrary,
     fetchYouTubeLibrary,
+    fetchYouTubeHistory,
     fetchPlaylistTracks,
     addToPlaylist,
     createPlaylist,
@@ -103,6 +104,11 @@ export function useLibraryData() {
   // YouTube library
   const [youtubeTrending, setYoutubeTrending] = useState<ContentItem[]>([]);
   const [youtubeMusic, setYoutubeMusic] = useState<ContentItem[]>([]);
+
+  // YouTube user data (from history API - liked videos & subscriptions)
+  const [youtubeLikedVideos, setYoutubeLikedVideos] = useState<ContentItem[]>([]);
+  const [youtubeFromSubscriptions, setYoutubeFromSubscriptions] = useState<ContentItem[]>([]);
+  const [youtubeAuthenticated, setYoutubeAuthenticated] = useState(false);
 
   // Playlist detail
   const [selectedPlaylist, setSelectedPlaylist] = useState<{ id: string; name: string } | null>(null);
@@ -145,7 +151,7 @@ export function useLibraryData() {
         }
       }
 
-      // Fetch YouTube library
+      // Fetch YouTube library (trending content)
       const youtubeData = await fetchYouTubeLibrary();
       if (youtubeData) {
         if (youtubeData.trending) {
@@ -155,9 +161,25 @@ export function useLibraryData() {
           setYoutubeMusic(youtubeData.music.map((v: YouTubeVideo) => mapYouTubeVideo(v, 'youtube-music')));
         }
       }
+
+      // Fetch YouTube user history (liked videos, subscriptions)
+      const youtubeHistory = await fetchYouTubeHistory();
+      if (youtubeHistory) {
+        setYoutubeAuthenticated(youtubeHistory.authenticated || false);
+
+        // Liked videos are already ContentItem format from the API
+        if (youtubeHistory.likedVideos && Array.isArray(youtubeHistory.likedVideos)) {
+          setYoutubeLikedVideos(youtubeHistory.likedVideos);
+        }
+
+        // Recent uploads from subscribed channels
+        if (youtubeHistory.recentFromSubscriptions && Array.isArray(youtubeHistory.recentFromSubscriptions)) {
+          setYoutubeFromSubscriptions(youtubeHistory.recentFromSubscriptions);
+        }
+      }
     };
     loadLibraryData();
-  }, [fetchSpotifyLibrary, fetchYouTubeLibrary]);
+  }, [fetchSpotifyLibrary, fetchYouTubeLibrary, fetchYouTubeHistory]);
 
   // Open playlist to view tracks
   const handleOpenPlaylist = useCallback(async (playlistId: string, playlistName: string) => {
@@ -205,9 +227,13 @@ export function useLibraryData() {
     spotifyRecentlyPlayed,
     spotifyTopTracks,
     featuredPlaylists,
-    // YouTube
+    // YouTube trending
     youtubeTrending,
     youtubeMusic,
+    // YouTube user data
+    youtubeLikedVideos,
+    youtubeFromSubscriptions,
+    youtubeAuthenticated,
     // Playlist detail
     selectedPlaylist,
     playlistTracks,

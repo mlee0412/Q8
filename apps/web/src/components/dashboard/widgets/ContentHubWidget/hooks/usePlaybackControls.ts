@@ -43,8 +43,21 @@ export function usePlaybackControls() {
   const handlePlay = useCallback(
     (item: ContentItem) => {
       play(item);
+      
       if (item.source === 'spotify' && item.sourceMetadata?.uri) {
+        // Play Spotify track via API
         spotifyControls.play(item.sourceMetadata.uri as string);
+      } else if (item.source === 'youtube') {
+        // For YouTube, we need to handle differently
+        // The NowPlayingCard will show the embedded player
+        // Set playing state to true
+        useContentHubStore.setState({ isPlaying: true });
+        
+        // If there's a playback URL, we could also open it
+        // But the embedded player in NowPlayingCard should handle it
+      } else {
+        // For other sources, set playing state
+        useContentHubStore.setState({ isPlaying: true });
       }
     },
     [play, spotifyControls]

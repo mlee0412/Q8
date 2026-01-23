@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Play,
   Pause,
@@ -18,11 +18,15 @@ import {
   Cast,
   ListMusic,
   Loader2,
+  Video,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useContentHubStore } from '@/lib/stores/contenthub';
 import { useColorTheme } from '@/hooks/useColorTheme';
+import { YouTubePlayer } from './components/YouTubePlayer';
+import { getSafeImageUrl, getSafeCssUrl } from './utils/urlValidation';
 import type { ContentItem } from '@/types/contenthub';
 
 interface NowPlayingCardProps {
@@ -77,6 +81,18 @@ export function NowPlayingCard({
   const { volume, setVolume } = useContentHubStore();
   const { gradientStyle } = useColorTheme(item?.thumbnailUrl ?? null);
   const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+
+  // Extract YouTube video ID from item
+  const youtubeVideoId =
+    item?.source === 'youtube'
+      ? (item.sourceMetadata?.videoId as string) || null
+      : null;
+
+  // Reset video player when item changes
+  useEffect(() => {
+    setShowVideoPlayer(false);
+  }, [item?.id]);
 
   // Handle volume slider interaction
   const handleVolumeClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -163,10 +179,10 @@ export function NowPlayingCard({
         style={gradientStyle}
       />
 
-      {/* Blurred album art background */}
+      {/* Blurred album art background - using safe CSS URL */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-15 blur-2xl scale-110"
-        style={{ backgroundImage: `url(${item.thumbnailUrl})` }}
+        style={{ backgroundImage: getSafeCssUrl(item.thumbnailUrl) }}
       />
 
       {/* Content */}
@@ -211,69 +227,138 @@ export function NowPlayingCard({
         </div>
 
         {/* Main content area */}
-        <div className="flex items-start gap-3 flex-1 min-h-0">
-          {/* Thumbnail */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative flex-shrink-0"
-            >
-              <img
-                src={item.thumbnailUrl}
-                alt={item.title}
-                className={cn(
-                  'rounded-lg shadow-lg object-cover',
-                  compact ? 'h-12 w-12' : 'h-16 w-16'
-                )}
-              />
-              {/* Playing indicator */}
-              {isPlaying && (
-                <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-neon-primary rounded-full flex items-center justify-center">
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-0.5 bg-white rounded-full"
-                        animate={{
-                          height: ['4px', '8px', '4px'],
-                        }}
-                        transition={{
-                          duration: 0.5,
-                          repeat: Infinity,
-                          delay: i * 0.1,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Track info */}
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-sm text-white truncate">
-              {item.title}
-            </h4>
-            <p className="text-xs text-white/70 truncate">{item.subtitle}</p>
-
-            {/* External link */}
-            {getExternalLink() && (
-              <a
-                href={getExternalLink()!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[10px] text-neon-primary hover:text-neon-accent mt-1"
+        {showVideoPlayer && youtubeVideoId ? (
+          /* YouTube Video Player Mode */
+          <div className="flex flex-col flex-1 min-h-0">
+            {/* Close video button */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-sm text-white truncate">
+                  {item.title}
+                </h4>
+                <p className="text-xs text-white/70 truncate">{item.subtitle}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-white/70 hover:text-white flex-shrink-0"
+                onClick={() => setShowVideoPlayer(false)}
+                title="Close video player"
               >
-                Open in {getSourceLabel(item.source)}
-                <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-            )}
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {/* YouTube Player */}
+            <YouTubePlayer
+              videoId={youtubeVideoId}
+              autoplay={true}
+              className="flex-1 min-h-[180px]"
+              onStateChange={(state) => {
+                // State 1 = playing, 2 = paused
+                if (state === 1 && !isPlaying) {
+                  onPlayPause();
+                } else if (state === 2 && isPlaying) {
+                  onPlayPause();
+                }
+              }}
+            />
           </div>
-        </div>
+        ) : (
+          /* Thumbnail Mode */
+          <div className="flex items-start gap-3 flex-1 min-h-0">
+            {/* Thumbnail with video play overlay for YouTube */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="relative flex-shrink-0"
+              >
+                <div
+                  className={cn(
+                    'relative cursor-pointer group',
+                    youtubeVideoId && 'hover:ring-2 hover:ring-neon-primary rounded-lg'
+                  )}
+                  onClick={() => {
+                    if (youtubeVideoId) {
+                      setShowVideoPlayer(true);
+                    }
+                  }}
+                >
+                  <img
+                    src={getSafeImageUrl(item.thumbnailUrl)}
+                    alt={item.title}
+                    className={cn(
+                      'rounded-lg shadow-lg object-cover',
+                      compact ? 'h-12 w-12' : 'h-16 w-16'
+                    )}
+                    loading="lazy"
+                  />
+                  {/* Video play overlay for YouTube */}
+                  {youtubeVideoId && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Video className="h-6 w-6 text-white" />
+                    </div>
+                  )}
+                </div>
+                {/* Playing indicator */}
+                {isPlaying && !youtubeVideoId && (
+                  <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-neon-primary rounded-full flex items-center justify-center">
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3].map((i) => (
+                        <motion.div
+                          key={i}
+                          className="w-0.5 bg-white rounded-full"
+                          animate={{
+                            height: ['4px', '8px', '4px'],
+                          }}
+                          transition={{
+                            duration: 0.5,
+                            repeat: Infinity,
+                            delay: i * 0.1,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Track info */}
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-sm text-white truncate">
+                {item.title}
+              </h4>
+              <p className="text-xs text-white/70 truncate">{item.subtitle}</p>
+
+              {/* Watch video button for YouTube */}
+              {youtubeVideoId && (
+                <button
+                  onClick={() => setShowVideoPlayer(true)}
+                  className="inline-flex items-center gap-1 text-[10px] text-neon-primary hover:text-neon-accent mt-1"
+                >
+                  <Video className="h-2.5 w-2.5" />
+                  Watch Video
+                </button>
+              )}
+
+              {/* External link */}
+              {getExternalLink() && (
+                <a
+                  href={getExternalLink()!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-neon-primary hover:text-neon-accent mt-1 ml-2"
+                >
+                  Open in {getSourceLabel(item.source)}
+                  <ExternalLink className="h-2.5 w-2.5" />
+                </a>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="mt-3 flex-shrink-0">

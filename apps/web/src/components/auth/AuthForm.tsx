@@ -162,10 +162,25 @@ export function AuthForm({
     setError(null);
 
     try {
+      // Define scopes for each provider
+      const providerScopes: Record<OAuthProvider, string | undefined> = {
+        google: [
+          'email',
+          'profile',
+          'https://www.googleapis.com/auth/youtube.readonly',
+        ].join(' '),
+        github: undefined, // Use default scopes
+      };
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: providerScopes[provider],
+          queryParams: provider === 'google' ? {
+            access_type: 'offline',
+            prompt: 'consent',
+          } : undefined,
         },
       });
 

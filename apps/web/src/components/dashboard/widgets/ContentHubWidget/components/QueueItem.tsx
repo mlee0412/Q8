@@ -1,9 +1,17 @@
 'use client';
 
+import { memo } from 'react';
 import { X } from 'lucide-react';
+import { getSafeImageUrl } from '../utils/urlValidation';
 import type { QueueItemProps } from '../types';
 
-export function QueueItem({
+/**
+ * QueueItem Component (Memoized)
+ *
+ * Displays a single item in the queue with play/remove actions.
+ * Memoized to prevent unnecessary re-renders when parent state changes.
+ */
+function QueueItemComponent({
   item,
   index,
   onPlay,
@@ -19,9 +27,10 @@ export function QueueItem({
         {index + 1}
       </span>
       <img
-        src={item.thumbnailUrl}
+        src={getSafeImageUrl(item.thumbnailUrl)}
         alt={item.title}
         className="h-8 w-8 rounded object-cover"
+        loading="lazy"
       />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-white truncate">{item.title}</p>
@@ -41,3 +50,14 @@ export function QueueItem({
     </div>
   );
 }
+
+// Memoize with custom comparison for performance
+export const QueueItem = memo(QueueItemComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.index === nextProps.index &&
+    prevProps.showRemove === nextProps.showRemove
+  );
+});
+
+QueueItem.displayName = 'QueueItem';

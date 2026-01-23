@@ -3,6 +3,7 @@ import type { ContentItem } from '@/types/contenthub';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth/api-auth';
 import { contentHubActionSchema, validationErrorResponse } from '@/lib/validations';
 import { logger } from '@/lib/logger';
+import { youtubeCache, cacheKeys, cacheTTL } from '@/lib/cache/youtube-cache';
 
 /**
  * ContentHub API - Unified Content Aggregation
@@ -20,6 +21,9 @@ interface AggregatedContent {
   recentlyPlayed: ContentItem[];
   recommendations: ContentItem[];
   trending: ContentItem[];
+  shorts: ContentItem[];
+  likedVideos: ContentItem[];
+  youtubeAuthenticated: boolean;
   sources: {
     spotify: { connected: boolean; error?: string };
     youtube: { connected: boolean; error?: string };
@@ -49,6 +53,9 @@ export async function GET(request: NextRequest) {
       recentlyPlayed: [],
       recommendations: [],
       trending: [],
+      shorts: [],
+      likedVideos: [],
+      youtubeAuthenticated: false,
       sources: {
         spotify: { connected: false },
         youtube: { connected: false },
@@ -67,6 +74,8 @@ export async function GET(request: NextRequest) {
 
     if (sources.includes('youtube')) {
       fetches.push(fetchYouTubeContent(result, mode));
+      fetches.push(fetchYouTubeShorts(result, mode));
+      fetches.push(fetchYouTubeUserContent(result));
     }
 
     // Future: Add more sources
@@ -74,6 +83,9 @@ export async function GET(request: NextRequest) {
     // if (sources.includes('instagram')) { fetches.push(fetchInstagramContent(result, mode)); }
 
     await Promise.allSettled(fetches);
+
+    // Apply mode filters to all content
+    applyModeFilters(result, mode);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -271,6 +283,213 @@ function parseDuration(isoDuration: string): number {
   const seconds = parseInt(match[3] ?? '0', 10);
 
   return (hours * 3600 + minutes * 60 + seconds) * 1000;
+}
+
+/**
+ * Fetch YouTube Shorts
+ * OPTIMIZED: Added caching to reduce quota usage (search.list = 100 units!)
+ */
+async function fetchYouTubeShorts(
+  result: AggregatedContent,
+  mode: string
+): Promise<void> {
+  const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+  if (!YOUTUBE_API_KEY) return;
+
+  // Check cache first - shorts are expensive!
+  const cacheKey = cacheKeys.shorts(mode, 'contenthub', 12);
+  const cached = youtubeCache.get<ContentItem[]>(cacheKey);
+  if (cached) {
+    result.shorts = cached;
+    logger.info('ContentHub shorts cache hit', { mode });
+    return;
+  }
+
+  try {
+    // Mode-specific search queries for shorts
+    const modeQueries: Record<string, string> = {
+      focus: '#shorts educational tutorial',
+      break: '#shorts funny trending viral',
+      workout: '#shorts fitness workout gym',
+      sleep: '#shorts asmr relaxing calm',
+      discover: '#shorts trending',
+    };
+
+    const searchQuery = modeQueries[mode] || '#shorts trending';
+
+    const searchResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?` +
+        new URLSearchParams({
+          part: 'snippet',
+          q: searchQuery,
+          type: 'video',
+          videoDuration: 'short',
+          maxResults: '20',
+          order: 'relevance',
+          regionCode: 'US',
+          key: YOUTUBE_API_KEY,
+        }),
+      { cache: 'no-store' }
+    );
+
+    if (!searchResponse.ok) return;
+
+    const searchData = await searchResponse.json();
+    const videoIds = searchData.items
+      ?.map((item: { id: { videoId: string } }) => item.id.videoId)
+      .filter(Boolean)
+      .join(',');
+
+    if (!videoIds) return;
+
+    // Get video details (cheap - 1 unit)
+    const detailsResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?` +
+        new URLSearchParams({
+          part: 'contentDetails,statistics',
+          id: videoIds,
+          key: YOUTUBE_API_KEY,
+        }),
+      { cache: 'no-store' }
+    );
+
+    const detailsData = await detailsResponse.json();
+    const videoDetails = new Map<string, { duration: string; viewCount: string }>();
+
+    for (const video of detailsData.items || []) {
+      videoDetails.set(video.id, {
+        duration: video.contentDetails?.duration || '',
+        viewCount: video.statistics?.viewCount || '0',
+      });
+    }
+
+    for (const item of searchData.items || []) {
+      const videoId = item.id.videoId;
+      const details = videoDetails.get(videoId);
+      const duration = details ? parseDuration(details.duration) : 0;
+
+      // Only include actual shorts (< 60 seconds)
+      if (duration > 60000) continue;
+
+      result.shorts.push({
+        id: `youtube-short-${videoId}`,
+        source: 'youtube',
+        type: 'short',
+        title: item.snippet.title,
+        subtitle: item.snippet.channelTitle,
+        thumbnailUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || '',
+        duration,
+        playbackUrl: `https://www.youtube.com/shorts/${videoId}`,
+        deepLinkUrl: `https://www.youtube.com/shorts/${videoId}`,
+        sourceMetadata: {
+          videoId,
+          channelId: item.snippet.channelId,
+          publishedAt: item.snippet.publishedAt,
+          viewCount: parseInt(details?.viewCount || '0'),
+          isShort: true,
+        },
+      });
+
+      if (result.shorts.length >= 12) break;
+    }
+
+    // Cache the results for 15 minutes
+    youtubeCache.set(cacheKey, result.shorts, cacheTTL.shorts);
+    logger.info('ContentHub shorts cached', { mode, count: result.shorts.length });
+  } catch (error) {
+    logger.warn('Failed to fetch YouTube Shorts', { error });
+  }
+}
+
+/**
+ * Fetch user's YouTube content (liked videos, etc.) using Google OAuth token
+ */
+async function fetchYouTubeUserContent(result: AggregatedContent): Promise<void> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+    const response = await fetch(`${baseUrl}/api/youtube/history?type=all&limit=10`, {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    result.youtubeAuthenticated = data.authenticated || false;
+
+    if (data.likedVideos && Array.isArray(data.likedVideos)) {
+      result.likedVideos = data.likedVideos;
+    }
+
+    // Add recent from subscriptions to recommendations
+    if (data.recentFromSubscriptions && Array.isArray(data.recentFromSubscriptions)) {
+      result.recommendations.push(...data.recentFromSubscriptions);
+    }
+  } catch (error) {
+    logger.warn('Failed to fetch YouTube user content', { error });
+  }
+}
+
+/**
+ * Apply mode-based filters to content
+ */
+function applyModeFilters(result: AggregatedContent, mode: string): void {
+  const modeConfigs: Record<string, {
+    minDuration?: number;
+    maxDuration?: number;
+    excludeTypes?: string[];
+    preferTypes?: string[];
+  }> = {
+    focus: {
+      minDuration: 180000, // 3+ minutes
+      excludeTypes: ['short', 'reel'],
+    },
+    break: {
+      maxDuration: 600000, // < 10 minutes
+      preferTypes: ['short', 'reel'],
+    },
+    workout: {
+      preferTypes: ['track', 'short'],
+    },
+    sleep: {
+      excludeTypes: ['short', 'reel'],
+    },
+    discover: {
+      // No filters
+    },
+  };
+
+  const config = modeConfigs[mode];
+  if (!config) return;
+
+  // Filter recommendations
+  if (config.minDuration || config.maxDuration || config.excludeTypes) {
+    result.recommendations = result.recommendations.filter((item) => {
+      if (config.minDuration && item.duration < config.minDuration) return false;
+      if (config.maxDuration && item.duration > config.maxDuration) return false;
+      if (config.excludeTypes?.includes(item.type)) return false;
+      return true;
+    });
+
+    result.trending = result.trending.filter((item) => {
+      if (config.minDuration && item.duration < config.minDuration) return false;
+      if (config.maxDuration && item.duration > config.maxDuration) return false;
+      if (config.excludeTypes?.includes(item.type)) return false;
+      return true;
+    });
+  }
+
+  // For break/workout modes, prioritize shorts
+  if (config.preferTypes?.includes('short')) {
+    // Move some shorts to recommendations for visibility
+    const shortsToPromote = result.shorts.slice(0, 4);
+    result.recommendations = [...shortsToPromote, ...result.recommendations];
+  }
+
+  // For focus/sleep modes, clear shorts from main view
+  if (config.excludeTypes?.includes('short')) {
+    result.shorts = [];
+  }
 }
 
 /**

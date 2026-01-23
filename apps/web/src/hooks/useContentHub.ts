@@ -2,8 +2,46 @@
 
 import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useContentHubStore } from '@/lib/stores/contenthub';
-import type { ContentItem } from '@/types/contenthub';
+import type { ContentItem, ContentMode } from '@/types/contenthub';
+import { PRESET_MODES } from '@/types/contenthub';
 import { logger } from '@/lib/logger';
+
+/**
+ * Apply mode-specific filters to content items
+ */
+function applyModeFilter(content: ContentItem[], mode: ContentMode): ContentItem[] {
+  const modeConfig = PRESET_MODES[mode];
+  if (!modeConfig || !modeConfig.filter) {
+    return content;
+  }
+
+  const filter = modeConfig.filter;
+
+  return content.filter((item) => {
+    if (filter.excludeSources?.includes(item.source)) return false;
+    if (filter.excludeTypes?.includes(item.type)) return false;
+    
+    const durationMs = item.duration || 0;
+    if (filter.minDuration && durationMs < filter.minDuration) return false;
+    if (filter.maxDuration && durationMs > filter.maxDuration) return false;
+
+    return true;
+  });
+}
+
+/**
+ * Get mode-specific AI prompt context
+ */
+function getModePromptContext(mode: ContentMode): string {
+  const prompts: Record<ContentMode, string> = {
+    focus: 'Recommend calm, instrumental music for concentration.',
+    break: 'Recommend light, enjoyable content for relaxation.',
+    workout: 'Recommend high-energy, upbeat content (120-150 BPM).',
+    sleep: 'Recommend calming, slow-tempo content for winding down.',
+    discover: 'Recommend diverse, new content with trending items.',
+  };
+  return prompts[mode] || '';
+}
 
 // Demo content for when APIs aren't available (defined outside hook to avoid dependency issues)
 const DEMO_CONTENT: ContentItem[] = [
@@ -86,9 +124,30 @@ export function useContentHub() {
         play(data.nowPlaying);
       }
 
-      // Add trending items to queue if queue is empty
-      if (queue.length === 0 && data.trending?.length > 0) {
-        data.trending.slice(0, 5).forEach((item: ContentItem) => {
+      // Add content to queue if empty - mix of sources for variety
+      if (queue.length === 0) {
+        const queueItems: ContentItem[] = [];
+
+        // Add YouTube user content first (personalized)
+        if (data.likedVideos?.length > 0) {
+          queueItems.push(...data.likedVideos.slice(0, 2));
+        }
+
+        // Add recommendations (AI-powered or from subscriptions)
+        if (data.recommendations?.length > 0) {
+          queueItems.push(...data.recommendations.slice(0, 2));
+        }
+
+        // Fill remaining slots with trending
+        if (data.trending?.length > 0) {
+          const remaining = 5 - queueItems.length;
+          if (remaining > 0) {
+            queueItems.push(...data.trending.slice(0, remaining));
+          }
+        }
+
+        // Add to queue (addToQueue handles deduplication)
+        queueItems.forEach((item: ContentItem) => {
           addToQueue(item);
         });
       }
@@ -420,6 +479,36 @@ export function useContentHub() {
     }
   }, []);
 
+  // Fetch YouTube Shorts
+  const fetchYouTubeShorts = useCallback(async (category?: string) => {
+    try {
+      const params = new URLSearchParams({
+        mode: activeMode,
+        limit: '12',
+      });
+      if (category) params.set('category', category);
+
+      const response = await fetch(`/api/youtube/shorts?${params}`, { credentials: 'include' });
+      if (!response.ok) return { shorts: [] };
+      return await response.json();
+    } catch (error) {
+      logger.error('YouTube Shorts fetch error', { error });
+      return { shorts: [] };
+    }
+  }, [activeMode]);
+
+  // Fetch YouTube user history (liked videos, subscriptions)
+  const fetchYouTubeHistory = useCallback(async () => {
+    try {
+      const response = await fetch('/api/youtube/history?type=all&limit=20', { credentials: 'include' });
+      if (!response.ok) return { authenticated: false, likedVideos: [], subscriptions: [] };
+      return await response.json();
+    } catch (error) {
+      logger.error('YouTube history fetch error', { error });
+      return { authenticated: false, likedVideos: [], subscriptions: [] };
+    }
+  }, []);
+
   // Fetch playlist tracks
   const fetchPlaylistTracks = useCallback(async (playlistId: string) => {
     try {
@@ -538,6 +627,8 @@ export function useContentHub() {
     fetchAIRecommendations,
     fetchSpotifyLibrary,
     fetchYouTubeLibrary,
+    fetchYouTubeShorts,
+    fetchYouTubeHistory,
     getSpotifyDevices,
     transferSpotifyPlayback,
     fetchPlaylistTracks,

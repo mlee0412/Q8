@@ -1,9 +1,17 @@
 'use client';
 
+import { memo } from 'react';
 import { motion } from 'framer-motion';
+import { getSafeImageUrl } from '../utils/urlValidation';
 import type { ContentCardProps } from '../types';
 
-export function ContentCard({ item, onClick }: ContentCardProps) {
+/**
+ * ContentCard Component (Memoized)
+ *
+ * Displays a content item card with thumbnail and info.
+ * Memoized to prevent unnecessary re-renders in grids.
+ */
+function ContentCardComponent({ item, onClick }: ContentCardProps) {
   return (
     <motion.div
       whileHover={{ scale: 1.05 }}
@@ -13,9 +21,10 @@ export function ContentCard({ item, onClick }: ContentCardProps) {
     >
       <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-3">
         <img
-          src={item.thumbnailUrl}
+          src={getSafeImageUrl(item.thumbnailUrl)}
           alt={item.title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
@@ -24,3 +33,10 @@ export function ContentCard({ item, onClick }: ContentCardProps) {
     </motion.div>
   );
 }
+
+// Memoize with custom comparison
+export const ContentCard = memo(ContentCardComponent, (prevProps, nextProps) => {
+  return prevProps.item.id === nextProps.item.id;
+});
+
+ContentCard.displayName = 'ContentCard';

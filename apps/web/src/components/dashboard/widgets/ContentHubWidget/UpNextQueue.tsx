@@ -1,9 +1,11 @@
 'use client';
 
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Plus, X, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { getSafeImageUrl } from './utils/urlValidation';
 import type { ContentItem } from '@/types/contenthub';
 
 interface UpNextQueueProps {
@@ -123,9 +125,10 @@ export function UpNextQueue({
               {/* Thumbnail */}
               <div className="relative aspect-square">
                 <img
-                  src={item.thumbnailUrl}
+                  src={getSafeImageUrl(item.thumbnailUrl)}
                   alt={item.title}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
 
                 {/* Source badge */}
@@ -229,9 +232,10 @@ export function QueueListItem({
       {/* Thumbnail */}
       <div className="relative h-10 w-10 rounded overflow-hidden flex-shrink-0">
         <img
-          src={item.thumbnailUrl}
+          src={getSafeImageUrl(item.thumbnailUrl)}
           alt={item.title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       </div>
 

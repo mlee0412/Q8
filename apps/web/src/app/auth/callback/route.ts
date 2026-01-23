@@ -66,18 +66,80 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!exchangeError) {
+    // Check if user has Google identity linked (works even if original signup was email)
+    const identities = data.session?.user?.identities || [];
+    const hasGoogleIdentity = identities.some(
+      (identity: { provider: string }) => identity.provider === 'google'
+    );
+    const appMetadataProvider = data.session?.user?.app_metadata?.provider;
+
+    // Debug: Log what we received from Supabase
+    logger.info('Auth callback - session data', {
+      hasSession: !!data.session,
+      hasProviderToken: !!data.session?.provider_token,
+      hasRefreshToken: !!data.session?.provider_refresh_token,
+      appMetadataProvider,
+      hasGoogleIdentity,
+      identityProviders: identities.map((i: { provider: string }) => i.provider),
+      userId: data.session?.user?.id,
+    });
+
+    if (!exchangeError && data.session) {
       // Successfully authenticated - redirect to intended destination
-      // Default to dashboard (/) if no specific redirect
       const redirectPath = next === '/' ? '/' : next;
       logger.info('Auth callback success', { redirectPath, route: 'auth/callback' });
-      return NextResponse.redirect(`${origin}${redirectPath}`);
+
+      const response = NextResponse.redirect(`${origin}${redirectPath}`);
+
+      // Store Google provider token if present (for YouTube API access)
+      // Check: has provider_token AND (app_metadata says google OR has google identity linked)
+      // This handles both fresh Google signups AND email users who link/login with Google
+      if (data.session.provider_token && (appMetadataProvider === 'google' || hasGoogleIdentity)) {
+        logger.info('Google provider token found', {
+          tokenLength: data.session.provider_token.length,
+          source: appMetadataProvider === 'google' ? 'primary_google' : 'linked_google_identity'
+        });
+
+        // Store the Google access token in a secure HTTP-only cookie
+        response.cookies.set('google_provider_token', data.session.provider_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60, // 1 hour (Google tokens expire)
+          path: '/',
+        });
+
+        // Store refresh token if available (for token refresh)
+        if (data.session.provider_refresh_token) {
+          response.cookies.set('google_refresh_token', data.session.provider_refresh_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+            path: '/',
+          });
+        }
+
+        logger.info('Stored Google provider tokens', {
+          hasAccessToken: true,
+          hasRefreshToken: !!data.session.provider_refresh_token
+        });
+      } else if (data.session.provider_token) {
+        // Log when we have a token but didn't store it (for debugging)
+        logger.info('Provider token present but not stored as Google', {
+          appMetadataProvider,
+          hasGoogleIdentity,
+          tokenLength: data.session.provider_token.length
+        });
+      }
+
+      return response;
     }
 
     logger.error('Auth code exchange error', { error: exchangeError, route: 'auth/callback' });
-    const errorMessage = encodeURIComponent(exchangeError.message);
+    const errorMessage = encodeURIComponent(exchangeError?.message || 'Authentication failed');
     return NextResponse.redirect(`${origin}/login?error=${errorMessage}`);
   }
 

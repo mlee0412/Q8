@@ -75,7 +75,12 @@
       "mcp__mcp-docker__browser_navigate",
       "mcp__mcp-docker__browser_take_screenshot",
       "mcp__mcp-docker__browser_snapshot",
-      "mcp__mcp-docker__browser_resize"
+      "mcp__mcp-docker__browser_resize",
+      "Skill(sc:analyze)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(cmd /c \"taskkill /f /im node.exe\")",
+      "Bash(cmd /c \"rd /s /q C:\\\\Users\\\\Minki\\\\Q8\\\\apps\\\\web\\\\.next\")"
     ],
     "deny": [],
     "ask": []

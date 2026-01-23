@@ -34,6 +34,10 @@ export interface MediaCommandCenterProps {
   featuredPlaylists: ContentItem[];
   youtubeTrending: ContentItem[];
   youtubeMusic: ContentItem[];
+  // YouTube user data (from Google OAuth)
+  youtubeLikedVideos: ContentItem[];
+  youtubeFromSubscriptions: ContentItem[];
+  youtubeAuthenticated: boolean;
   selectedPlaylist: PlaylistSelection | null;
   playlistTracks: ContentItem[];
   playlistLoading: boolean;

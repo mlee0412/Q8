@@ -17,6 +17,7 @@ export type ContentSource =
 export type ContentType =
   | 'track'
   | 'video'
+  | 'short'
   | 'movie'
   | 'tvshow'
   | 'reel'

@@ -9,6 +9,8 @@ import {
   Sparkles,
   X,
   Loader2,
+  Music2,
+  Mic,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
@@ -20,10 +22,19 @@ import { useSpotifyWebPlayback } from '@/hooks/useSpotifyWebPlayback';
 import { NowPlayingCard } from './NowPlayingCard';
 import { UpNextQueue } from './UpNextQueue';
 import { QuickActions } from './QuickActions';
-import { DeviceSelectorModal, type SpotifyDevice } from './DeviceSelectorModal';
+import { DeviceSelectorModal } from './DeviceSelectorModal';
 import { MediaCommandCenter } from './MediaCommandCenter';
-import { usePlaybackControls, useLibraryData } from './hooks';
-import type { ContentHubWidgetProps, CastMessage, ContentItem } from './types';
+import {
+  usePlaybackControls,
+  useLibraryData,
+  useVoiceControl,
+  useKeyboardShortcuts,
+  useSearchState,
+  useCastState,
+} from './hooks';
+import { VoiceControlButton, LyricsDisplay, OnboardingCard, NowPlayingSkeleton, MiniWaveform } from './components';
+import { getSafeImageUrl } from './utils/urlValidation';
+import type { ContentHubWidgetProps, ContentItem } from './types';
 
 /**
  * ContentHubWidget - Unified Media Hub
@@ -48,8 +59,8 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
   } = useContentHubStore();
 
   // Data fetching hooks
-  const { search, castToDevice, fetchAIRecommendations, getSpotifyDevices, transferSpotifyPlayback } = useContentHub();
-  
+  const { fetchAIRecommendations } = useContentHub();
+
   // Sync Spotify state (polls every 5s)
   useSpotifySync();
 
@@ -67,7 +78,6 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
     handleShuffle,
     handleRepeat,
     handleVolumeChange,
-    spotifyControls,
   } = usePlaybackControls();
 
   const {
@@ -79,6 +89,9 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
     featuredPlaylists,
     youtubeTrending,
     youtubeMusic,
+    youtubeLikedVideos,
+    youtubeFromSubscriptions,
+    youtubeAuthenticated,
     selectedPlaylist,
     playlistTracks,
     playlistLoading,
@@ -88,60 +101,47 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
     handleCreatePlaylist,
   } = useLibraryData();
 
+  // Search state hook
+  const {
+    searchQuery,
+    showSearch,
+    searchResults,
+    searchLoading,
+    handleSearch,
+    handlePlayFromSearch,
+    clearSearch,
+    setShowSearch,
+  } = useSearchState();
+
+  // Cast state hook
+  const {
+    castMessage,
+    showDeviceSelector,
+    currentDeviceName,
+    setCastMessage,
+    setShowDeviceSelector,
+    openDeviceSelector,
+    handleSmartHome,
+    handleDeviceSelect,
+    getDevicesWithWebPlayer,
+  } = useCastState();
+
   // Local state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<ContentItem[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [castLoading, setCastLoading] = useState(false);
   const [aiDiscoverLoading, setAiDiscoverLoading] = useState(false);
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [currentDeviceName, setCurrentDeviceName] = useState<string | null>(null);
-  const [castMessage, setCastMessage] = useState<CastMessage | null>(null);
+  const [showLyrics, setShowLyrics] = useState(false);
 
   // Client-side progress interpolation
   useEffect(() => {
     if (!isPlaying || !nowPlaying) return;
-    
+
     const interval = setInterval(() => {
       useContentHubStore.setState((state) => ({
         progress: Math.min(state.progress + 1000, nowPlaying.duration || state.progress + 1000)
       }));
     }, 1000);
-    
+
     return () => clearInterval(interval);
   }, [isPlaying, nowPlaying]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target instanceof HTMLInputElement ||
-        target instanceof HTMLTextAreaElement ||
-        target.isContentEditable
-      ) return;
-
-      switch (e.key) {
-        case ' ':
-          e.preventDefault();
-          handlePlayPause();
-          break;
-        case 'ArrowRight':
-          if (e.shiftKey) handleNext();
-          break;
-        case 'ArrowLeft':
-          if (e.shiftKey) handlePrevious();
-          break;
-        case 'Escape':
-          if (isExpanded) toggleExpanded();
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handlePlayPause, handleNext, handlePrevious, isExpanded, toggleExpanded]);
 
   // AI Discover handler
   const handleAIDiscover = useCallback(async () => {
@@ -165,95 +165,10 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
     }
   }, [fetchAIRecommendations, setError]);
 
-  // Get devices with web player
-  const getDevicesWithWebPlayer = useCallback(async (): Promise<SpotifyDevice[]> => {
-    const devices = await getSpotifyDevices();
-
-    if (webPlayback.isReady && webPlayback.deviceId) {
-      const webPlayerDevice: SpotifyDevice = {
-        id: webPlayback.deviceId,
-        name: `${webPlayback.deviceName} (This Browser)`,
-        type: 'Computer',
-        isActive: webPlayback.isActive,
-        volume: webPlayback.volume,
-        supportsVolume: true,
-      };
-      return [webPlayerDevice, ...devices.filter((d: SpotifyDevice) => d.id !== webPlayback.deviceId)];
-    }
-
-    return devices;
-  }, [getSpotifyDevices, webPlayback.isReady, webPlayback.deviceId, webPlayback.deviceName, webPlayback.isActive, webPlayback.volume]);
-
-  // Device selection handler
-  const handleDeviceSelect = useCallback(async (deviceId: string, deviceName: string) => {
-    if (deviceId === webPlayback.deviceId) {
-      setCurrentDeviceName(deviceName);
-      if (nowPlaying?.source === 'spotify' && nowPlaying?.sourceMetadata?.uri) {
-        await webPlayback.play(nowPlaying.sourceMetadata.uri as string);
-        return { success: true, message: `Playing on ${deviceName}` };
-      }
-      return { success: true, message: `Switched to ${deviceName}` };
-    }
-
-    const result = await transferSpotifyPlayback(deviceId, deviceName);
-    if (result.success) {
-      setCurrentDeviceName(deviceName);
-      if (nowPlaying?.source === 'spotify' && nowPlaying?.sourceMetadata?.uri) {
-        setTimeout(async () => {
-          await spotifyControls.play(nowPlaying.sourceMetadata?.uri as string);
-        }, 500);
-      }
-    }
-    return result;
-  }, [transferSpotifyPlayback, nowPlaying, spotifyControls, webPlayback]);
-
-  const openDeviceSelector = useCallback(() => {
-    setShowDeviceSelector(true);
-  }, []);
-
-  // Smart Home casting handler
-  const handleSmartHome = useCallback(async () => {
-    if (!nowPlaying) {
-      setError('No content to cast');
-      return;
-    }
-
-    if (nowPlaying.source === 'spotify') {
-      openDeviceSelector();
-      return;
-    }
-
-    setCastLoading(true);
-    setCastMessage({ type: 'loading', text: 'Launching YouTube on Apple TV...' });
-
-    try {
-      const result = await castToDevice(nowPlaying, 'media_player.living_room');
-      if (result.success) {
-        setError(null);
-        setCastMessage({ type: 'success', text: 'YouTube launched on Apple TV!' });
-        setTimeout(() => setCastMessage(null), 4000);
-      } else {
-        setCastMessage({
-          type: 'error',
-          text: result.error || 'Cast failed. Try opening in browser instead.',
-          fallbackUrl: nowPlaying.playbackUrl || nowPlaying.deepLinkUrl,
-        });
-      }
-    } catch {
-      setCastMessage({
-        type: 'error',
-        text: 'Cast failed. Try opening in browser instead.',
-        fallbackUrl: nowPlaying.playbackUrl || nowPlaying.deepLinkUrl,
-      });
-    } finally {
-      setCastLoading(false);
-    }
-  }, [nowPlaying, castToDevice, setError, openDeviceSelector]);
-
-  // Voice control handler
-  const handleVoice = useCallback(() => {
-    logger.debug('Voice control triggered', { component: 'ContentHubWidget' });
-  }, []);
+  // Smart home handler wrapper
+  const handleSmartHomeAction = useCallback(async () => {
+    await handleSmartHome(nowPlaying);
+  }, [handleSmartHome, nowPlaying]);
 
   // Add to playlist handler
   const handleAddToPlaylistWrapper = useCallback(async (playlistId: string) => {
@@ -267,32 +182,31 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
     }
   }, [nowPlaying, handleAddToPlaylist, setError]);
 
-  // Search handlers
-  const handleSearch = useCallback(async (query: string) => {
-    setSearchQuery(query);
-    if (query.length >= 2) {
-      setSearchLoading(true);
-      try {
-        const results = await search(query);
-        setSearchResults(results);
-      } finally {
-        setSearchLoading(false);
-      }
-    } else {
-      setSearchResults([]);
-    }
-  }, [search]);
+  // Voice control hook
+  const voiceControl = useVoiceControl({
+    onSearch: handleSearch,
+    onModeChange: (mode) => useContentHubStore.setState({ activeMode: mode }),
+    onError: (err) => setError(err),
+  });
 
-  const clearSearch = useCallback(() => {
-    setSearchQuery('');
-    setSearchResults([]);
-    setShowSearch(false);
-  }, []);
+  // Enhanced keyboard shortcuts (no duplicate handler needed)
+  useKeyboardShortcuts({
+    onSearch: () => setShowSearch(true),
+    onToggleLyrics: () => setShowLyrics(!showLyrics),
+    onToggleQueue: toggleExpanded,
+    enabled: true,
+  });
 
-  const handlePlayFromSearch = useCallback((item: ContentItem) => {
-    handlePlay(item);
-    clearSearch();
-  }, [handlePlay, clearSearch]);
+  // Voice control handler
+  const handleVoice = useCallback(() => {
+    voiceControl.toggleListening();
+  }, [voiceControl]);
+
+  // Play from search wrapper
+  const onPlayFromSearch = useCallback(
+    (item: ContentItem) => handlePlayFromSearch(item, handlePlay),
+    [handlePlayFromSearch, handlePlay]
+  );
 
   // Clear error after 5 seconds
   useEffect(() => {
@@ -385,9 +299,45 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-neon-primary" />
             <span className="text-sm font-medium">ContentHub</span>
+            {/* Waveform indicator when playing */}
+            {isPlaying && nowPlaying && (
+              <MiniWaveform isPlaying={isPlaying} className="text-neon-primary" />
+            )}
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Voice Control Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 relative",
+                voiceControl.isListening && "text-neon-primary"
+              )}
+              onClick={handleVoice}
+              title="Voice Control (say 'play', 'pause', 'next', etc.)"
+            >
+              <Mic className={cn(
+                "h-3.5 w-3.5",
+                voiceControl.isListening && "animate-pulse"
+              )} />
+              {voiceControl.isListening && (
+                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full animate-pulse" />
+              )}
+            </Button>
+            {/* Lyrics Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7",
+                showLyrics && "text-neon-primary bg-neon-primary/10"
+              )}
+              onClick={() => setShowLyrics(!showLyrics)}
+              title="Toggle Lyrics (L)"
+            >
+              <Music2 className="h-3.5 w-3.5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -426,7 +376,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                     autoFocus
                   />
                   {searchQuery && (
-                    <button 
+                    <button
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground"
                       onClick={clearSearch}
                     >
@@ -435,7 +385,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                   )}
                 </div>
               </div>
-              
+
               {/* Search Results */}
               {(searchResults.length > 0 || searchLoading) && (
                 <div className="max-h-60 overflow-y-auto border-t border-border-subtle">
@@ -448,12 +398,13 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
                       <div
                         key={item.id}
                         className="flex items-center gap-2 p-2 hover:bg-surface-3 cursor-pointer"
-                        onClick={() => handlePlayFromSearch(item)}
+                        onClick={() => onPlayFromSearch(item)}
                       >
                         <img
-                          src={item.thumbnailUrl}
+                          src={getSafeImageUrl(item.thumbnailUrl)}
                           alt={item.title}
                           className="h-10 w-10 rounded object-cover"
+                          loading="lazy"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
@@ -492,11 +443,63 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
           currentDeviceName={currentDeviceName}
         />
 
+        {/* Lyrics Display - shown when toggled */}
+        <AnimatePresence>
+          {showLyrics && nowPlaying && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden border-t border-border-subtle"
+            >
+              <LyricsDisplay
+                trackTitle={nowPlaying.title}
+                trackArtist={nowPlaying.subtitle || ''}
+                progress={progress}
+                isPlaying={isPlaying}
+                variant="inline"
+                onClose={() => setShowLyrics(false)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Voice Control Feedback */}
+        <AnimatePresence>
+          {voiceControl.isListening && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-surface-3/95 backdrop-blur-sm border border-neon-primary/30 rounded-lg px-4 py-2 shadow-lg z-50"
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex gap-0.5">
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="w-1 bg-neon-primary rounded-full"
+                      animate={{ height: [8, 16, 8] }}
+                      transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-text-muted">
+                  {voiceControl.transcript || 'Listening...'}
+                </span>
+              </div>
+              {voiceControl.lastCommand && (
+                <p className="text-xs text-neon-primary mt-1">✓ {voiceControl.lastCommand}</p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Quick Actions */}
         <div className="px-3 py-2 border-t border-border-subtle">
           <QuickActions
             onAIDiscover={handleAIDiscover}
-            onSmartHome={handleSmartHome}
+            onSmartHome={handleSmartHomeAction}
             onVoice={handleVoice}
             aiDiscoverLoading={aiDiscoverLoading}
           />
@@ -531,6 +534,9 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
               featuredPlaylists={featuredPlaylists}
               youtubeTrending={youtubeTrending}
               youtubeMusic={youtubeMusic}
+              youtubeLikedVideos={youtubeLikedVideos}
+              youtubeFromSubscriptions={youtubeFromSubscriptions}
+              youtubeAuthenticated={youtubeAuthenticated}
               selectedPlaylist={selectedPlaylist}
               playlistTracks={playlistTracks}
               playlistLoading={playlistLoading}
@@ -541,7 +547,7 @@ export function ContentHubWidget({ className }: ContentHubWidgetProps) {
               onPlay={handlePlay}
               onRemove={removeFromQueue}
               onAIDiscover={handleAIDiscover}
-              onSmartHome={handleSmartHome}
+              onSmartHome={handleSmartHomeAction}
               onVoice={handleVoice}
               aiDiscoverLoading={aiDiscoverLoading}
               onOpenPlaylist={handleOpenPlaylist}

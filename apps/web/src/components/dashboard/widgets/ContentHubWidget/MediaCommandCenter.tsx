@@ -24,6 +24,9 @@ export function MediaCommandCenter({
   featuredPlaylists,
   youtubeTrending,
   youtubeMusic,
+  youtubeLikedVideos,
+  youtubeFromSubscriptions,
+  youtubeAuthenticated,
   selectedPlaylist,
   playlistTracks,
   playlistLoading,
@@ -397,6 +400,41 @@ export function MediaCommandCenter({
             {/* YouTube Tab */}
             {activeTab === 'youtube' && (
               <div className="space-y-8">
+                {/* YouTube Authentication Notice */}
+                {!youtubeAuthenticated && (
+                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-center">
+                    <p className="text-sm text-yellow-400 mb-2">
+                      Connect your Google account to see your liked videos and subscription content
+                    </p>
+                    <a
+                      href="/api/auth/link-google"
+                      className="inline-block px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-white transition-colors"
+                    >
+                      Connect Google Account
+                    </a>
+                  </div>
+                )}
+
+                {/* Your Liked Videos - personalized content first */}
+                {youtubeLikedVideos.length > 0 && (
+                  <ContentSection
+                    title="Your Liked Videos"
+                    items={youtubeLikedVideos}
+                    onPlay={onPlay}
+                    maxItems={8}
+                  />
+                )}
+
+                {/* From Your Subscriptions - recent uploads */}
+                {youtubeFromSubscriptions.length > 0 && (
+                  <ContentSection
+                    title="From Your Subscriptions"
+                    items={youtubeFromSubscriptions}
+                    onPlay={onPlay}
+                    maxItems={8}
+                  />
+                )}
+
                 {youtubeMusic.length > 0 && (
                   <ContentSection
                     title="Trending Music"
@@ -423,7 +461,8 @@ export function MediaCommandCenter({
                   />
                 )}
 
-                {youtubeTrending.length === 0 && youtubeMusic.length === 0 && trending.length === 0 && (
+                {youtubeTrending.length === 0 && youtubeMusic.length === 0 && trending.length === 0 &&
+                 youtubeLikedVideos.length === 0 && youtubeFromSubscriptions.length === 0 && (
                   <p className="text-sm text-text-muted text-center py-8">
                     No YouTube content available
                   </p>
