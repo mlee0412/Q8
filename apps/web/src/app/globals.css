@@ -897,3 +897,10 @@
 .animate-orb-4 {
   animation: orb-float-4 20s ease-in-out infinite;
 }
+
+/* ============================================
+   Mobile FAB Safe Area Support
+   ============================================ */
+.fab-container {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

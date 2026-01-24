@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Settings, Mic, Command, BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BentoGrid, BentoItem } from '@/components/dashboard/BentoGrid';
 import {
   StatusWidget,
@@ -25,12 +26,14 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { SettingsPanel } from '@/components/settings';
 import { ToastProvider, toast } from '@/components/ui/toast';
 import { AnimatedBackground } from '@/components/shared/AnimatedBackground';
+import { VoiceFAB } from '@/components/shared/VoiceFAB';
 import { ChatProvider } from '@/contexts/ChatContext';
 import { logger } from '@/lib/logger';
 
 function DashboardContent() {
   // SECURITY: Get userId from authenticated session, not hardcoded
   const { userId, fullName, isLoading } = useAuth();
+  const router = useRouter();
 
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -76,15 +79,15 @@ function DashboardContent() {
         {/* Header */}
         <header className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl md:text-4xl font-bold text-white tracking-tight">
               Q8
             </h1>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Command Palette Button */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Command Palette Button - Hidden on mobile */}
             <button
               onClick={() => setIsCommandPaletteOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
+              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
               title="Command Palette (⌘K)"
             >
               <Command className="h-4 w-4" />
@@ -94,17 +97,17 @@ function DashboardContent() {
             {/* Knowledge Base Button */}
             <Link
               href="/knowledge"
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
+              className="flex items-center gap-2 p-2.5 sm:px-3 sm:py-2 rounded-xl bg-surface-3 hover:bg-surface-2 transition-colors border border-border-subtle"
               title="Knowledge Base"
             >
               <BookOpen className="h-4 w-4" />
-              <span className="text-sm">Knowledge</span>
+              <span className="hidden sm:inline text-sm">Knowledge</span>
             </Link>
 
-            {/* Voice Mode Button - switches chat to voice mode */}
+            {/* Voice Mode Button - Hidden on mobile (available in FAB) */}
             <button
               onClick={() => chatRef.current?.switchMode('voice')}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-primary/20 hover:bg-neon-primary/30 transition-colors border border-neon-primary/30"
+              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-xl bg-neon-primary/20 hover:bg-neon-primary/30 transition-colors border border-neon-primary/30"
               title="Switch to Voice Mode"
             >
               <Mic className="h-4 w-4" />
@@ -114,7 +117,7 @@ function DashboardContent() {
             {/* Settings Button */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-xl hover:bg-surface-3 transition-colors"
+              className="p-2.5 rounded-xl hover:bg-surface-3 transition-colors"
               title="Settings (⌘.)"
             >
               <Settings className="h-5 w-5" />
@@ -225,6 +228,13 @@ function DashboardContent() {
         onPreferencesChange={(prefs) => {
           toast.success('Settings saved', 'Your preferences have been updated');
         }}
+      />
+
+      {/* Mobile Voice FAB */}
+      <VoiceFAB
+        onVoice={() => chatRef.current?.switchMode('voice')}
+        onSettings={() => setIsSettingsOpen(true)}
+        onKnowledge={() => router.push('/knowledge')}
       />
     </main>
   );
