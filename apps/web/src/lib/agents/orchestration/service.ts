@@ -5,7 +5,7 @@
  */
 
 // Imports updated to use new modules
-import { getModel, type AgentType } from '../model_factory';
+import { getModel, getModelChain, type AgentType, type ModelConfig } from '../model_factory';
 import { buildEnrichedContext } from '../context-provider';
 import { addMessage, getConversationHistory } from '../conversation-store';
 import { supabaseAdmin } from '@/lib/supabase/server';
@@ -40,6 +40,206 @@ import { getResponseCache, isCacheable, calculateTTL } from './response-cache';
 import { maybeCompress, needsCompression } from './context-compressor';
 import { getQualityScorer, getFeedbackTracker, scoreResponse } from './quality-scorer';
 import { generateSuggestions, getTimeOfDay, type Suggestion } from './proactive-suggestions';
+import {
+  startSpeculativeExecution,
+  getSpeculativeResult,
+  waitForSpeculativeResult,
+} from './speculative-executor';
+
+/**
+ * Retry configuration for API calls
+ * Increased delays to handle persistent rate limits
+ */
+const RETRY_CONFIG = {
+  maxRetries: 5,
+  baseDelayMs: 2000,
+  maxDelayMs: 30000,
+};
+
+/**
+ * Fallback model chain for rate limit resilience
+ * When primary model hits rate limit, try these in order
+ */
+const FALLBACK_MODELS: Record<string, string[]> = {
+  'gpt-4o': ['gpt-4o-mini', 'gpt-4-turbo'],
+  'gpt-5.1': ['gpt-4o', 'gpt-4o-mini'],
+  'gpt-5-nano': ['gpt-4o-mini', 'gpt-3.5-turbo'],
+  'o3-mini': ['gpt-4o-mini', 'gpt-4o'],
+};
+
+/**
+ * Sleep utility for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Check if an error is a rate limit error (429)
+ * Handles both OpenAI SDK errors and generic errors
+ */
+function isRateLimitError(error: unknown): boolean {
+  // Check for OpenAI SDK error with status property
+  if (error && typeof error === 'object') {
+    const errObj = error as { status?: number; code?: string; message?: string };
+    if (errObj.status === 429) return true;
+    if (errObj.code === 'rate_limit_exceeded') return true;
+  }
+
+  // Check error message
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return message.includes('429') || message.includes('rate limit') || message.includes('too many requests');
+  }
+
+  // Check stringified error
+  const errorStr = String(error).toLowerCase();
+  return errorStr.includes('429') || errorStr.includes('rate limit');
+}
+
+/**
+ * Options for retry with model fallback
+ */
+interface RetryOptions {
+  config?: typeof RETRY_CONFIG;
+  fallbackModels?: string[];
+  currentModel?: string;
+}
+
+/**
+ * Retry wrapper with exponential backoff for API calls
+ * Specifically handles 429 rate limit errors with longer delays
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  context: string,
+  options: RetryOptions = {}
+): Promise<T> {
+  const config = options.config || RETRY_CONFIG;
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < config.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      if (!isRateLimitError(error)) {
+        // Non-rate-limit errors should not be retried
+        throw error;
+      }
+
+      const isLastAttempt = attempt === config.maxRetries - 1;
+
+      if (!isLastAttempt) {
+        // Exponential backoff with jitter - longer delays for rate limits
+        const delay = Math.min(
+          config.baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000,
+          config.maxDelayMs
+        );
+        logger.warn(`Rate limited on ${context}, retrying in ${Math.round(delay)}ms`, {
+          attempt: attempt + 1,
+          maxRetries: config.maxRetries,
+          errorMessage: lastError.message,
+        });
+        await sleep(delay);
+      } else {
+        logger.error(`Rate limit persisted after ${config.maxRetries} retries: ${context}`, {
+          errorMessage: lastError.message,
+        });
+      }
+    }
+  }
+
+  throw lastError || new Error(`Failed after ${config.maxRetries} retries: ${context}`);
+}
+
+/**
+ * Create an OpenAI-compatible client for a given model config
+ */
+async function createClient(modelConfig: ModelConfig): Promise<InstanceType<typeof import('openai').default>> {
+  const { OpenAI } = await import('openai');
+  return new OpenAI({
+    apiKey: modelConfig.apiKey,
+    baseURL: modelConfig.baseURL,
+    maxRetries: 3, // Reduced retries per model - we'll try fallbacks instead
+    timeout: 60000,
+  });
+}
+
+/**
+ * Execute a completion with model fallback on rate limits
+ * Tries each model in the chain until one succeeds
+ */
+async function executeWithFallback<T>(
+  modelChain: ModelConfig[],
+  fn: (client: InstanceType<typeof import('openai').default>, model: string) => Promise<T>,
+  context: string
+): Promise<{ result: T; usedModel: ModelConfig }> {
+  if (modelChain.length === 0) {
+    throw new Error(`No models available for ${context}`);
+  }
+
+  const errors: Array<{ model: string; provider: string; error: string }> = [];
+
+  for (let i = 0; i < modelChain.length; i++) {
+    const modelConfig = modelChain[i]!; // Non-null assertion - we checked length above
+    const isLastModel = i === modelChain.length - 1;
+
+    try {
+      const client = await createClient(modelConfig);
+      const result = await fn(client, modelConfig.model);
+
+      // Log if we used a fallback
+      if (i > 0) {
+        logger.info(`[Fallback] Successfully used fallback model`, {
+          context,
+          usedModel: modelConfig.model,
+          provider: modelConfig.provider,
+          attemptedModels: errors.map(e => e.model),
+        });
+      }
+
+      return { result, usedModel: modelConfig };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      errors.push({
+        model: modelConfig.model,
+        provider: modelConfig.provider || 'unknown',
+        error: errorMessage,
+      });
+
+      // Only retry on rate limits, throw immediately for other errors
+      if (!isRateLimitError(error)) {
+        throw new Error(`[${modelConfig.provider}/${modelConfig.model}] ${errorMessage}`);
+      }
+
+      // Log the rate limit
+      logger.warn(`[RateLimit] ${modelConfig.provider}/${modelConfig.model} rate limited`, {
+        context,
+        model: modelConfig.model,
+        provider: modelConfig.provider,
+        willTryFallback: !isLastModel,
+        errorMessage,
+      });
+
+      // If this was the last model, throw with comprehensive error
+      if (isLastModel) {
+        const modelsAttempted = errors.map(e => `${e.provider}/${e.model}`).join(', ');
+        throw new Error(
+          `All models rate limited for ${context}. Tried: ${modelsAttempted}. ` +
+          `Last error: ${errorMessage}. Please wait a moment before retrying.`
+        );
+      }
+
+      // Brief delay before trying next model
+      await sleep(500);
+    }
+  }
+
+  // This shouldn't be reached, but TypeScript needs it
+  throw new Error(`No models available for ${context}`);
+}
 
 /**
  * Generate a unique message ID
@@ -158,6 +358,8 @@ async function wrapResponseAsOrchestrator(
     const { OpenAI } = await import('openai');
     const client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      maxRetries: 5, // SDK handles exponential backoff automatically
+      timeout: 30000,
     });
 
     const toolContext = toolsUsed.length > 0
@@ -178,6 +380,7 @@ Re-author this response in Q8's voice:`,
       },
     ];
 
+    // SDK's built-in retry handles 429 errors with exponential backoff
     const completion = await client.chat.completions.create({
       model: 'gpt-4o-mini', // Fast, cheap model for wrapper
       messages: wrapperMessages,
@@ -224,6 +427,8 @@ async function* streamWrapResponseAsOrchestrator(
     const { OpenAI } = await import('openai');
     const client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
+      maxRetries: 5, // SDK handles exponential backoff automatically
+      timeout: 30000,
     });
 
     const toolContext = toolsUsed.length > 0
@@ -334,10 +539,14 @@ export async function processMessage(
 
     const targetAgent = routingDecision.agent as AgentType;
 
+    // Start speculative data fetching in background while building context
+    const cancelSpeculative = startSpeculativeExecution(routingDecision, userId);
+
     // Get model configuration (finance has its own model in model_factory)
     const modelConfig = getModel(targetAgent);
 
     if (!modelConfig.apiKey) {
+      cancelSpeculative();
       throw new Error(`API key not configured for ${targetAgent}`);
     }
 
@@ -370,27 +579,45 @@ export async function processMessage(
       .order('created_at', { ascending: true })
       .limit(20);
 
-    const conversationHistory = (dbMessages || [])
+    const rawConversationHistory = (dbMessages || [])
       .filter((m: { role: string }) => m.role !== 'system')
       .map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
 
-    // Build messages
+    // Apply context compression if history is large
+    // This reduces TTFT (Time To First Token) for long conversations
+    const { messages: compressedHistory, contextPrefix } = await maybeCompress(
+      rawConversationHistory,
+      { maxTokens: 4000, recentMessageCount: 8 }
+    );
+
+    // Build messages with optional compression prefix
+    let finalSystemPrompt = systemPrompt;
+    if (contextPrefix) {
+      finalSystemPrompt = `${systemPrompt}\n\n${contextPrefix}`;
+      logger.debug('Context compressed', {
+        originalCount: rawConversationHistory.length,
+        compressedCount: compressedHistory.length,
+      });
+    }
+
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
+      { role: 'system', content: finalSystemPrompt },
+      ...compressedHistory,
     ];
 
     // Get tools for agent
     const tools = getAgentTools(routingDecision.agent);
 
-    // Initialize OpenAI client
+    // Initialize OpenAI client with SDK's built-in retry for rate limits
     const { OpenAI } = await import('openai');
     const client = new OpenAI({
       apiKey: modelConfig.apiKey,
       baseURL: modelConfig.baseURL,
+      maxRetries: 5, // SDK handles exponential backoff automatically
+      timeout: 60000, // 60 second timeout for completions
     });
 
     // Execute completion with optional tools
@@ -398,7 +625,7 @@ export async function processMessage(
     let responseContent: string;
 
     if (tools.length > 0) {
-      // Agent with tools
+      // Agent with tools - SDK handles retry with exponential backoff
       const completion = await client.chat.completions.create({
         model: modelConfig.model,
         messages,
@@ -411,23 +638,59 @@ export async function processMessage(
       const toolCalls = assistantMessage?.tool_calls;
 
       if (toolCalls && toolCalls.length > 0) {
-        // Execute tools
+        // Execute tools IN PARALLEL for latency optimization
+        // Check speculative cache first for pre-warmed results
+        const toolStartTime = Date.now();
+
+        const toolResults = await Promise.all(
+          toolCalls.map(async (toolCall) => {
+            const callStartTime = Date.now();
+            const functionName = toolCall.function.name;
+            const functionArgs = JSON.parse(toolCall.function.arguments);
+
+            // Try to get speculative result first (may have been pre-fetched)
+            const speculativeResult = await waitForSpeculativeResult(
+              userId,
+              functionName,
+              functionArgs,
+              50 // Only wait 50ms for speculative result
+            );
+
+            let result;
+            let fromCache = false;
+
+            if (speculativeResult) {
+              // Use pre-warmed result from speculative execution
+              result = { success: true, data: speculativeResult.result, message: 'From speculative cache' };
+              fromCache = true;
+              logger.debug('Using speculative result (non-streaming)', { tool: functionName });
+            } else {
+              // Execute tool normally
+              result = await executeAgentTool(
+                routingDecision.agent,
+                functionName,
+                functionArgs,
+                userId
+              );
+            }
+
+            const duration = Date.now() - callStartTime;
+
+            return {
+              toolCall,
+              functionName,
+              functionArgs,
+              result,
+              duration,
+              fromCache,
+            };
+          })
+        );
+
+        // Process results after parallel execution
         const toolMessages: Array<{ role: 'tool'; tool_call_id: string; content: string }> = [];
 
-        for (const toolCall of toolCalls) {
-          const toolStartTime = Date.now();
-          const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-
-          const result = await executeAgentTool(
-            routingDecision.agent,
-            functionName,
-            functionArgs,
-            userId
-          );
-
-          const duration = Date.now() - toolStartTime;
-
+        for (const { toolCall, functionName, functionArgs, result, duration } of toolResults) {
           toolExecutions.push({
             id: toolCall.id,
             type: 'end',
@@ -445,6 +708,15 @@ export async function processMessage(
             content: JSON.stringify(result),
           });
         }
+
+        const cacheHits = toolResults.filter(r => r.fromCache).length;
+        logger.debug('Parallel tool execution completed', {
+          toolCount: toolCalls.length,
+          totalDuration: Date.now() - toolStartTime,
+          individualDurations: toolResults.map(r => r.duration),
+          speculativeCacheHits: cacheHits,
+          speculativeCacheHitRate: cacheHits / toolCalls.length,
+        });
 
         // Get final response with tool results
         const followUp = await client.chat.completions.create({
@@ -630,13 +902,18 @@ export async function* streamMessage(
     }
 
     yield { type: 'routing', decision: routingDecision };
+
+    // Start speculative data fetching in background while LLM processes
+    // This pre-warms likely tool results based on the routing decision
+    const cancelSpeculative = startSpeculativeExecution(routingDecision, userId);
+
     yield { type: 'agent_start', agent: routingDecision.agent };
 
     const targetAgent = routingDecision.agent as AgentType;
-    const modelConfig = getModel(targetAgent);
+    const modelChain = getModelChain(targetAgent);
 
-    if (!modelConfig.apiKey) {
-      yield { type: 'error', message: `API key not configured for ${targetAgent}`, recoverable: false };
+    if (modelChain.length === 0) {
+      yield { type: 'error', message: `No models available for ${targetAgent}`, recoverable: false };
       return;
     }
 
@@ -669,67 +946,130 @@ export async function* streamMessage(
       .order('created_at', { ascending: true })
       .limit(20);
 
-    const conversationHistory = (dbMessages || [])
+    const rawStreamingHistory = (dbMessages || [])
       .filter((m: { role: string }) => m.role !== 'system')
       .map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }));
 
-    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
-    ];
+    // Apply context compression if history is large
+    // This reduces TTFT (Time To First Token) for long conversations
+    const { messages: compressedStreamingHistory, contextPrefix: streamingContextPrefix } = await maybeCompress(
+      rawStreamingHistory,
+      { maxTokens: 4000, recentMessageCount: 8 }
+    );
 
-    // Initialize OpenAI
-    const { OpenAI } = await import('openai');
-    const client = new OpenAI({
-      apiKey: modelConfig.apiKey,
-      baseURL: modelConfig.baseURL,
-    });
+    // Build messages with optional compression prefix
+    let streamingSystemPrompt = systemPrompt;
+    if (streamingContextPrefix) {
+      streamingSystemPrompt = `${systemPrompt}\n\n${streamingContextPrefix}`;
+      logger.debug('Streaming context compressed', {
+        originalCount: rawStreamingHistory.length,
+        compressedCount: compressedStreamingHistory.length,
+      });
+    }
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: streamingSystemPrompt },
+      ...compressedStreamingHistory,
+    ];
 
     // Get tools
     const tools = getAgentTools(routingDecision.agent);
     const toolExecutions: ToolEvent[] = [];
     let fullContent = '';
+    let usedModelConfig: ModelConfig = modelChain[0]!; // Non-null: checked modelChain.length above
 
     if (tools.length > 0) {
-      // Tool-using agent
-      const completion = await client.chat.completions.create({
-        model: modelConfig.model,
-        messages,
-        tools,
-        tool_choice: 'auto',
-        max_completion_tokens: 1000,
-      });
+      // Tool-using agent - use model chain with fallback on rate limits
+      const { result: completion, usedModel } = await executeWithFallback(
+        modelChain,
+        async (client, model) => {
+          return client.chat.completions.create({
+            model,
+            messages,
+            tools,
+            tool_choice: 'auto',
+            max_completion_tokens: 1000,
+          });
+        },
+        `tool-completion/${targetAgent}`
+      );
+      usedModelConfig = usedModel;
 
       const assistantMessage = completion.choices[0]?.message;
       const toolCalls = assistantMessage?.tool_calls;
 
       if (toolCalls && toolCalls.length > 0) {
         const toolMessages: Array<{ role: 'tool'; tool_call_id: string; content: string }> = [];
+        const parallelStartTime = Date.now();
 
-        for (const toolCall of toolCalls) {
-          const toolId = toolCall.id;
-          const functionName = toolCall.function.name;
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          const toolStartTime = Date.now();
+        // Parse all tool calls and emit start events immediately
+        const parsedToolCalls = toolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          functionName: toolCall.function.name,
+          functionArgs: JSON.parse(toolCall.function.arguments),
+          toolCall,
+        }));
 
-          if (showToolExecutions) {
-            yield { type: 'tool_start', tool: functionName, args: functionArgs, id: toolId };
+        // Emit all tool_start events upfront (users see all tools spinning)
+        if (showToolExecutions) {
+          for (const { id, functionName, functionArgs } of parsedToolCalls) {
+            yield { type: 'tool_start', tool: functionName, args: functionArgs, id };
           }
+        }
 
-          const result = await executeAgentTool(
-            routingDecision.agent,
-            functionName,
-            functionArgs,
-            userId
-          );
+        // Execute ALL tools in PARALLEL for latency optimization
+        // Check speculative cache first for pre-warmed results
+        const toolResults = await Promise.all(
+          parsedToolCalls.map(async ({ id, functionName, functionArgs, toolCall }) => {
+            const callStartTime = Date.now();
 
-          const duration = Date.now() - toolStartTime;
+            // Try to get speculative result first (may have been pre-fetched)
+            const speculativeResult = await waitForSpeculativeResult(
+              userId,
+              functionName,
+              functionArgs,
+              50 // Only wait 50ms for speculative result
+            );
 
+            let result;
+            let fromCache = false;
+
+            if (speculativeResult) {
+              // Use pre-warmed result from speculative execution
+              result = { success: true, data: speculativeResult.result, message: 'From speculative cache' };
+              fromCache = true;
+              logger.debug('Using speculative result', { tool: functionName });
+            } else {
+              // Execute tool normally
+              result = await executeAgentTool(
+                routingDecision.agent,
+                functionName,
+                functionArgs,
+                userId
+              );
+            }
+
+            const duration = Date.now() - callStartTime;
+
+            return {
+              id,
+              functionName,
+              functionArgs,
+              toolCall,
+              result,
+              duration,
+              fromCache,
+            };
+          })
+        );
+
+        // Emit tool_end events and build messages after parallel execution
+        for (const { id, functionName, functionArgs, toolCall, result, duration } of toolResults) {
           toolExecutions.push({
-            id: toolId,
+            id,
             type: 'end',
             tool: functionName,
             args: functionArgs,
@@ -745,7 +1085,7 @@ export async function* streamMessage(
               tool: functionName,
               success: result.success,
               result: result.data || result.message,
-              id: toolId,
+              id,
               duration,
             };
           }
@@ -757,16 +1097,31 @@ export async function* streamMessage(
           });
         }
 
-        // Get follow-up response (non-streaming to collect for wrapper)
-        const followUp = await client.chat.completions.create({
-          model: modelConfig.model,
-          messages: [
-            ...messages,
-            { role: 'assistant', content: null, tool_calls: toolCalls },
-            ...toolMessages,
-          ] as Parameters<typeof client.chat.completions.create>[0]['messages'],
-          max_completion_tokens: 1000,
+        const streamingCacheHits = toolResults.filter(r => r.fromCache).length;
+        logger.debug('Parallel streaming tool execution completed', {
+          toolCount: toolCalls.length,
+          totalDuration: Date.now() - parallelStartTime,
+          individualDurations: toolResults.map(r => r.duration),
+          speculativeCacheHits: streamingCacheHits,
+          speculativeCacheHitRate: streamingCacheHits / toolCalls.length,
         });
+
+        // Get follow-up response - use model chain with fallback on rate limits
+        const { result: followUp } = await executeWithFallback(
+          modelChain,
+          async (client, model) => {
+            return client.chat.completions.create({
+              model,
+              messages: [
+                ...messages,
+                { role: 'assistant', content: null, tool_calls: toolCalls },
+                ...toolMessages,
+              ] as Parameters<typeof client.chat.completions.create>[0]['messages'],
+              max_completion_tokens: 1000,
+            });
+          },
+          `followup-completion/${targetAgent}`
+        );
 
         fullContent = followUp.choices[0]?.message?.content || 'I executed the requested actions.';
       } else if (assistantMessage?.content) {
@@ -774,12 +1129,19 @@ export async function* streamMessage(
         fullContent = assistantMessage.content;
       }
     } else {
-      // Standard completion (non-streaming to collect for wrapper)
-      const completion = await client.chat.completions.create({
-        model: modelConfig.model,
-        messages,
-        max_tokens: 1000,
-      });
+      // Standard completion - use model chain with fallback on rate limits
+      const { result: completion, usedModel } = await executeWithFallback(
+        modelChain,
+        async (client, model) => {
+          return client.chat.completions.create({
+            model,
+            messages,
+            max_tokens: 1000,
+          });
+        },
+        `completion/${targetAgent}`
+      );
+      usedModelConfig = usedModel;
 
       fullContent = completion.choices[0]?.message?.content || '';
     }
@@ -891,7 +1253,14 @@ export async function* streamMessage(
   } catch (error) {
     logger.error('Orchestration streaming error', { userId, threadId: providedThreadId, error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    yield { type: 'error', message: errorMessage, recoverable: true };
+
+    // Check if this is a rate limit error and provide user-friendly message
+    const isRateLimit = isRateLimitError(error);
+    const userMessage = isRateLimit
+      ? 'I\'m experiencing high demand right now. Please wait a moment and try again.'
+      : errorMessage;
+
+    yield { type: 'error', message: userMessage, recoverable: isRateLimit };
   }
 }
 

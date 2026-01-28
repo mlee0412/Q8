@@ -6,7 +6,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { logger } from '@/lib/logger';
 
-export type AgentType = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home';
+export type AgentType = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home' | 'finance' | 'imagegen';
 
 export interface ToolExecution {
   id: string;
@@ -16,6 +16,42 @@ export interface ToolExecution {
   result?: unknown;
   startTime: Date;
   endTime?: Date;
+  duration?: number;
+}
+
+export interface Citation {
+  id: string;
+  source: string;
+  url?: string;
+  relevance?: number;
+}
+
+export interface MemoryContext {
+  id: string;
+  memoryId: string;
+  content: string;
+  relevance: number;
+}
+
+export interface GeneratedImage {
+  id: string;
+  data: string;
+  mimeType: string;
+  caption?: string;
+  model?: string;
+}
+
+export interface HandoffInfo {
+  from: AgentType;
+  to: AgentType;
+  reason: string;
+  timestamp: Date;
+}
+
+export interface WidgetAction {
+  widgetId: 'tasks' | 'calendar' | 'finance' | 'home' | 'weather' | 'github';
+  action: 'refresh' | 'create' | 'update' | 'delete';
+  data?: Record<string, unknown>;
 }
 
 export interface StreamingMessage {
@@ -26,6 +62,11 @@ export interface StreamingMessage {
   isStreaming: boolean;
   toolExecutions: ToolExecution[];
   timestamp: Date;
+  citations?: Citation[];
+  memoriesUsed?: MemoryContext[];
+  images?: GeneratedImage[];
+  handoff?: HandoffInfo;
+  imageAnalysis?: string;
 }
 
 export interface ChatState {
@@ -34,6 +75,8 @@ export interface ChatState {
   isStreaming: boolean;
   currentAgent: AgentType | null;
   routingReason: string | null;
+  routingConfidence: number | null;
+  pendingHandoff: HandoffInfo | null;
   error: string | null;
   threadId: string | null;
 }
@@ -59,14 +102,40 @@ interface UseChatOptions {
   };
   onMessage?: (message: StreamingMessage) => void;
   onToolExecution?: (tool: ToolExecution) => void;
-  onRouting?: (agent: AgentType, reason: string) => void;
+  onRouting?: (agent: AgentType, reason: string, confidence: number) => void;
+  onAgentStart?: (agent: AgentType) => void;
+  onHandoff?: (handoff: HandoffInfo) => void;
+  onCitation?: (citation: Citation) => void;
+  onMemoryUsed?: (memory: MemoryContext) => void;
+  onImageGenerated?: (image: GeneratedImage) => void;
+  onImageAnalyzed?: (analysis: string, imageUrl?: string) => void;
+  onTTSChunk?: (text: string, isComplete: boolean) => void;
+  onWidgetAction?: (action: WidgetAction) => void;
   onThreadCreated?: (threadId: string) => void;
   onMemoryExtracted?: (count: number) => void;
-  onError?: (error: string) => void;
+  onError?: (error: string, recoverable?: boolean) => void;
 }
 
 export function useChat(options: UseChatOptions) {
-  const { userId, threadId: initialThreadId, userProfile, onMessage, onToolExecution, onRouting, onThreadCreated, onMemoryExtracted, onError } = options;
+  const {
+    userId,
+    threadId: initialThreadId,
+    userProfile,
+    onMessage,
+    onToolExecution,
+    onRouting,
+    onAgentStart,
+    onHandoff,
+    onCitation,
+    onMemoryUsed,
+    onImageGenerated,
+    onImageAnalyzed,
+    onTTSChunk,
+    onWidgetAction,
+    onThreadCreated,
+    onMemoryExtracted,
+    onError
+  } = options;
 
   const [state, setState] = useState<ChatState>({
     messages: [],
@@ -74,6 +143,8 @@ export function useChat(options: UseChatOptions) {
     isStreaming: false,
     currentAgent: null,
     routingReason: null,
+    routingConfidence: null,
+    pendingHandoff: null,
     error: null,
     threadId: initialThreadId || null,
   });
@@ -274,22 +345,49 @@ export function useChat(options: UseChatOptions) {
       type: string;
       agent?: AgentType;
       reason?: string;
+      confidence?: number;
+      source?: string;
+      from?: AgentType;
+      to?: AgentType;
       tool?: string;
+      id?: string;
       args?: Record<string, unknown>;
       success?: boolean;
       result?: unknown;
+      duration?: number;
       delta?: string;
       fullContent?: string;
       message?: string;
+      recoverable?: boolean;
       threadId?: string;
       count?: number;
+      // Citation fields
+      url?: string;
+      relevance?: number;
+      // Memory fields
+      memoryId?: string;
+      content?: string;
+      // Image fields
+      imageData?: string;
+      mimeType?: string;
+      caption?: string;
+      model?: string;
+      analysis?: string;
+      imageUrl?: string;
+      images?: Array<{ data: string; mimeType: string; caption?: string }>;
+      // TTS fields
+      text?: string;
+      isComplete?: boolean;
+      // Widget action fields
+      widgetId?: string;
+      action?: string;
+      data?: Record<string, unknown>;
     },
     messageId: string
   ) => {
     switch (event.type) {
       case 'thread_created':
         if (event.threadId) {
-          // Skip the next message load since we're streaming and have current state
           skipNextLoadRef.current = true;
           setState(prev => ({ ...prev, threadId: event.threadId! }));
           onThreadCreated?.(event.threadId);
@@ -307,11 +405,12 @@ export function useChat(options: UseChatOptions) {
           ...prev,
           currentAgent: event.agent || null,
           routingReason: event.reason || null,
+          routingConfidence: event.confidence ?? null,
+          pendingHandoff: null, // Clear pending handoff when routing occurs
         }));
         if (event.agent && event.reason) {
-          onRouting?.(event.agent, event.reason);
+          onRouting?.(event.agent, event.reason, event.confidence ?? 0);
         }
-        // Update the streaming message with agent
         setState(prev => ({
           ...prev,
           messages: prev.messages.map(m =>
@@ -320,16 +419,46 @@ export function useChat(options: UseChatOptions) {
         }));
         break;
 
+      case 'agent_start':
+        if (event.agent) {
+          setState(prev => ({
+            ...prev,
+            currentAgent: event.agent || null,
+            pendingHandoff: null, // Clear pending handoff when agent starts
+          }));
+          onAgentStart?.(event.agent);
+        }
+        break;
+
+      case 'handoff':
+        if (event.from && event.to && event.reason) {
+          const handoff: HandoffInfo = {
+            from: event.from,
+            to: event.to,
+            reason: event.reason,
+            timestamp: new Date(),
+          };
+          setState(prev => ({
+            ...prev,
+            pendingHandoff: handoff,
+            messages: prev.messages.map(m =>
+              m.id === messageId ? { ...m, handoff } : m
+            ),
+          }));
+          onHandoff?.(handoff);
+        }
+        break;
+
       case 'tool_start':
         if (event.tool) {
           const toolExecution: ToolExecution = {
-            id: `tool_${Date.now()}`,
+            id: event.id || `tool_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
             tool: event.tool,
             args: event.args || {},
             status: 'running',
             startTime: new Date(),
           };
-          
+
           setState(prev => ({
             ...prev,
             messages: prev.messages.map(m =>
@@ -350,20 +479,117 @@ export function useChat(options: UseChatOptions) {
               m.id === messageId
                 ? {
                     ...m,
-                    toolExecutions: m.toolExecutions.map(t =>
-                      t.tool === event.tool && t.status === 'running'
+                    toolExecutions: m.toolExecutions.map(t => {
+                      const isMatch = event.id
+                        ? t.id === event.id
+                        : t.tool === event.tool && t.status === 'running';
+
+                      return isMatch
                         ? {
                             ...t,
                             status: event.success ? 'completed' : 'failed',
                             result: event.result,
                             endTime: new Date(),
+                            duration: event.duration,
                           }
-                        : t
-                    ),
+                        : t;
+                    }),
                   }
                 : m
             ),
           }));
+        }
+        break;
+
+      case 'citation':
+        if (event.source) {
+          const citation: Citation = {
+            id: `citation_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            source: event.source,
+            url: event.url,
+            relevance: event.relevance,
+          };
+          setState(prev => ({
+            ...prev,
+            messages: prev.messages.map(m =>
+              m.id === messageId
+                ? { ...m, citations: [...(m.citations || []), citation] }
+                : m
+            ),
+          }));
+          onCitation?.(citation);
+        }
+        break;
+
+      case 'memory_used':
+        if (event.memoryId && event.content !== undefined) {
+          const memory: MemoryContext = {
+            id: `memory_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            memoryId: event.memoryId,
+            content: event.content,
+            relevance: event.relevance ?? 0,
+          };
+          setState(prev => ({
+            ...prev,
+            messages: prev.messages.map(m =>
+              m.id === messageId
+                ? { ...m, memoriesUsed: [...(m.memoriesUsed || []), memory] }
+                : m
+            ),
+          }));
+          onMemoryUsed?.(memory);
+        }
+        break;
+
+      case 'image_generated':
+        if (event.imageData && event.mimeType) {
+          const image: GeneratedImage = {
+            id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            data: event.imageData,
+            mimeType: event.mimeType,
+            caption: event.caption,
+            model: event.model,
+          };
+          setState(prev => ({
+            ...prev,
+            messages: prev.messages.map(m =>
+              m.id === messageId
+                ? { ...m, images: [...(m.images || []), image] }
+                : m
+            ),
+          }));
+          onImageGenerated?.(image);
+        }
+        break;
+
+      case 'image_analyzed':
+        if (event.analysis) {
+          setState(prev => ({
+            ...prev,
+            messages: prev.messages.map(m =>
+              m.id === messageId
+                ? { ...m, imageAnalysis: event.analysis }
+                : m
+            ),
+          }));
+          onImageAnalyzed?.(event.analysis, event.imageUrl);
+        }
+        break;
+
+      case 'tts_chunk':
+        if (event.text !== undefined) {
+          onTTSChunk?.(event.text, event.isComplete ?? false);
+        }
+        break;
+
+      case 'widget_action':
+        if (event.widgetId && event.action) {
+          const widgetAction: WidgetAction = {
+            widgetId: event.widgetId as WidgetAction['widgetId'],
+            action: event.action as WidgetAction['action'],
+            data: event.data,
+          };
+          onWidgetAction?.(widgetAction);
         }
         break;
 
@@ -381,23 +607,32 @@ export function useChat(options: UseChatOptions) {
         break;
 
       case 'done':
+        // Handle images from done event
+        const doneImages = event.images?.map(img => ({
+          id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          data: img.data,
+          mimeType: img.mimeType,
+          caption: img.caption,
+        }));
+
         setState(prev => ({
           ...prev,
           isLoading: false,
           isStreaming: false,
+          pendingHandoff: null,
           messages: prev.messages.map(m =>
             m.id === messageId
-              ? { 
-                  ...m, 
+              ? {
+                  ...m,
                   content: event.fullContent || m.content,
                   agent: event.agent || m.agent,
                   isStreaming: false,
+                  images: doneImages?.length ? [...(m.images || []), ...doneImages] : m.images,
                 }
               : m
           ),
         }));
-        
-        // Notify callback
+
         const finalMessage = state.messages.find(m => m.id === messageId);
         if (finalMessage) {
           onMessage?.({ ...finalMessage, content: event.fullContent || finalMessage.content, isStreaming: false });
@@ -417,11 +652,27 @@ export function useChat(options: UseChatOptions) {
           ),
         }));
         if (event.message) {
-          onError?.(event.message);
+          onError?.(event.message, event.recoverable);
         }
         break;
     }
-  }, [onRouting, onToolExecution, onMessage, onError, onThreadCreated, onMemoryExtracted, state.messages]);
+  }, [
+    onRouting,
+    onAgentStart,
+    onHandoff,
+    onToolExecution,
+    onCitation,
+    onMemoryUsed,
+    onImageGenerated,
+    onImageAnalyzed,
+    onTTSChunk,
+    onWidgetAction,
+    onMessage,
+    onError,
+    onThreadCreated,
+    onMemoryExtracted,
+    state.messages
+  ]);
 
   /**
    * Cancel the current stream

@@ -8,8 +8,30 @@ const HOME_ASSISTANT_TOKEN = process.env.HASS_TOKEN;
 
 /**
  * OpenAI-compatible tool definitions for Home Assistant
+ * Comprehensive coverage of all major device types
  */
 export const homeAssistantTools = [
+  {
+    type: 'function' as const,
+    function: {
+      name: 'discover_devices',
+      description: 'Discover available Home Assistant devices/entities. Use this to find entity IDs before controlling them.',
+      parameters: {
+        type: 'object',
+        properties: {
+          domain: {
+            type: 'string',
+            description: 'Filter by domain (e.g., light, switch, sensor, climate, media_player, cover, lock, vacuum, alarm_control_panel, automation, script)',
+          },
+          area: {
+            type: 'string',
+            description: 'Filter by area/room name (e.g., living room, bedroom, kitchen)',
+          },
+        },
+        required: [],
+      },
+    },
+  },
   {
     type: 'function' as const,
     function: {
@@ -171,6 +193,208 @@ export const homeAssistantTools = [
           },
         },
         required: ['entity_id'],
+      },
+    },
+  },
+  // Security & Safety
+  {
+    type: 'function' as const,
+    function: {
+      name: 'control_alarm',
+      description: 'Control a security alarm system',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The alarm control panel entity ID',
+          },
+          action: {
+            type: 'string',
+            enum: ['arm_home', 'arm_away', 'arm_night', 'disarm', 'trigger'],
+            description: 'Alarm action to perform',
+          },
+          code: {
+            type: 'string',
+            description: 'PIN code if required for the action',
+          },
+        },
+        required: ['entity_id', 'action'],
+      },
+    },
+  },
+  // Sensors
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_sensor_state',
+      description: 'Get the current state of a sensor (motion, door, window, temperature, humidity, water leak, etc.)',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The sensor entity ID',
+          },
+        },
+        required: ['entity_id'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_sensor_history',
+      description: 'Get historical data for a sensor over a time period',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The sensor entity ID',
+          },
+          hours: {
+            type: 'number',
+            description: 'Number of hours of history to retrieve (default: 24)',
+          },
+        },
+        required: ['entity_id'],
+      },
+    },
+  },
+  // Automations
+  {
+    type: 'function' as const,
+    function: {
+      name: 'trigger_automation',
+      description: 'Manually trigger a Home Assistant automation',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The automation entity ID',
+          },
+        },
+        required: ['entity_id'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'toggle_automation',
+      description: 'Enable or disable a Home Assistant automation',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The automation entity ID',
+          },
+          action: {
+            type: 'string',
+            enum: ['enable', 'disable'],
+            description: 'Whether to enable or disable the automation',
+          },
+        },
+        required: ['entity_id', 'action'],
+      },
+    },
+  },
+  // Scripts
+  {
+    type: 'function' as const,
+    function: {
+      name: 'run_script',
+      description: 'Run a Home Assistant script',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The script entity ID',
+          },
+          variables: {
+            type: 'object',
+            description: 'Variables to pass to the script',
+          },
+        },
+        required: ['entity_id'],
+      },
+    },
+  },
+  // Vacuum/Robot
+  {
+    type: 'function' as const,
+    function: {
+      name: 'control_vacuum',
+      description: 'Control a robot vacuum cleaner',
+      parameters: {
+        type: 'object',
+        properties: {
+          entity_id: {
+            type: 'string',
+            description: 'The vacuum entity ID',
+          },
+          action: {
+            type: 'string',
+            enum: ['start', 'stop', 'pause', 'return_to_base', 'locate', 'set_fan_speed'],
+            description: 'Vacuum control action',
+          },
+          fan_speed: {
+            type: 'string',
+            enum: ['low', 'medium', 'high', 'turbo'],
+            description: 'Fan speed setting (only for set_fan_speed action)',
+          },
+        },
+        required: ['entity_id', 'action'],
+      },
+    },
+  },
+  // Energy
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_energy_stats',
+      description: 'Get energy consumption statistics',
+      parameters: {
+        type: 'object',
+        properties: {
+          period: {
+            type: 'string',
+            enum: ['today', 'week', 'month'],
+            description: 'Time period for energy stats',
+          },
+        },
+        required: ['period'],
+      },
+    },
+  },
+  // Notifications
+  {
+    type: 'function' as const,
+    function: {
+      name: 'send_notification',
+      description: 'Send a notification to devices via Home Assistant',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description: 'The notification message',
+          },
+          title: {
+            type: 'string',
+            description: 'Optional notification title',
+          },
+          target: {
+            type: 'string',
+            enum: ['mobile', 'tv', 'all'],
+            description: 'Target device(s) for the notification',
+          },
+        },
+        required: ['message'],
       },
     },
   },
@@ -345,6 +569,287 @@ export async function executeHomeAssistantTool(
           success: true,
           message: `Current state of ${entity_id}`,
           data: state,
+        };
+      }
+
+      case 'discover_devices': {
+        const { domain, area } = args as { domain?: string; area?: string };
+        const states = await callHomeAssistant('/states', 'GET') as Array<{
+          entity_id: string;
+          state: string;
+          attributes: {
+            friendly_name?: string;
+            area_id?: string;
+            device_class?: string;
+          };
+        }>;
+
+        let filteredStates = states;
+
+        // Filter by domain if provided
+        if (domain) {
+          filteredStates = filteredStates.filter(s =>
+            s.entity_id.startsWith(`${domain}.`)
+          );
+        }
+
+        // Filter by area if provided (check friendly_name for area keywords)
+        if (area) {
+          const areaLower = area.toLowerCase();
+          filteredStates = filteredStates.filter(s => {
+            const friendlyName = s.attributes.friendly_name?.toLowerCase() || '';
+            const entityId = s.entity_id.toLowerCase();
+            return friendlyName.includes(areaLower) ||
+                   entityId.includes(areaLower.replace(/\s+/g, '_'));
+          });
+        }
+
+        // Return simplified device list
+        const devices = filteredStates.map(s => ({
+          entity_id: s.entity_id,
+          friendly_name: s.attributes.friendly_name || s.entity_id,
+          state: s.state,
+          device_class: s.attributes.device_class,
+        }));
+
+        return {
+          success: true,
+          message: `Found ${devices.length} devices`,
+          data: devices,
+        };
+      }
+
+      case 'control_alarm': {
+        const { entity_id, action, code } = args as {
+          entity_id: string;
+          action: 'arm_home' | 'arm_away' | 'arm_night' | 'disarm' | 'trigger';
+          code?: string;
+        };
+
+        const serviceMap: Record<string, string> = {
+          arm_home: 'alarm_arm_home',
+          arm_away: 'alarm_arm_away',
+          arm_night: 'alarm_arm_night',
+          disarm: 'alarm_disarm',
+          trigger: 'alarm_trigger',
+        };
+
+        const serviceData: Record<string, unknown> = { entity_id };
+        if (code) {
+          serviceData.code = code;
+        }
+
+        await callHomeAssistant(
+          `/services/alarm_control_panel/${serviceMap[action]}`,
+          'POST',
+          serviceData
+        );
+
+        return {
+          success: true,
+          message: `Alarm ${action} executed on ${entity_id}`,
+        };
+      }
+
+      case 'get_sensor_state': {
+        const { entity_id } = args as { entity_id: string };
+        const state = await callHomeAssistant(`/states/${entity_id}`, 'GET') as {
+          state: string;
+          attributes: Record<string, unknown>;
+          last_changed: string;
+          last_updated: string;
+        };
+
+        return {
+          success: true,
+          message: `Sensor ${entity_id} state`,
+          data: {
+            state: state.state,
+            attributes: state.attributes,
+            last_changed: state.last_changed,
+            last_updated: state.last_updated,
+          },
+        };
+      }
+
+      case 'get_sensor_history': {
+        const { entity_id, hours = 24 } = args as {
+          entity_id: string;
+          hours?: number;
+        };
+
+        const endTime = new Date().toISOString();
+        const startTime = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
+        const history = await callHomeAssistant(
+          `/history/period/${startTime}?filter_entity_id=${entity_id}&end_time=${endTime}`,
+          'GET'
+        ) as Array<Array<{ state: string; last_changed: string }>>;
+
+        const historyData = history[0]?.map(h => ({
+          state: h.state,
+          timestamp: h.last_changed,
+        })) || [];
+
+        return {
+          success: true,
+          message: `History for ${entity_id} (last ${hours} hours)`,
+          data: historyData,
+        };
+      }
+
+      case 'trigger_automation': {
+        const { entity_id } = args as { entity_id: string };
+        await callHomeAssistant('/services/automation/trigger', 'POST', { entity_id });
+        return {
+          success: true,
+          message: `Triggered automation ${entity_id}`,
+        };
+      }
+
+      case 'toggle_automation': {
+        const { entity_id, action } = args as {
+          entity_id: string;
+          action: 'enable' | 'disable';
+        };
+
+        const service = action === 'enable' ? 'turn_on' : 'turn_off';
+        await callHomeAssistant(`/services/automation/${service}`, 'POST', { entity_id });
+
+        return {
+          success: true,
+          message: `Automation ${entity_id} ${action}d`,
+        };
+      }
+
+      case 'run_script': {
+        const { entity_id, variables } = args as {
+          entity_id: string;
+          variables?: Record<string, unknown>;
+        };
+
+        const serviceData: Record<string, unknown> = { entity_id };
+        if (variables) {
+          Object.assign(serviceData, variables);
+        }
+
+        await callHomeAssistant('/services/script/turn_on', 'POST', serviceData);
+
+        return {
+          success: true,
+          message: `Ran script ${entity_id}`,
+        };
+      }
+
+      case 'control_vacuum': {
+        const { entity_id, action, fan_speed } = args as {
+          entity_id: string;
+          action: 'start' | 'stop' | 'pause' | 'return_to_base' | 'locate' | 'set_fan_speed';
+          fan_speed?: 'low' | 'medium' | 'high' | 'turbo';
+        };
+
+        let service = action;
+        const serviceData: Record<string, unknown> = { entity_id };
+
+        if (action === 'set_fan_speed' && fan_speed) {
+          serviceData.fan_speed = fan_speed;
+        }
+
+        await callHomeAssistant(`/services/vacuum/${service}`, 'POST', serviceData);
+
+        return {
+          success: true,
+          message: `Vacuum ${entity_id}: ${action}${fan_speed ? ` (${fan_speed})` : ''}`,
+        };
+      }
+
+      case 'get_energy_stats': {
+        const { period } = args as { period: 'today' | 'week' | 'month' };
+
+        // Calculate date range based on period
+        const now = new Date();
+        let startDate: Date;
+
+        switch (period) {
+          case 'today':
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        }
+
+        // Fetch energy sensors (usually sensor.energy_* or sensor.*_energy)
+        const states = await callHomeAssistant('/states', 'GET') as Array<{
+          entity_id: string;
+          state: string;
+          attributes: {
+            friendly_name?: string;
+            unit_of_measurement?: string;
+            device_class?: string;
+          };
+        }>;
+
+        const energySensors = states.filter(s =>
+          s.attributes.device_class === 'energy' ||
+          s.entity_id.includes('energy') ||
+          s.attributes.unit_of_measurement === 'kWh'
+        );
+
+        return {
+          success: true,
+          message: `Energy stats for ${period}`,
+          data: {
+            period,
+            startDate: startDate.toISOString(),
+            endDate: now.toISOString(),
+            sensors: energySensors.map(s => ({
+              entity_id: s.entity_id,
+              friendly_name: s.attributes.friendly_name,
+              current_value: s.state,
+              unit: s.attributes.unit_of_measurement,
+            })),
+          },
+        };
+      }
+
+      case 'send_notification': {
+        const { message, title, target = 'all' } = args as {
+          message: string;
+          title?: string;
+          target?: 'mobile' | 'tv' | 'all';
+        };
+
+        const notificationData: Record<string, unknown> = { message };
+        if (title) {
+          notificationData.title = title;
+        }
+
+        // Determine notification service based on target
+        let service = 'notify';
+        switch (target) {
+          case 'mobile':
+            service = 'mobile_app';
+            break;
+          case 'tv':
+            service = 'notify'; // Usually notify.{tv_name}
+            break;
+          default:
+            service = 'notify';
+        }
+
+        // Try persistent_notification as fallback
+        await callHomeAssistant('/services/persistent_notification/create', 'POST', {
+          message,
+          title: title || 'Q8 Notification',
+        });
+
+        return {
+          success: true,
+          message: `Notification sent: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`,
         };
       }
 

@@ -12,3 +12,4 @@ export { AIButton } from './AIButton';
 export { GoogleAccountsManager } from './GoogleAccountsManager';
 export type { LinkedGoogleAccount, GoogleAccountsManagerProps } from './GoogleAccountsManager';
 export { VoiceFAB } from './VoiceFAB';
+export { AskQ8Button } from './AskQ8Button';

@@ -173,16 +173,16 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UseUnifiedChatRe
     onMessage: (message) => {
       onMessage?.(message);
 
-      // Auto-speak in voice/ambient mode
+      // Auto-speak in voice/ambient mode (fallback if no TTS chunks were streamed)
       if ((mode === 'voice' || mode === 'ambient') && ttsEnabled && message.content) {
-        // Speak the full response when done streaming
-        if (!message.isStreaming) {
+        // Only speak the full response if TTS chunks weren't used
+        if (!message.isStreaming && !ttsStreamerRef.current?.hasChunks()) {
           voice.speak(message.content);
         }
       }
     },
     onToolExecution,
-    onRouting: (agent, reason) => {
+    onRouting: (agent, reason, confidence) => {
       // Track agent hand-offs
       const previousAgent = previousAgentRef.current;
 
@@ -198,6 +198,15 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UseUnifiedChatRe
 
       previousAgentRef.current = agent as ExtendedAgentType;
       onRouting?.(agent, reason);
+    },
+    // Handle streaming TTS chunks from the backend
+    onTTSChunk: (text, isComplete) => {
+      if (ttsEnabled && (mode === 'voice' || mode === 'ambient')) {
+        if (ttsStreamerRef.current) {
+          ttsStreamerRef.current.addChunk(text, isComplete);
+          logger.debug('TTS chunk received', { textLength: text.length, isComplete });
+        }
+      }
     },
     onThreadCreated,
     onMemoryExtracted,
@@ -364,6 +373,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UseUnifiedChatRe
     isLoading: chat.isLoading,
     isStreaming: chat.isStreaming,
     routingReason: chat.routingReason,
+    routingConfidence: chat.routingConfidence,
+    pendingHandoff: chat.pendingHandoff,
     error: chat.error,
     threadId: chat.threadId,
 

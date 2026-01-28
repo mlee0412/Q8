@@ -8,6 +8,24 @@ import { logger } from '@/lib/logger';
 import type { ExtendedAgentType } from './types';
 
 /**
+ * Interrupted task context for "switch back" functionality
+ */
+export interface InterruptedTask {
+  /** The agent handling the interrupted task */
+  agent: ExtendedAgentType;
+  /** Topic that was interrupted */
+  topic: string;
+  /** Keywords from the interrupted conversation */
+  keywords: string[];
+  /** Timestamp when interrupted */
+  interruptedAt: string;
+  /** The last user message before interruption */
+  lastUserMessage: string;
+  /** Number of messages in the interrupted topic */
+  messageCount: number;
+}
+
+/**
  * Topic context stored in thread metadata
  */
 export interface TopicContext {
@@ -23,6 +41,10 @@ export interface TopicContext {
   lastUpdated: string;
   /** Number of consecutive messages on same topic */
   topicContinuity: number;
+  /** Cached message embeddings for semantic similarity */
+  recentEmbeddings?: Array<{ text: string; embedding: number[] }>;
+  /** Interrupted task for "switch back" prompts */
+  interruptedTask?: InterruptedTask;
 }
 
 /**
@@ -35,6 +57,8 @@ const DEFAULT_TOPIC_CONTEXT: TopicContext = {
   topicKeywords: [],
   lastUpdated: new Date().toISOString(),
   topicContinuity: 0,
+  recentEmbeddings: [],
+  interruptedTask: undefined,
 };
 
 /**
@@ -79,7 +103,9 @@ export async function updateTopicContext(
   const recentAgents = [agent, ...context.recentAgents].slice(0, 5);
 
   // Detect if this is a topic switch
-  const isTopicSwitch = context.lastAgent !== agent && context.lastAgent !== 'personality';
+  const isTopicSwitch = context.lastAgent !== agent &&
+                         context.lastAgent !== 'personality' &&
+                         agent !== 'personality';
 
   // Extract simple keywords from message (lightweight, no LLM call)
   const newKeywords = extractKeywords(message);
@@ -93,6 +119,32 @@ export async function updateTopicContext(
   // Build new topic summary (simple heuristic)
   const currentTopic = buildTopicSummary(agent, topicKeywords, context.currentTopic, isTopicSwitch);
 
+  // Handle interrupted task tracking
+  let interruptedTask = context.interruptedTask;
+
+  // If switching topics and previous topic had significant engagement, save it as interrupted
+  if (isTopicSwitch && context.topicContinuity >= 2 && context.lastAgent !== 'personality') {
+    interruptedTask = {
+      agent: context.lastAgent,
+      topic: context.currentTopic,
+      keywords: context.topicKeywords.slice(0, 5),
+      interruptedAt: new Date().toISOString(),
+      lastUserMessage: message, // We don't have the previous message here, will be last known
+      messageCount: context.topicContinuity,
+    };
+    logger.debug('Interrupted task saved', {
+      threadId,
+      interruptedAgent: context.lastAgent,
+      interruptedTopic: context.currentTopic,
+    });
+  }
+
+  // Clear interrupted task if we returned to it
+  if (interruptedTask && agent === interruptedTask.agent) {
+    logger.debug('Returned to interrupted task', { threadId, agent });
+    interruptedTask = undefined;
+  }
+
   const newContext: TopicContext = {
     currentTopic,
     lastAgent: agent,
@@ -100,6 +152,8 @@ export async function updateTopicContext(
     topicKeywords,
     lastUpdated: new Date().toISOString(),
     topicContinuity,
+    recentEmbeddings: context.recentEmbeddings, // Preserve embeddings
+    interruptedTask,
   };
 
   // Save to thread metadata
@@ -285,9 +339,79 @@ export function detectTopicSwitch(
  * Get routing context from topic tracker
  * Used by router to bias decisions
  */
+/**
+ * Switch-back suggestion for interrupted tasks
+ */
+export interface SwitchBackSuggestion {
+  /** Whether to suggest switching back */
+  shouldSuggest: boolean;
+  /** The interrupted task to return to */
+  interruptedTask?: InterruptedTask;
+  /** Suggested prompt for returning */
+  suggestedPrompt?: string;
+  /** Time since interruption in minutes */
+  minutesSinceInterruption?: number;
+}
+
+/**
+ * Check if we should suggest returning to an interrupted task
+ */
+export function checkSwitchBackSuggestion(
+  topicContext: TopicContext | null,
+  currentAgent: ExtendedAgentType
+): SwitchBackSuggestion {
+  if (!topicContext?.interruptedTask) {
+    return { shouldSuggest: false };
+  }
+
+  const { interruptedTask } = topicContext;
+
+  // Don't suggest if we're back on the interrupted agent
+  if (currentAgent === interruptedTask.agent) {
+    return { shouldSuggest: false };
+  }
+
+  // Check how long ago the task was interrupted
+  const interruptedAt = new Date(interruptedTask.interruptedAt);
+  const minutesSinceInterruption = Math.round((Date.now() - interruptedAt.getTime()) / 60000);
+
+  // Don't suggest if it's been too long (> 30 minutes)
+  if (minutesSinceInterruption > 30) {
+    return { shouldSuggest: false };
+  }
+
+  // Only suggest after 2+ messages on tangent topic
+  if (topicContext.topicContinuity < 2) {
+    return { shouldSuggest: false };
+  }
+
+  // Build suggested prompt
+  const agentNames: Record<ExtendedAgentType, string> = {
+    coder: 'coding',
+    researcher: 'research',
+    secretary: 'scheduling',
+    home: 'smart home',
+    finance: 'finances',
+    personality: 'chat',
+    orchestrator: 'general',
+    imagegen: 'images',
+  };
+
+  const topicName = agentNames[interruptedTask.agent] || interruptedTask.topic;
+  const suggestedPrompt = `Would you like to continue with ${topicName}?`;
+
+  return {
+    shouldSuggest: true,
+    interruptedTask,
+    suggestedPrompt,
+    minutesSinceInterruption,
+  };
+}
+
 export interface RoutingContext {
   topicContext: TopicContext | null;
   topicSwitch: ReturnType<typeof detectTopicSwitch>;
+  switchBackSuggestion?: SwitchBackSuggestion;
 }
 
 export async function getRoutingContext(
@@ -309,5 +433,51 @@ export async function getRoutingContext(
   const topicContext = await getTopicContext(threadId);
   const topicSwitch = detectTopicSwitch(message, topicContext);
 
-  return { topicContext, topicSwitch };
+  // Check for switch-back suggestion (but only if not actively switching)
+  let switchBackSuggestion: SwitchBackSuggestion | undefined;
+  if (!topicSwitch.isSwitch && topicContext?.lastAgent) {
+    switchBackSuggestion = checkSwitchBackSuggestion(topicContext, topicContext.lastAgent);
+  }
+
+  return { topicContext, topicSwitch, switchBackSuggestion };
+}
+
+/**
+ * Parse @mentions from a message
+ * Returns the agent to force and the cleaned message
+ */
+export function parseAgentMention(message: string): {
+  forceAgent: ExtendedAgentType | null;
+  cleanedMessage: string;
+} {
+  const mentionPatterns: Record<string, ExtendedAgentType> = {
+    '@coder': 'coder',
+    '@devbot': 'coder',
+    '@dev': 'coder',
+    '@researcher': 'researcher',
+    '@research': 'researcher',
+    '@secretary': 'secretary',
+    '@calendar': 'secretary',
+    '@home': 'home',
+    '@smarthome': 'home',
+    '@homebot': 'home',
+    '@finance': 'finance',
+    '@money': 'finance',
+    '@imagegen': 'imagegen',
+    '@image': 'imagegen',
+    '@personality': 'personality',
+    '@q8': 'personality',
+  };
+
+  const lowerMessage = message.toLowerCase();
+
+  for (const [pattern, agent] of Object.entries(mentionPatterns)) {
+    if (lowerMessage.startsWith(pattern + ' ') || lowerMessage === pattern) {
+      // Remove the mention from the message
+      const cleanedMessage = message.substring(pattern.length).trim();
+      return { forceAgent: agent, cleanedMessage: cleanedMessage || message };
+    }
+  }
+
+  return { forceAgent: null, cleanedMessage: message };
 }

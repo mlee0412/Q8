@@ -224,24 +224,66 @@ export function detectHandoffSignal(response: string): HandoffSignal | null {
 // =============================================================================
 
 /**
+ * Extended conversation message with optional metadata
+ */
+interface ConversationMessage {
+  role: string;
+  content: string;
+  agentName?: string;
+  toolResults?: Array<{ tool: string; result: unknown }>;
+}
+
+/**
  * Build context prompt for receiving agent during hand-off
+ * Enhanced with 6-message history, tool results, and clear intent tracking
  */
 export async function buildHandoffContext(
   fromAgent: ExtendedAgentType,
   toAgent: ExtendedAgentType,
-  conversationHistory: Array<{ role: string; content: string }>,
+  conversationHistory: Array<ConversationMessage>,
   handoffReason: string,
-  partialResults?: unknown
+  partialResults?: unknown,
+  options?: {
+    userOriginalIntent?: string;
+    toolExecutions?: Array<{ tool: string; success: boolean; result?: unknown }>;
+    interruptedTopic?: string;
+  }
 ): Promise<string> {
-  // Get recent conversation context (last 4 messages)
+  // Get recent conversation context (increased to last 6 messages)
   const recentHistory = conversationHistory
-    .slice(-4)
+    .slice(-6)
     .map((m) => {
       const truncatedContent =
-        m.content.length > 300 ? m.content.slice(0, 300) + '...' : m.content;
-      return `**${m.role}**: ${truncatedContent}`;
+        m.content.length > 400 ? m.content.slice(0, 400) + '...' : m.content;
+      const agentTag = m.agentName ? ` [${m.agentName}]` : '';
+      return `**${m.role}${agentTag}**: ${truncatedContent}`;
     })
     .join('\n\n');
+
+  // Build tool execution summary if available
+  let toolSummary = '';
+  if (options?.toolExecutions && options.toolExecutions.length > 0) {
+    const toolLines = options.toolExecutions.map((t) => {
+      const status = t.success ? '✓' : '✗';
+      const resultPreview = t.result
+        ? ` → ${JSON.stringify(t.result).slice(0, 100)}${
+            JSON.stringify(t.result).length > 100 ? '...' : ''
+          }`
+        : '';
+      return `- ${status} ${t.tool}${resultPreview}`;
+    });
+    toolSummary = `\n### Tool Executions by Previous Agent\n${toolLines.join('\n')}\n`;
+  }
+
+  // Build interrupted topic note if applicable
+  const interruptedNote = options?.interruptedTopic
+    ? `\n**Note**: The user may want to return to "${options.interruptedTopic}" after this.\n`
+    : '';
+
+  // Build original intent note if the request evolved
+  const intentNote = options?.userOriginalIntent
+    ? `\n**Original user intent**: ${options.userOriginalIntent}\n`
+    : '';
 
   const contextPrompt = `
 ## Hand-off Context
@@ -249,10 +291,10 @@ export async function buildHandoffContext(
 You are receiving a hand-off from **${fromAgent}**.
 
 **Reason for hand-off**: ${handoffReason}
-
+${intentNote}
 ### Recent Conversation
 ${recentHistory}
-
+${toolSummary}
 ${
   partialResults
     ? `### Partial Results from Previous Agent
@@ -261,7 +303,7 @@ ${JSON.stringify(partialResults, null, 2)}
 \`\`\``
     : ''
 }
-
+${interruptedNote}
 ### Your Task
 Continue the conversation naturally. Address the user's needs using your specialized capabilities.
 
@@ -270,6 +312,7 @@ Continue the conversation naturally. Address the user's needs using your special
 - Do NOT introduce yourself unless contextually appropriate
 - Pick up where the conversation left off
 - If you have the information/capability needed, provide it directly
+- Use any partial results provided to build upon previous work
 `.trim();
 
   return contextPrompt;

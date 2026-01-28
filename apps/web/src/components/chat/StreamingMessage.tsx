@@ -15,15 +15,20 @@ import {
   RefreshCw,
   ThumbsUp,
   ThumbsDown,
+  Volume2,
+  Pause,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToolExecutionList } from './ToolExecutionChip';
+import { CitationList, InlineCitation, parseCitations, type CitationSource } from './Citation';
+import { MemoryContextBadge, type MemoryContextData } from './MemoryContextBadge';
+import { GeneratedImageDisplay, type GeneratedImageData } from './GeneratedImageDisplay';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import type { ToolExecution } from '@/hooks/useChat';
+import type { ToolExecution, Citation, MemoryContext, GeneratedImage } from '@/hooks/useChat';
 
-type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home';
+type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home' | 'finance' | 'imagegen';
 
 interface StreamingMessageProps {
   /**
@@ -57,6 +62,26 @@ interface StreamingMessageProps {
   toolExecutions?: ToolExecution[];
 
   /**
+   * Citations used in this message
+   */
+  citations?: Citation[];
+
+  /**
+   * Memories used to generate this message
+   */
+  memoriesUsed?: MemoryContext[];
+
+  /**
+   * Generated images in this message
+   */
+  images?: GeneratedImage[];
+
+  /**
+   * Image analysis text
+   */
+  imageAnalysis?: string;
+
+  /**
    * Message timestamp
    */
   timestamp: Date;
@@ -70,6 +95,16 @@ interface StreamingMessageProps {
    * Callback for message actions
    */
   onAction?: (action: 'copy' | 'regenerate' | 'thumbsUp' | 'thumbsDown', messageId: string) => void;
+
+  /**
+   * Whether TTS is currently speaking this message
+   */
+  isSpeaking?: boolean;
+
+  /**
+   * Callback to stop TTS playback
+   */
+  onStopSpeaking?: () => void;
 }
 
 /**
@@ -119,6 +154,18 @@ function getAgentConfig(role: AgentRole | 'user') {
       bgColor: 'bg-cyan-500/20',
       iconColor: 'text-cyan-400',
     },
+    finance: {
+      name: 'FinanceBot',
+      icon: Sparkles,
+      bgColor: 'bg-emerald-500/20',
+      iconColor: 'text-emerald-400',
+    },
+    imagegen: {
+      name: 'ImageBot',
+      icon: Sparkles,
+      bgColor: 'bg-violet-500/20',
+      iconColor: 'text-violet-400',
+    },
   };
 
   return configs[role] || configs.orchestrator;
@@ -149,6 +196,67 @@ function StreamingCursor() {
 }
 
 /**
+ * Speaking indicator with animated waveform bars
+ */
+interface SpeakingIndicatorProps {
+  onStop?: () => void;
+}
+
+function SpeakingIndicator({ onStop }: SpeakingIndicatorProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-neon-primary/10 border border-neon-primary/30"
+    >
+      {/* Pulsing speaker icon */}
+      <motion.div
+        animate={{ scale: [1, 1.1, 1] }}
+        transition={{ duration: 0.8, repeat: Infinity }}
+      >
+        <Volume2 className="h-4 w-4 text-neon-primary" />
+      </motion.div>
+
+      {/* Animated waveform bars */}
+      <div className="flex items-center gap-0.5 h-4">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <motion.div
+            key={i}
+            className="w-1 bg-neon-primary rounded-full"
+            animate={{
+              height: ['8px', '16px', '8px'],
+            }}
+            transition={{
+              duration: 0.5,
+              repeat: Infinity,
+              delay: i * 0.1,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
+      </div>
+
+      <span className="text-xs text-neon-primary font-medium">Speaking</span>
+
+      {/* Pause/Stop button */}
+      {onStop && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onStop();
+          }}
+          className="p-1 rounded-full hover:bg-neon-primary/20 transition-colors"
+          title="Stop speaking"
+        >
+          <Pause className="h-3 w-3 text-neon-primary" />
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+/**
  * StreamingMessage Component
  *
  * Chat message with streaming support and tool execution display
@@ -160,9 +268,15 @@ export const StreamingMessage = memo(function StreamingMessage({
   agent,
   isStreaming = false,
   toolExecutions = [],
+  citations = [],
+  memoriesUsed = [],
+  images = [],
+  imageAnalysis,
   timestamp,
   className,
   onAction,
+  isSpeaking = false,
+  onStopSpeaking,
 }: StreamingMessageProps) {
   const [showActions, setShowActions] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -171,6 +285,41 @@ export const StreamingMessage = memo(function StreamingMessage({
   const isUser = role === 'user';
   const isBot = !isUser;
   const agentConfig = getAgentConfig(isUser ? 'user' : (agent || 'orchestrator'));
+
+  // Convert citations to CitationSource format for the Citation component
+  const citationSources: CitationSource[] = useMemo(() =>
+    citations.map((c, index) => ({
+      id: c.id || `citation-${index}`,
+      title: c.source,
+      url: c.url,
+      relevance: c.relevance,
+      source: c.url ? new URL(c.url).hostname : undefined,
+    })),
+    [citations]
+  );
+
+  // Convert memories to MemoryContextData format
+  const memoryContexts: MemoryContextData[] = useMemo(() =>
+    memoriesUsed.map(m => ({
+      id: m.id,
+      memoryId: m.memoryId,
+      content: m.content,
+      relevance: m.relevance,
+    })),
+    [memoriesUsed]
+  );
+
+  // Convert images to GeneratedImageData format
+  const imageData: GeneratedImageData[] = useMemo(() =>
+    images.map(img => ({
+      id: img.id,
+      data: img.data,
+      mimeType: img.mimeType,
+      caption: img.caption,
+      model: img.model,
+    })),
+    [images]
+  );
 
   // Handle copy to clipboard
   const handleCopy = () => {
@@ -279,6 +428,20 @@ export const StreamingMessage = memo(function StreamingMessage({
           </div>
         )}
 
+        {/* Speaking Indicator */}
+        <AnimatePresence>
+          {isSpeaking && !isStreaming && (
+            <div className="mb-2">
+              <SpeakingIndicator onStop={onStopSpeaking} />
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Memory Context (shows what memories were used) */}
+        {memoryContexts.length > 0 && (
+          <MemoryContextBadge memories={memoryContexts} />
+        )}
+
         {/* Tool Executions */}
         {toolExecutions.length > 0 && (
           <ToolExecutionList
@@ -290,6 +453,11 @@ export const StreamingMessage = memo(function StreamingMessage({
               result: t.result,
             }))}
           />
+        )}
+
+        {/* Generated Images */}
+        {imageData.length > 0 && (
+          <GeneratedImageDisplay images={imageData} />
         )}
 
         {/* Message Bubble */}
@@ -325,6 +493,23 @@ export const StreamingMessage = memo(function StreamingMessage({
             {/* Streaming cursor */}
             {isStreaming && content && <StreamingCursor />}
           </div>
+
+          {/* Image Analysis Block */}
+          {imageAnalysis && (
+            <div className="mt-3 p-3 rounded-lg bg-surface-2/60 border border-border-subtle">
+              <p className="text-xs text-text-muted mb-1 font-medium">Image Analysis</p>
+              <p className="text-sm text-text-secondary">{imageAnalysis}</p>
+            </div>
+          )}
+
+          {/* Citations List */}
+          {citationSources.length > 0 && !isStreaming && (
+            <CitationList
+              sources={citationSources}
+              title="Sources"
+              collapsed={true}
+            />
+          )}
         </div>
 
         {/* Actions (for bot messages) */}

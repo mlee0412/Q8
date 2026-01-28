@@ -174,6 +174,30 @@ export class TTSStreamer {
   getQueueLength(): number {
     return this.speakQueue.length;
   }
+
+  /**
+   * Check if any chunks have been queued or are pending
+   */
+  hasChunks(): boolean {
+    return this.speakQueue.length > 0 || this.buffer.length > 0 || this.isSpeaking;
+  }
+
+  /**
+   * Add a pre-formed chunk directly (for backend TTS streaming)
+   * If isComplete is true, the chunk is the final one
+   */
+  addChunk(text: string, isComplete: boolean): void {
+    if (text.trim()) {
+      this.queueSpeak(text.trim());
+    }
+    if (isComplete) {
+      // Flush any remaining buffer when stream completes
+      if (this.buffer.trim()) {
+        this.queueSpeak(this.buffer.trim());
+        this.buffer = '';
+      }
+    }
+  }
 }
 
 /**

@@ -68,54 +68,53 @@ interface ModelDefinition {
 
 /**
  * Primary models for each agent type
+ * Optimized for Tier 1 OpenAI accounts (use gpt-4o-mini for highest limits)
  * Can be overridden via environment variables
  */
 const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
   orchestrator: {
-    model: 'gpt-5.2',
+    model: 'gpt-4o', // Good balance of capability and rate limits
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   coder: {
-    model: 'claude-opus-4-5-20250929',
+    model: 'claude-sonnet-4-5-20250929', // Claude for coding
     baseURL: 'https://api.anthropic.com/v1/',
     envKey: 'ANTHROPIC_API_KEY',
     provider: 'anthropic',
   },
   researcher: {
-    model: 'sonar-reasoning-pro',
+    model: 'sonar-pro', // Perplexity for research
     baseURL: 'https://api.perplexity.ai',
     envKey: 'PERPLEXITY_API_KEY',
     provider: 'perplexity',
   },
   secretary: {
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash', // Google for secretary tasks
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
   },
   personality: {
-    model: 'grok-4-latest',
-    baseURL: 'https://api.x.ai/v1',
-    envKey: 'XAI_API_KEY',
-    provider: 'xai',
+    model: 'gpt-4o-mini', // Fast, high-limit model for personality
+    envKey: 'OPENAI_API_KEY',
+    provider: 'openai',
   },
   home: {
-    model: 'gpt-5.2',
+    model: 'gpt-4o-mini', // High limits for home automation
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   finance: {
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash', // Google for finance
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
   },
   imagegen: {
-    model: 'gemini-3-pro-image-preview',
-    baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    envKey: 'GOOGLE_GENERATIVE_AI_KEY',
-    provider: 'google',
+    model: 'gpt-4o-mini', // Uses chat model to orchestrate image tools
+    envKey: 'OPENAI_API_KEY',
+    provider: 'openai',
   },
 };
 
@@ -123,11 +122,15 @@ const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
  * Fallback chains for each agent type
  * Used when primary model's API key is not available
  */
+/**
+ * Fallback chains prioritize gpt-4o-mini for Tier 1 accounts
+ * gpt-4o-mini has ~7x higher rate limits than gpt-4 class models at Tier 1
+ */
 const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
   orchestrator: [
-    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4.1', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' }, // Highest Tier 1 limits
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   coder: [
     {
@@ -136,7 +139,7 @@ const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
       envKey: 'ANTHROPIC_API_KEY',
       provider: 'anthropic',
     },
-    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   researcher: [
@@ -152,50 +155,46 @@ const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
       envKey: 'PERPLEXITY_API_KEY',
       provider: 'perplexity',
     },
-    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   secretary: [
     {
-      model: 'gemini-3-flash',
+      model: 'gemini-2.0-flash',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
     {
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
-    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   personality: [
-    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   home: [
-    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4.1', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   finance: [
     {
-      model: 'gemini-3-flash',
+      model: 'gemini-2.0-flash',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
-    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
     { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   imagegen: [
-    {
-      model: 'gemini-2.5-flash-image',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
-      provider: 'google',
-    },
+    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
 };
 
@@ -293,6 +292,47 @@ function buildConfig(def: ModelDefinition, isFallback = false): ModelConfig {
 // =============================================================================
 // MAIN FUNCTION
 // =============================================================================
+
+/**
+ * Get all available models in order of preference for an agent type
+ * Used for runtime fallback when primary model hits rate limits
+ */
+export function getModelChain(agentType: AgentType): ModelConfig[] {
+  const chain: ModelConfig[] = [];
+
+  // 1. Check for environment variable override first
+  const overrideEnv = MODEL_ENV_OVERRIDES[agentType];
+  const override = overrideEnv ? process.env[overrideEnv] : undefined;
+
+  if (override) {
+    const parsed = parseModelOverride(override);
+    if (parsed && parsed.envKey && hasApiKey(parsed.envKey)) {
+      chain.push(buildConfig(parsed as ModelDefinition, false));
+    }
+  }
+
+  // 2. Add primary model
+  const primary = PRIMARY_MODELS[agentType];
+  if (hasApiKey(primary.envKey)) {
+    // Don't duplicate if override was the same as primary
+    if (!chain.some(c => c.model === primary.model && c.provider === primary.provider)) {
+      chain.push(buildConfig(primary, false));
+    }
+  }
+
+  // 3. Add all fallbacks with available API keys
+  const fallbacks = FALLBACK_CHAINS[agentType];
+  for (const fallback of fallbacks) {
+    if (hasApiKey(fallback.envKey)) {
+      // Don't duplicate models already in chain
+      if (!chain.some(c => c.model === fallback.model && c.provider === fallback.provider)) {
+        chain.push(buildConfig(fallback, true));
+      }
+    }
+  }
+
+  return chain;
+}
 
 /**
  * Get model configuration for a specific agent type

@@ -1,14 +1,14 @@
 /**
  * Image Tool Executor
- * Executes Nano Banana image generation and analysis tools
+ * Executes image generation and analysis tools
  *
- * Uses Google's Generative AI SDK for:
- * - Gemini 3 Pro Image Preview (Nano Banana Pro) - 4K, 14 reference images, thinking mode
- * - Gemini 2.5 Flash Image (Nano Banana) - Fast, 1K, 3 reference images
+ * Uses OpenAI's Image Generation API:
+ * - gpt-image-1.5 (Best quality, 4x faster than DALL-E 3)
+ * - gpt-image-1 (Standard)
+ * - gpt-image-1-mini (Fast, lower quality)
  */
 
 import { logger } from '@/lib/logger';
-import { getImageModel } from '../model_factory';
 import type { ToolResult } from '../types';
 
 /**
@@ -45,17 +45,38 @@ export interface DiagramResult {
 }
 
 /**
- * Get the appropriate model based on quality setting
+ * Get the appropriate OpenAI image model based on quality setting
  */
-function getModelForQuality(quality: string): { model: string; baseURL: string } {
-  const config = quality === '4k' || quality === 'hd' 
-    ? getImageModel('pro') 
-    : getImageModel('fast');
-  
-  return {
-    model: config.model,
-    baseURL: config.baseURL || 'https://generativelanguage.googleapis.com/v1beta/openai/',
-  };
+function getModelForQuality(quality: string): string {
+  switch (quality) {
+    case '4k':
+    case 'hd':
+    case 'high':
+      return 'gpt-image-1.5'; // Best quality
+    case 'fast':
+    case 'low':
+      return 'gpt-image-1-mini'; // Fastest
+    default:
+      return 'gpt-image-1.5'; // Default to best
+  }
+}
+
+/**
+ * Get image size based on aspect ratio
+ */
+function getSizeFromAspectRatio(aspectRatio?: string): '1024x1024' | '1536x1024' | '1024x1536' | 'auto' {
+  switch (aspectRatio) {
+    case '16:9':
+    case 'landscape':
+      return '1536x1024';
+    case '9:16':
+    case 'portrait':
+      return '1024x1536';
+    case '1:1':
+    case 'square':
+    default:
+      return '1024x1024';
+  }
 }
 
 /**
@@ -110,76 +131,82 @@ export async function executeImageTool(
         const prompt = args.prompt as string;
         const style = args.style as string | undefined;
         const aspectRatio = args.aspect_ratio as string | undefined;
-        const quality = (args.quality as string) || 'standard';
+        const quality = (args.quality as string) || 'hd';
         const negativePrompt = args.negative_prompt as string | undefined;
 
-        const { model, baseURL } = getModelForQuality(quality);
+        const model = getModelForQuality(quality);
+        const size = getSizeFromAspectRatio(aspectRatio);
         const fullPrompt = buildImagePrompt(prompt, style, aspectRatio, negativePrompt);
 
-        logger.info('[ImageExecutor] Generating image', { model, prompt: fullPrompt.slice(0, 100) });
+        logger.info('[ImageExecutor] Generating image with OpenAI', { model, size, prompt: fullPrompt.slice(0, 100) });
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL,
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
-        const response = await client.chat.completions.create({
+        // Use OpenAI's Images API for generation
+        const response = await client.images.generate({
           model,
-          messages: [
-            {
-              role: 'user',
-              content: fullPrompt,
-            },
-          ],
-          // Note: Response format for image generation varies by provider
-          // Google's OpenAI-compatible endpoint returns images in a specific format
+          prompt: fullPrompt,
+          n: 1,
+          size,
+          response_format: 'b64_json', // Get base64 data directly
         });
 
-        // Extract image from response
-        const content = response.choices[0]?.message?.content;
-        
-        // For Gemini image models, the response includes base64 image data
-        // The exact format depends on the API version
-        if (content) {
-          // Check if response contains image data marker
-          const imageMatch = content.match(/data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)/);
-          if (imageMatch) {
-            const result: ImageGenerationResult = {
-              imageData: imageMatch[2] || '',
-              mimeType: `image/${imageMatch[1]}`,
+        const imageData = response.data?.[0];
+
+        if (imageData?.b64_json) {
+          const result: ImageGenerationResult = {
+            imageData: imageData.b64_json,
+            mimeType: 'image/png',
+            model,
+            prompt,
+            style,
+            aspectRatio,
+            quality,
+          };
+
+          logger.info('[ImageExecutor] Image generated successfully', { model, size });
+
+          return {
+            success: true,
+            message: 'Image generated successfully',
+            data: result,
+            meta: {
+              durationMs: Date.now() - startTime,
+              source: 'openai-image',
+            },
+          };
+        }
+
+        // Fallback if URL is returned instead of base64
+        if (imageData?.url) {
+          return {
+            success: true,
+            message: 'Image generated successfully',
+            data: {
+              imageUrl: imageData.url,
               model,
               prompt,
               style,
               aspectRatio,
               quality,
-            };
-
-            return {
-              success: true,
-              message: 'Image generated successfully',
-              data: result,
-              meta: {
-                durationMs: Date.now() - startTime,
-                source: 'nano-banana',
-              },
-            };
-          }
+            },
+            meta: {
+              durationMs: Date.now() - startTime,
+              source: 'openai-image',
+            },
+          };
         }
 
-        // If no image in standard format, try alternative extraction
-        // Some responses may have the image in a different structure
         return {
-          success: true,
-          message: 'Image generation request sent. Response may contain image data in model-specific format.',
-          data: {
-            rawResponse: content,
-            model,
-            prompt,
-          },
+          success: false,
+          message: 'Image generation failed - no image data in response',
+          data: null,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'nano-banana',
+            source: 'openai-image',
           },
         };
       }
@@ -190,7 +217,7 @@ export async function executeImageTool(
         const preserveStyle = args.preserve_style !== false;
         const maskDescription = args.mask_description as string | undefined;
 
-        const { model, baseURL } = getModelForQuality('hd'); // Use Pro for editing
+        const model = 'gpt-image-1.5'; // Best model for editing
 
         let editPrompt = instruction;
         if (preserveStyle) {
@@ -200,45 +227,66 @@ export async function executeImageTool(
           editPrompt += `. Focus on: ${maskDescription}`;
         }
 
-        logger.info('[ImageExecutor] Editing image', { model, instruction: editPrompt.slice(0, 100) });
+        logger.info('[ImageExecutor] Editing image with OpenAI', { model, instruction: editPrompt.slice(0, 100) });
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL,
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
-        // Prepare image content
-        const imageContent = imageUrl.startsWith('data:') 
-          ? imageUrl 
-          : `Image URL: ${imageUrl}`;
-
-        const response = await client.chat.completions.create({
-          model,
+        // Use GPT-4o to analyze the image and generate an enhanced edit prompt
+        const analysisResponse = await client.chat.completions.create({
+          model: 'gpt-4o',
           messages: [
             {
               role: 'user',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               content: [
-                { type: 'text', text: editPrompt },
-                { type: 'image_url', image_url: { url: imageContent } },
-              ] as unknown as string,
+                { type: 'text', text: `Describe this image in detail, then explain how to apply this edit: "${editPrompt}". Create a comprehensive prompt for image generation that would recreate this image with the requested changes.` },
+                { type: 'image_url', image_url: { url: imageUrl } },
+              ] as any,
             },
           ],
+          max_tokens: 1000,
         });
 
-        const content = response.choices[0]?.message?.content;
+        const enhancedPrompt = analysisResponse.choices[0]?.message?.content ?? editPrompt;
+
+        // Generate the edited image using gpt-image-1.5
+        const response = await client.images.generate({
+          model,
+          prompt: enhancedPrompt,
+          n: 1,
+          size: '1024x1024',
+          response_format: 'b64_json',
+        });
+
+        const imageData = response.data?.[0];
+
+        if (imageData?.b64_json) {
+          return {
+            success: true,
+            message: 'Image edited successfully',
+            data: {
+              imageData: imageData.b64_json,
+              mimeType: 'image/png',
+              model,
+              instruction,
+            },
+            meta: {
+              durationMs: Date.now() - startTime,
+              source: 'openai-image',
+            },
+          };
+        }
 
         return {
-          success: true,
-          message: 'Image edit request processed',
-          data: {
-            rawResponse: content,
-            model,
-            instruction,
-          },
+          success: false,
+          message: 'Image edit failed - no image data in response',
+          data: null,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'nano-banana',
+            source: 'openai-image',
           },
         };
       }
@@ -260,7 +308,7 @@ export async function executeImageTool(
           artistic: 'Analyze the artistic style of this image: art movement/style influences, techniques used, color theory application, composition principles, and emotional impact.',
         };
 
-        let prompt = analysisPrompts[analysisType] || analysisPrompts.general;
+        let prompt: string = analysisPrompts[analysisType] ?? analysisPrompts.general ?? 'Describe this image in detail.';
 
         if (questions && questions.length > 0) {
           prompt += `\n\nAlso answer these specific questions:\n${questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`;
@@ -270,28 +318,29 @@ export async function executeImageTool(
           prompt += '\n\nIf there is structured data (tables, charts, lists), extract it in JSON format.';
         }
 
-        logger.info('[ImageExecutor] Analyzing image', { analysisType });
+        logger.info('[ImageExecutor] Analyzing image with GPT-4o', { analysisType });
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
         const response = await client.chat.completions.create({
-          model: 'gemini-3-pro-preview', // Use text model for analysis
+          model: 'gpt-4o', // Best vision model for analysis
           messages: [
             {
               role: 'user',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               content: [
                 { type: 'text', text: prompt },
                 { type: 'image_url', image_url: { url: imageUrl } },
-              ] as unknown as string,
+              ] as any,
             },
           ],
+          max_tokens: 2000,
         });
 
-        const analysis = response.choices[0]?.message?.content || '';
+        const analysis = response.choices[0]?.message?.content ?? '';
 
         const result: ImageAnalysisResult = {
           analysis,
@@ -321,7 +370,7 @@ export async function executeImageTool(
           data: result,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'gemini-vision',
+            source: 'gpt-4o-vision',
           },
         };
       }
@@ -356,40 +405,50 @@ export async function executeImageTool(
 
         fullPrompt += ' Make sure all text is clearly legible and the diagram is well-organized.';
 
-        logger.info('[ImageExecutor] Creating diagram', { diagramType, style });
+        logger.info('[ImageExecutor] Creating diagram with OpenAI', { diagramType, style });
 
-        const { model, baseURL } = getModelForQuality('hd'); // Use Pro for diagrams (better text)
+        const model = 'gpt-image-1.5'; // Best for text rendering in diagrams
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL,
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
-        const response = await client.chat.completions.create({
+        const response = await client.images.generate({
           model,
-          messages: [
-            {
-              role: 'user',
-              content: fullPrompt,
-            },
-          ],
+          prompt: fullPrompt,
+          n: 1,
+          size: '1024x1024',
+          response_format: 'b64_json',
         });
 
-        const content = response.choices[0]?.message?.content;
+        const imageData = response.data?.[0];
+
+        if (imageData?.b64_json) {
+          return {
+            success: true,
+            message: `${diagramType} diagram created`,
+            data: {
+              imageData: imageData.b64_json,
+              mimeType: 'image/png',
+              diagramType,
+              description,
+              style,
+            },
+            meta: {
+              durationMs: Date.now() - startTime,
+              source: 'openai-image',
+            },
+          };
+        }
 
         return {
-          success: true,
-          message: `${diagramType} diagram created`,
-          data: {
-            rawResponse: content,
-            diagramType,
-            description,
-            style,
-          },
+          success: false,
+          message: 'Diagram creation failed - no image data in response',
+          data: null,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'nano-banana-pro',
+            source: 'openai-image',
           },
         };
       }
@@ -417,40 +476,50 @@ export async function executeImageTool(
         
         chartPrompt += ' Make the chart clear, professional, and easy to read.';
 
-        logger.info('[ImageExecutor] Creating chart', { chartType, style });
+        logger.info('[ImageExecutor] Creating chart with OpenAI', { chartType, style });
 
-        const { model, baseURL } = getModelForQuality('hd');
+        const model = 'gpt-image-1.5'; // Best for text and data visualization
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL,
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
-        const response = await client.chat.completions.create({
+        const response = await client.images.generate({
           model,
-          messages: [
-            {
-              role: 'user',
-              content: chartPrompt,
-            },
-          ],
+          prompt: chartPrompt,
+          n: 1,
+          size: '1024x1024',
+          response_format: 'b64_json',
         });
 
-        const content = response.choices[0]?.message?.content;
+        const imageData = response.data?.[0];
+
+        if (imageData?.b64_json) {
+          return {
+            success: true,
+            message: `${chartType} chart created`,
+            data: {
+              imageData: imageData.b64_json,
+              mimeType: 'image/png',
+              chartType,
+              title,
+              data,
+            },
+            meta: {
+              durationMs: Date.now() - startTime,
+              source: 'openai-image',
+            },
+          };
+        }
 
         return {
-          success: true,
-          message: `${chartType} chart created`,
-          data: {
-            rawResponse: content,
-            chartType,
-            title,
-            data,
-          },
+          success: false,
+          message: 'Chart creation failed - no image data in response',
+          data: null,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'nano-banana-pro',
+            source: 'openai-image',
           },
         };
       }
@@ -482,40 +551,41 @@ export async function executeImageTool(
           quality: 'Compare the technical quality of these images: resolution, sharpness, lighting, composition, and overall quality.',
         };
 
-        let prompt = comparisonPrompts[comparisonType] || comparisonPrompts.general;
+        let prompt: string = comparisonPrompts[comparisonType] ?? comparisonPrompts.general ?? 'Compare these images.';
 
         if (focusAreas && focusAreas.length > 0) {
           prompt += ` Focus particularly on: ${focusAreas.join(', ')}.`;
         }
 
-        logger.info('[ImageExecutor] Comparing images', { count: imageUrls.length, comparisonType });
+        logger.info('[ImageExecutor] Comparing images with GPT-4o', { count: imageUrls.length, comparisonType });
 
         const { OpenAI } = await import('openai');
         const client = new OpenAI({
-          apiKey: process.env.GOOGLE_GENERATIVE_AI_KEY,
-          baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+          apiKey: process.env.OPENAI_API_KEY,
         });
 
         // Build content array with all images
-        const content: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+        const content = [
           { type: 'text', text: prompt },
           ...imageUrls.map((url) => ({
-            type: 'image_url' as const,
+            type: 'image_url',
             image_url: { url },
           })),
         ];
 
         const response = await client.chat.completions.create({
-          model: 'gemini-3-pro-preview',
+          model: 'gpt-4o', // Best multi-image vision model
           messages: [
             {
               role: 'user',
-              content: content as unknown as string,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              content: content as any,
             },
           ],
+          max_tokens: 2000,
         });
 
-        const comparison = response.choices[0]?.message?.content || '';
+        const comparison = response.choices[0]?.message?.content ?? '';
 
         return {
           success: true,
@@ -527,7 +597,7 @@ export async function executeImageTool(
           },
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'gemini-vision',
+            source: 'gpt-4o-vision',
           },
         };
       }
@@ -543,15 +613,15 @@ export async function executeImageTool(
     logger.error('[ImageExecutor] Tool execution failed', { toolName, error: errorMessage });
 
     // Check for specific error types
-    if (errorMessage.includes('API key')) {
+    if (errorMessage.includes('API key') || errorMessage.includes('Incorrect API key')) {
       return {
         success: false,
-        message: 'Google API key not configured. Please set GOOGLE_GENERATIVE_AI_KEY environment variable.',
+        message: 'OpenAI API key not configured or invalid. Please check OPENAI_API_KEY environment variable.',
         error: { code: 'AUTH_ERROR', details: errorMessage },
       };
     }
 
-    if (errorMessage.includes('quota') || errorMessage.includes('rate limit')) {
+    if (errorMessage.includes('quota') || errorMessage.includes('rate limit') || errorMessage.includes('429')) {
       return {
         success: false,
         message: 'API rate limit exceeded. Please try again later.',
@@ -565,7 +635,7 @@ export async function executeImageTool(
       error: { code: 'EXECUTION_ERROR', details: errorMessage },
       meta: {
         durationMs: Date.now() - startTime,
-        source: 'nano-banana',
+        source: 'openai-image',
       },
     };
   }

@@ -69,7 +69,11 @@ export class ContextCompressor {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
     if (process.env.OPENAI_API_KEY) {
-      this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        maxRetries: 5,
+        timeout: 30000,
+      });
     }
   }
 

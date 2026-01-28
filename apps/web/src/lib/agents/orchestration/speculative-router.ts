@@ -220,10 +220,12 @@ export class SpeculativeRouter {
     try {
       const modelConfig = getModel(agent);
 
-      // Create OpenAI client with agent-specific config
+      // Create OpenAI client with agent-specific config and built-in retry
       const client = new OpenAI({
         apiKey: modelConfig.apiKey || process.env.OPENAI_API_KEY,
         baseURL: modelConfig.baseURL,
+        maxRetries: 3, // Lower for speculative since speed matters
+        timeout: 15000, // Shorter timeout for speculative
       });
 
       const response = await Promise.race([

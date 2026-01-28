@@ -145,12 +145,23 @@ export const AGENT_CAPABILITIES: AgentCapability[] = [
       'Multi-image comparison',
     ],
     keywords: [
-      'generate image', 'create image', 'draw', 'visualize', 'diagram',
-      'chart', 'graph', 'picture', 'illustration', 'infographic',
-      'flowchart', 'screenshot', 'analyze image', 'describe image',
-      'make a picture', 'show me', 'create visual', 'design',
-      'mockup', 'sketch', 'render', 'generate a', 'create a diagram',
-      'pie chart', 'bar chart', 'architecture diagram', 'mindmap',
+      // Image generation phrases (multi-word)
+      'generate image', 'generate an image', 'generate a image', 'create image',
+      'create an image', 'create a image', 'make an image', 'make a image',
+      'draw me', 'draw a', 'draw an', 'make me a picture', 'make a picture',
+      'create a picture', 'generate a picture', 'create visual', 'create a visual',
+      // Diagram/chart phrases
+      'create diagram', 'create a diagram', 'make diagram', 'make a diagram',
+      'draw diagram', 'create chart', 'create a chart', 'make chart', 'make a chart',
+      'pie chart', 'bar chart', 'architecture diagram', 'flowchart', 'mindmap',
+      // Analysis phrases
+      'analyze image', 'analyze this image', 'describe image', 'describe this image',
+      'what is in this image', 'look at this image',
+      // Single-word keywords (high signal)
+      'visualize', 'illustration', 'infographic', 'mockup', 'sketch', 'render',
+      'diagram', 'graph', 'screenshot',
+      // Trigger words that strongly suggest image intent
+      'image', 'picture', 'photo', 'visual', 'graphic', 'artwork', 'drawing',
     ],
     tools: ['generate_image', 'edit_image', 'create_diagram', 'create_chart', 'analyze_image', 'compare_images'],
   },
@@ -159,12 +170,18 @@ export const AGENT_CAPABILITIES: AgentCapability[] = [
 /**
  * Heuristic routing based on keyword matching
  * Used as fallback when LLM routing is slow or unavailable
+ *
+ * Scoring system:
+ * - Multi-word phrase match: 3 points (high specificity)
+ * - Single word match: 1 point
+ * - Raw score is used (no normalization that would penalize agents with more keywords)
+ * - Threshold of 1 point minimum for any match
  */
 export function heuristicRoute(message: string): RoutingDecision {
   const lowerMessage = message.toLowerCase();
   const words = lowerMessage.split(/\s+/);
 
-  let bestMatch: { agent: ExtendedAgentType; score: number; capability: AgentCapability } | null = null;
+  let bestMatch: { agent: ExtendedAgentType; score: number; matchedKeywords: string[]; capability: AgentCapability } | null = null;
 
   for (const capability of AGENT_CAPABILITIES) {
     let score = 0;
@@ -172,9 +189,9 @@ export function heuristicRoute(message: string): RoutingDecision {
 
     for (const keyword of capability.keywords) {
       if (keyword.includes(' ')) {
-        // Multi-word keyword - check phrase
+        // Multi-word keyword - check phrase (high specificity = more points)
         if (lowerMessage.includes(keyword)) {
-          score += 2;
+          score += 3;
           matchedKeywords.push(keyword);
         }
       } else {
@@ -186,20 +203,20 @@ export function heuristicRoute(message: string): RoutingDecision {
       }
     }
 
-    // Normalize score by keyword count for fair comparison
-    const normalizedScore = score / Math.sqrt(capability.keywords.length);
-
-    if (!bestMatch || normalizedScore > bestMatch.score) {
+    // Use raw score - no normalization that would penalize agents with more keywords
+    // Instead, we track the number of matched keywords for confidence calculation
+    if (!bestMatch || score > bestMatch.score) {
       bestMatch = {
         agent: capability.agent,
-        score: normalizedScore,
+        score,
+        matchedKeywords,
         capability,
       };
     }
   }
 
-  // Default to personality if no strong match
-  if (!bestMatch || bestMatch.score < 0.5) {
+  // Default to personality if no keywords matched at all
+  if (!bestMatch || bestMatch.score < 1) {
     return {
       agent: 'personality',
       confidence: 0.5,
@@ -208,13 +225,23 @@ export function heuristicRoute(message: string): RoutingDecision {
     };
   }
 
-  // Calculate confidence based on score
-  const confidence = Math.min(0.95, 0.5 + bestMatch.score * 0.15);
+  // Calculate confidence based on raw score and number of matched keywords
+  // Higher scores and more matched keywords = higher confidence
+  const matchRatio = bestMatch.matchedKeywords.length / Math.min(10, bestMatch.capability.keywords.length);
+  const scoreBonus = Math.min(0.3, bestMatch.score * 0.05);
+  const confidence = Math.min(0.95, 0.5 + matchRatio * 0.3 + scoreBonus);
+
+  logger.debug('Heuristic routing result', {
+    agent: bestMatch.agent,
+    score: bestMatch.score,
+    matchedKeywords: bestMatch.matchedKeywords.slice(0, 5),
+    confidence,
+  });
 
   return {
     agent: bestMatch.agent,
     confidence,
-    rationale: `Matched ${bestMatch.capability.name}: ${bestMatch.capability.description}`,
+    rationale: `Matched ${bestMatch.capability.name}: ${bestMatch.matchedKeywords.slice(0, 3).join(', ')}`,
     fallbackAgent: 'personality',
     toolPlan: bestMatch.capability.tools.slice(0, 3),
     source: 'heuristic',
@@ -274,21 +301,56 @@ Respond with JSON only:
 }`;
 
     const { OpenAI } = await import('openai');
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
 
-    // Use the fastest, cheapest model for routing
-    const completion = await client.chat.completions.create({
-      model: 'gpt-5-nano',
-      messages: [
-        { role: 'system', content: 'You are a routing classifier. Respond with valid JSON only.' },
-        { role: 'user', content: routerPrompt },
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 200,
-      temperature: 0.1,
-    });
+    // Router models - using gpt-4o-mini first (highest rate limits at Tier 1)
+    // Tier 1 limits: gpt-4o-mini has ~3500 RPM vs gpt-4 class ~500 RPM
+    const routerModels: string[] = ['gpt-4o-mini', 'gpt-3.5-turbo'];
+    let completion;
+    let lastError: Error | undefined;
+
+    for (let modelIndex = 0; modelIndex < routerModels.length; modelIndex++) {
+      const model = routerModels[modelIndex] as string;
+
+      // Create client with SDK's built-in retry (5 retries with exponential backoff)
+      const client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        maxRetries: 5, // SDK handles exponential backoff automatically
+        timeout: 30000, // 30 second timeout per request
+      });
+
+      try {
+        completion = await client.chat.completions.create({
+          model,
+          messages: [
+            { role: 'system', content: 'You are a routing classifier. Respond with valid JSON only.' },
+            { role: 'user', content: routerPrompt },
+          ],
+          response_format: { type: 'json_object' },
+          max_tokens: 200,
+          temperature: 0.1,
+        });
+        // Success - break out of model loop
+        break;
+      } catch (modelError) {
+        lastError = modelError instanceof Error ? modelError : new Error(String(modelError));
+        logger.warn(`Router model ${model} failed after SDK retries`, {
+          error: lastError.message,
+          modelIndex,
+        });
+
+        // If this is the last model, fall through to heuristic routing
+        if (modelIndex === routerModels.length - 1) {
+          throw lastError;
+        }
+
+        // Brief delay before trying next model
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!completion) {
+      throw new Error('All router models failed');
+    }
 
     const elapsed = Date.now() - startTime;
 

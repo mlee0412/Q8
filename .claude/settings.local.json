@@ -91,7 +91,12 @@
       "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\Minki\\\\Q8\\\\apps\\\\web\\\\.next\" -ErrorAction SilentlyContinue)",
       "Bash(pnpm run dev)",
       "Bash(timeout:*)",
-      "Bash(pnpm dev:*)"
+      "Bash(pnpm dev:*)",
+      "mcp__mcp-docker__browser_wait_for",
+      "Bash(cmd /c \"rmdir /s /q .next 2>nul\")",
+      "mcp__mcp-docker__browser_close",
+      "WebFetch(domain:cookbook.openai.com)",
+      "WebFetch(domain:platform.openai.com)"
     ],
     "deny": [],
     "ask": []

@@ -22,6 +22,8 @@ export interface VibeState {
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 5,
+  timeout: 30000,
 });
 
 // Cache vibe state per user (refresh every 5 minutes)
