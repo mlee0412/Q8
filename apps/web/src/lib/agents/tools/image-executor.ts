@@ -240,11 +240,10 @@ export async function executeImageTool(
           messages: [
             {
               role: 'user',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               content: [
                 { type: 'text', text: `Describe this image in detail, then explain how to apply this edit: "${editPrompt}". Create a comprehensive prompt for image generation that would recreate this image with the requested changes.` },
                 { type: 'image_url', image_url: { url: imageUrl } },
-              ] as any,
+              ] as unknown as string,
             },
           ],
           max_tokens: 1000,
@@ -330,11 +329,10 @@ export async function executeImageTool(
           messages: [
             {
               role: 'user',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               content: [
                 { type: 'text', text: prompt },
                 { type: 'image_url', image_url: { url: imageUrl } },
-              ] as any,
+              ] as unknown as string,
             },
           ],
           max_tokens: 2000,
@@ -578,8 +576,7 @@ export async function executeImageTool(
           messages: [
             {
               role: 'user',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              content: content as any,
+              content: content as unknown as string,
             },
           ],
           max_tokens: 2000,

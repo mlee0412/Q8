@@ -96,7 +96,8 @@
       "Bash(cmd /c \"rmdir /s /q .next 2>nul\")",
       "mcp__mcp-docker__browser_close",
       "WebFetch(domain:cookbook.openai.com)",
-      "WebFetch(domain:platform.openai.com)"
+      "WebFetch(domain:platform.openai.com)",
+      "Bash(vercel logs:*)"
     ],
     "deny": [],
     "ask": []
