@@ -12,6 +12,29 @@ import { logger } from '@/lib/logger';
 import type { ToolResult } from '../types';
 
 /**
+ * Lazily create an OpenAI client (avoids top-level import for edge runtime)
+ */
+async function getOpenAIClient(): Promise<InstanceType<typeof import('openai').default>> {
+  const { OpenAI } = await import('openai');
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+
+/**
+ * Extract base64 image data from an OpenAI image API response item.
+ * gpt-image-1.5 does not support `response_format`, so it may return
+ * either `b64_json` or `url`. This helper normalises both to base64.
+ */
+async function extractBase64(item: { b64_json?: string | null; url?: string | null }): Promise<string | null> {
+  if (item.b64_json) return item.b64_json;
+  if (item.url) {
+    const resp = await fetch(item.url);
+    const buf = await resp.arrayBuffer();
+    return Buffer.from(buf).toString('base64');
+  }
+  return null;
+}
+
+/**
  * Image generation result data
  */
 export interface ImageGenerationResult {
@@ -53,6 +76,8 @@ function getModelForQuality(quality: string): string {
     case 'hd':
     case 'high':
       return 'gpt-image-1.5'; // Best quality
+    case 'standard':
+      return 'gpt-image-1'; // Balanced quality/speed
     case 'fast':
     case 'low':
       return 'gpt-image-1-mini'; // Fastest
@@ -64,7 +89,9 @@ function getModelForQuality(quality: string): string {
 /**
  * Get image size based on aspect ratio
  */
-function getSizeFromAspectRatio(aspectRatio?: string): '1024x1024' | '1536x1024' | '1024x1536' | 'auto' {
+type ImageSize = '1024x1024' | '1536x1024' | '1024x1536' | '1792x1024' | '1024x1792' | 'auto';
+
+function getSizeFromAspectRatio(aspectRatio?: string): ImageSize {
   switch (aspectRatio) {
     case '16:9':
     case 'landscape':
@@ -72,6 +99,15 @@ function getSizeFromAspectRatio(aspectRatio?: string): '1024x1024' | '1536x1024'
     case '9:16':
     case 'portrait':
       return '1024x1536';
+    case '4:3':
+      // Nearest valid landscape size
+      return '1536x1024';
+    case '3:4':
+      // Nearest valid portrait size
+      return '1024x1536';
+    case '21:9':
+      // Ultra-wide → use widest available landscape
+      return '1792x1024';
     case '1:1':
     case 'square':
     default:
@@ -140,25 +176,23 @@ export async function executeImageTool(
 
         logger.info('[ImageExecutor] Generating image with OpenAI', { model, size, prompt: fullPrompt.slice(0, 100) });
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
         // Use OpenAI's Images API for generation
+        // Note: gpt-image-1.5 does not accept response_format
         const response = await client.images.generate({
           model,
           prompt: fullPrompt,
           n: 1,
           size,
-          response_format: 'b64_json', // Get base64 data directly
         });
 
-        const imageData = response.data?.[0];
+        const rawItem = response.data?.[0];
+        const b64 = rawItem ? await extractBase64(rawItem) : null;
 
-        if (imageData?.b64_json) {
+        if (b64) {
           const result: ImageGenerationResult = {
-            imageData: imageData.b64_json,
+            imageData: b64,
             mimeType: 'image/png',
             model,
             prompt,
@@ -173,26 +207,6 @@ export async function executeImageTool(
             success: true,
             message: 'Image generated successfully',
             data: result,
-            meta: {
-              durationMs: Date.now() - startTime,
-              source: 'openai-image',
-            },
-          };
-        }
-
-        // Fallback if URL is returned instead of base64
-        if (imageData?.url) {
-          return {
-            success: true,
-            message: 'Image generated successfully',
-            data: {
-              imageUrl: imageData.url,
-              model,
-              prompt,
-              style,
-              aspectRatio,
-              quality,
-            },
             meta: {
               durationMs: Date.now() - startTime,
               source: 'openai-image',
@@ -229,45 +243,70 @@ export async function executeImageTool(
 
         logger.info('[ImageExecutor] Editing image with OpenAI', { model, instruction: editPrompt.slice(0, 100) });
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
-        // Use GPT-4o to analyze the image and generate an enhanced edit prompt
-        const analysisResponse = await client.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: `Describe this image in detail, then explain how to apply this edit: "${editPrompt}". Create a comprehensive prompt for image generation that would recreate this image with the requested changes.` },
-                { type: 'image_url', image_url: { url: imageUrl } },
-              ] as unknown as string,
-            },
-          ],
-          max_tokens: 1000,
-        });
+        let response;
 
-        const enhancedPrompt = analysisResponse.choices[0]?.message?.content ?? editPrompt;
+        // If source image provided, download it and use the edit endpoint
+        if (imageUrl) {
+          try {
+            const imgResponse = await fetch(imageUrl);
+            const imgBlob = await imgResponse.blob();
+            const imgFile = new File([imgBlob], 'source.png', { type: imgBlob.type || 'image/png' });
 
-        // Generate the edited image using gpt-image-1.5
-        const response = await client.images.generate({
-          model,
-          prompt: enhancedPrompt,
-          n: 1,
-          size: '1024x1024',
-          response_format: 'b64_json',
-        });
+            response = await client.images.edit({
+              model,
+              image: imgFile,
+              prompt: editPrompt,
+              n: 1,
+              size: '1024x1024' as 'auto',
+            } as Parameters<typeof client.images.edit>[0]);
+          } catch (editError) {
+            // If edit endpoint fails (e.g., unsupported format), fall back to vision + generate
+            logger.warn('[ImageExecutor] Edit endpoint failed, falling back to vision + generate', { error: editError instanceof Error ? editError.message : String(editError) });
 
-        const imageData = response.data?.[0];
+            const analysisResponse = await client.chat.completions.create({
+              model: 'gpt-5-mini',
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: `Describe this image in detail, then explain how to apply this edit: "${editPrompt}". Create a comprehensive prompt for image generation that would recreate this image with the requested changes.` },
+                    { type: 'image_url', image_url: { url: imageUrl } },
+                  ] as unknown as string,
+                },
+              ],
+              max_tokens: 1000,
+            });
 
-        if (imageData?.b64_json) {
+            const enhancedPrompt = analysisResponse.choices[0]?.message?.content ?? editPrompt;
+
+            response = await client.images.generate({
+              model,
+              prompt: enhancedPrompt,
+              n: 1,
+              size: '1024x1024',
+            });
+          }
+        } else {
+          // No source image - generate from text description
+          response = await client.images.generate({
+            model,
+            prompt: editPrompt,
+            n: 1,
+            size: '1024x1024',
+          });
+        }
+
+        const editRawItem = response.data?.[0];
+        const editB64 = editRawItem ? await extractBase64(editRawItem) : null;
+
+        if (editB64) {
           return {
             success: true,
             message: 'Image edited successfully',
             data: {
-              imageData: imageData.b64_json,
+              imageData: editB64,
               mimeType: 'image/png',
               model,
               instruction,
@@ -317,15 +356,12 @@ export async function executeImageTool(
           prompt += '\n\nIf there is structured data (tables, charts, lists), extract it in JSON format.';
         }
 
-        logger.info('[ImageExecutor] Analyzing image with GPT-4o', { analysisType });
+        logger.info('[ImageExecutor] Analyzing image with GPT-5-mini', { analysisType });
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
         const response = await client.chat.completions.create({
-          model: 'gpt-4o', // Best vision model for analysis
+          model: 'gpt-5-mini', // Best vision model for analysis
           messages: [
             {
               role: 'user',
@@ -368,7 +404,7 @@ export async function executeImageTool(
           data: result,
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'gpt-4o-vision',
+            source: 'gpt-5-mini-vision',
           },
         };
       }
@@ -407,27 +443,24 @@ export async function executeImageTool(
 
         const model = 'gpt-image-1.5'; // Best for text rendering in diagrams
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
-        const response = await client.images.generate({
+        const diagramResponse = await client.images.generate({
           model,
           prompt: fullPrompt,
           n: 1,
           size: '1024x1024',
-          response_format: 'b64_json',
         });
 
-        const imageData = response.data?.[0];
+        const diagramRawItem = diagramResponse.data?.[0];
+        const diagramB64 = diagramRawItem ? await extractBase64(diagramRawItem) : null;
 
-        if (imageData?.b64_json) {
+        if (diagramB64) {
           return {
             success: true,
             message: `${diagramType} diagram created`,
             data: {
-              imageData: imageData.b64_json,
+              imageData: diagramB64,
               mimeType: 'image/png',
               diagramType,
               description,
@@ -478,27 +511,24 @@ export async function executeImageTool(
 
         const model = 'gpt-image-1.5'; // Best for text and data visualization
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
-        const response = await client.images.generate({
+        const chartResponse = await client.images.generate({
           model,
           prompt: chartPrompt,
           n: 1,
           size: '1024x1024',
-          response_format: 'b64_json',
         });
 
-        const imageData = response.data?.[0];
+        const chartRawItem = chartResponse.data?.[0];
+        const chartB64 = chartRawItem ? await extractBase64(chartRawItem) : null;
 
-        if (imageData?.b64_json) {
+        if (chartB64) {
           return {
             success: true,
             message: `${chartType} chart created`,
             data: {
-              imageData: imageData.b64_json,
+              imageData: chartB64,
               mimeType: 'image/png',
               chartType,
               title,
@@ -555,12 +585,9 @@ export async function executeImageTool(
           prompt += ` Focus particularly on: ${focusAreas.join(', ')}.`;
         }
 
-        logger.info('[ImageExecutor] Comparing images with GPT-4o', { count: imageUrls.length, comparisonType });
+        logger.info('[ImageExecutor] Comparing images with GPT-5-mini', { count: imageUrls.length, comparisonType });
 
-        const { OpenAI } = await import('openai');
-        const client = new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY,
-        });
+        const client = await getOpenAIClient();
 
         // Build content array with all images
         const content = [
@@ -572,7 +599,7 @@ export async function executeImageTool(
         ];
 
         const response = await client.chat.completions.create({
-          model: 'gpt-4o', // Best multi-image vision model
+          model: 'gpt-5-mini', // Best multi-image vision model
           messages: [
             {
               role: 'user',
@@ -594,7 +621,7 @@ export async function executeImageTool(
           },
           meta: {
             durationMs: Date.now() - startTime,
-            source: 'gpt-4o-vision',
+            source: 'gpt-5-mini-vision',
           },
         };
       }

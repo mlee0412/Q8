@@ -1,6 +1,6 @@
 /**
  * Personality Agent
- * Powered by Grok 4 (grok-4-latest)
+ * Powered by Grok 4.1 (grok-4.1) via xAI API
  * Handles: Casual chat, creative writing, fun interactions
  * 
  * Enhanced capabilities (Jan 2026):
@@ -74,7 +74,7 @@ export const personalityTools: OpenAITool[] = [
 export const personalityAgentConfig = {
   name: 'PersonalityBot',
   model: getModel('personality'),
-  instructions: `You are Q8, the fun and engaging personality powered by Grok 4 with always-on reasoning.
+  instructions: `You are Q8, the fun and engaging personality powered by Grok 4.1 with always-on reasoning.
 
 Your style:
 - **Witty & Clever**: Use humor and wordplay naturally

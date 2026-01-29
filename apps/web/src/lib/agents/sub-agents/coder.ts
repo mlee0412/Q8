@@ -1,6 +1,6 @@
 /**
  * Dev Agent (Coder)
- * Powered by Claude Opus 4.5 (claude-opus-4-5-20250929)
+ * Powered by Claude Opus 4.5 (claude-opus-4-5-20251101)
  * Handles: Code review, debugging, GitHub operations, Supabase management
  * 
  * Enhanced capabilities (Jan 2026):

@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Bot, Code2, Search, Calendar, Sparkles, Home } from 'lucide-react';
+import { Bot, Code2, Search, Calendar, Sparkles, Home, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home';
+type AgentRole = 'orchestrator' | 'coder' | 'researcher' | 'secretary' | 'personality' | 'home' | 'finance';
 
 interface AgentIndicatorProps {
   /**
@@ -135,31 +135,31 @@ AgentIndicator.displayName = 'AgentIndicator';
 
 // Helper: Get agent configuration
 function getAgentConfig(role: AgentRole) {
-  const configs = {
+  const configs: Record<AgentRole, { name: string; model: string; icon: typeof Bot; iconColor: string; bgColor: string }> = {
     orchestrator: {
       name: 'Q8 Orchestrator',
-      model: 'GPT-5.1',
+      model: 'GPT-5.2',
       icon: Bot,
       iconColor: 'text-neon-primary',
       bgColor: 'bg-neon-primary/20',
     },
     coder: {
       name: 'DevBot',
-      model: 'Claude 4.5',
+      model: 'Claude Opus 4.5',
       icon: Code2,
       iconColor: 'text-blue-500',
       bgColor: 'bg-blue-500/20',
     },
     researcher: {
       name: 'Research Agent',
-      model: 'Perplexity Sonar',
+      model: 'Sonar Reasoning Pro',
       icon: Search,
       iconColor: 'text-purple-500',
       bgColor: 'bg-purple-500/20',
     },
     secretary: {
       name: 'Secretary',
-      model: 'Gemini 3.0',
+      model: 'Gemini 3 Flash',
       icon: Calendar,
       iconColor: 'text-green-500',
       bgColor: 'bg-green-500/20',
@@ -173,10 +173,17 @@ function getAgentConfig(role: AgentRole) {
     },
     home: {
       name: 'HomeBot',
-      model: 'GPT-5.1',
+      model: 'GPT-5-mini',
       icon: Home,
       iconColor: 'text-cyan-500',
       bgColor: 'bg-cyan-500/20',
+    },
+    finance: {
+      name: 'FinanceAdvisor',
+      model: 'Gemini 3 Flash',
+      icon: DollarSign,
+      iconColor: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/20',
     },
   };
 

@@ -1,6 +1,6 @@
 /**
  * Research Agent
- * Powered by Perplexity Sonar Reasoning Pro (sonar-reasoning-pro)
+ * Primary: Perplexity Sonar Reasoning Pro (sonar-reasoning-pro)
  * Handles: Web search, fact-checking, real-time information, deep analysis
  * 
  * Enhanced capabilities (Jan 2026):

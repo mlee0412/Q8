@@ -4,7 +4,7 @@
  * Re-exports all sub-agent configurations, tools, and initialization functions.
  */
 
-// Coder Agent (Claude Sonnet 4.5)
+// Coder Agent (Claude Opus 4.5)
 export {
   githubTools,
   supabaseTools,
@@ -13,14 +13,14 @@ export {
   executeCoderTool,
 } from './coder';
 
-// Researcher Agent (Perplexity Sonar Pro)
+// Researcher Agent (Perplexity Sonar Reasoning Pro)
 export {
   researchTools,
   researcherAgentConfig,
   initializeResearcherAgent,
 } from './researcher';
 
-// Secretary Agent (Gemini 3.0 Pro)
+// Secretary Agent (Gemini 3 Flash)
 export {
   googleWorkspaceTools,
   secretaryAgentConfig,
@@ -28,20 +28,20 @@ export {
   executeGoogleTool,
 } from './secretary';
 
-// Personality Agent (Grok 4.1)
+// Personality Agent (Grok 4.1 via xAI)
 export {
   personalityTools,
   personalityAgentConfig,
   initializePersonalityAgent,
 } from './personality';
 
-// Home Agent (GPT-5.1)
+// Home Agent (GPT-5-mini)
 export {
   homeAgentConfig,
   initializeHomeAgent,
 } from './home';
 
-// Finance Advisor Agent (Gemini 3.0 Pro)
+// Finance Advisor Agent (Gemini 3 Flash)
 export {
   financeAdvisorConfig,
   initializeFinanceAdvisorAgent,

@@ -1,6 +1,6 @@
 /**
  * Secretary Agent
- * Powered by Gemini 3 Pro Preview (gemini-3-pro-preview)
+ * Powered by Gemini 3 Flash Preview (gemini-3-flash-preview)
  * Handles: Email, Calendar, Drive, Documents, YouTube
  * 
  * Enhanced capabilities (Jan 2026):
@@ -298,7 +298,7 @@ export const googleWorkspaceTools: OpenAITool[] = [
 export const secretaryAgentConfig = {
   name: 'SecretaryBot',
   model: getModel('secretary'),
-  instructions: `You are a personal secretary powered by Gemini 3 Pro with 1M token context and thinking capabilities.
+  instructions: `You are a personal secretary powered by Gemini 3 Flash with 1M token context and thinking capabilities.
 
 Your capabilities:
 - **Extended Context**: Handle extremely long email threads, documents, and conversation histories

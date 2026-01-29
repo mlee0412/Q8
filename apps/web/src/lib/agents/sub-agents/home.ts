@@ -1,6 +1,6 @@
 /**
  * Home Agent
- * Powered by GPT-5.2 (gpt-5.2)
+ * Powered by GPT-5-mini (gpt-5-mini)
  * Handles: Smart home control via Home Assistant
  *
  * Enhanced capabilities (Jan 2026):
@@ -21,7 +21,7 @@ import { updateUserContext } from '../orchestration/user-context';
 export const homeAgentConfig = {
   name: 'HomeBot',
   model: getModel('home'),
-  instructions: `You are a smart home controller powered by GPT-5.2 with advanced tool calling capabilities.
+  instructions: `You are a smart home controller powered by GPT-5-mini with advanced tool calling capabilities.
 
 Your capabilities:
 - **Parallel Control**: Execute multiple device commands simultaneously for complex scenes

@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useChat, type ChatState, type StreamingMessage, type ToolExecution, type AgentType } from './useChat';
+import { useChat, type ChatState, type StreamingMessage, type ToolExecution, type AgentType, type GeneratedImage } from './useChat';
 import { useVoice, type Voice, type VoiceStatus } from './useVoice';
 import { createTTSStreamer, type TTSStreamer } from '@/lib/agents/tts-streamer';
 import type { ExtendedAgentType, ConversationMode, InputMethod } from '@/lib/agents/orchestration/types';
@@ -72,6 +72,10 @@ export interface UseUnifiedChatOptions {
   onMemoryExtracted?: (count: number) => void;
   onError?: (error: string) => void;
 
+  // Image callbacks
+  onImageGenerated?: (image: GeneratedImage) => void;
+  onImageAnalyzed?: (analysis: string, imageUrl?: string) => void;
+
   // New callbacks for unified chat
   onAgentHandoff?: (from: ExtendedAgentType, to: ExtendedAgentType, reason: string) => void;
   onModeSwitch?: (from: ConversationMode, to: ConversationMode) => void;
@@ -130,6 +134,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UseUnifiedChatRe
     onThreadCreated,
     onMemoryExtracted,
     onError,
+    onImageGenerated,
+    onImageAnalyzed,
     onAgentHandoff,
     onModeSwitch,
   } = options;
@@ -208,6 +214,8 @@ export function useUnifiedChat(options: UseUnifiedChatOptions): UseUnifiedChatRe
         }
       }
     },
+    onImageGenerated,
+    onImageAnalyzed,
     onThreadCreated,
     onMemoryExtracted,
     onError,

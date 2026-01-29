@@ -5,17 +5,16 @@
  * - Environment-driven model overrides (Q8_ROUTER_MODEL, Q8_CODER_MODEL, etc.)
  * - Automatic fallback chains when primary models are unavailable
  * - OpenAI SDK-compatible endpoints for all providers
- * - Nano Banana image generation support (Gemini 3 Pro Image / 2.5 Flash Image)
  *
  * Model Strategy (as of Jan 2026 - UPDATED):
- * - Orchestrator: GPT-5.2 (best agentic) → GPT-5-mini → GPT-4.1
- * - DevBot: Claude Opus 4.5 → Sonnet 4.5 → GPT-5.2
- * - ResearchBot: Perplexity sonar-reasoning-pro → sonar-pro → sonar
- * - SecretaryBot: Gemini 3 Pro → Gemini 3 Flash → Gemini 2.5 Flash
- * - HomeBot: GPT-5.2 → GPT-5-mini (needs tool calling)
- * - FinanceBot: Gemini 3 Pro → Gemini 3 Flash
- * - PersonalityBot: Grok-4 → GPT-5.2
- * - ImageGen: Gemini 3 Pro Image (Nano Banana Pro) → Gemini 2.5 Flash Image
+ * - Orchestrator: GPT-5.2 (best agentic) → GPT-5-mini → GPT-5-nano
+ * - DevBot: Claude Opus 4.5 → Sonnet 4.5 → GPT-5.2 → GPT-5-mini
+ * - ResearchBot: sonar-reasoning-pro → sonar-pro → sonar → GPT-5-mini
+ * - SecretaryBot: Gemini 3 Flash → Gemini 3 Pro → GPT-5-mini
+ * - HomeBot: GPT-5-mini → GPT-5.2 → GPT-5-nano
+ * - FinanceBot: Gemini 3 Flash → Gemini 3 Pro → GPT-5-mini
+ * - PersonalityBot: Grok 4.1 Fast (xAI, grok-4-1-fast) → GPT-5.2 → GPT-5-mini → GPT-5-nano
+ * - ImageGen: GPT-5-mini → GPT-5.2 → GPT-5-nano (orchestration); gpt-image-1.5 (image generation via OpenAI)
  */
 
 import { logger } from '@/lib/logger';
@@ -68,51 +67,52 @@ interface ModelDefinition {
 
 /**
  * Primary models for each agent type
- * Optimized for Tier 1 OpenAI accounts (use gpt-4o-mini for highest limits)
+ * Updated Jan 2026 to latest flagship models across all providers
  * Can be overridden via environment variables
  */
 const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
   orchestrator: {
-    model: 'gpt-4o', // Good balance of capability and rate limits
+    model: 'gpt-5.2', // Best agentic routing, 187 tok/s, 400K context
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   coder: {
-    model: 'claude-sonnet-4-5-20250929', // Claude for coding
+    model: 'claude-opus-4-5-20251101', // Most intelligent coding model
     baseURL: 'https://api.anthropic.com/v1/',
     envKey: 'ANTHROPIC_API_KEY',
     provider: 'anthropic',
   },
   researcher: {
-    model: 'sonar-pro', // Perplexity for research
+    model: 'sonar-reasoning-pro', // Deep reasoning with real-time search
     baseURL: 'https://api.perplexity.ai',
     envKey: 'PERPLEXITY_API_KEY',
     provider: 'perplexity',
   },
   secretary: {
-    model: 'gemini-2.0-flash', // Google for secretary tasks
+    model: 'gemini-3-flash-preview', // Pro-level intelligence at Flash speed, 1M context
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
   },
   personality: {
-    model: 'gpt-4o-mini', // Fast, high-limit model for personality
-    envKey: 'OPENAI_API_KEY',
-    provider: 'openai',
+    model: 'grok-4-1-fast', // Best emotional IQ + tool calling, 2M context
+    baseURL: 'https://api.x.ai/v1',
+    envKey: 'XAI_API_KEY',
+    provider: 'xai',
   },
   home: {
-    model: 'gpt-4o-mini', // High limits for home automation
+    model: 'gpt-5-mini', // High rate limits with excellent tool calling
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
   finance: {
-    model: 'gemini-2.0-flash', // Google for finance
+    model: 'gemini-3-flash-preview', // Better reasoning for financial analysis, 1M context
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     envKey: 'GOOGLE_GENERATIVE_AI_KEY',
     provider: 'google',
   },
   imagegen: {
-    model: 'gpt-4o-mini', // Uses chat model to orchestrate image tools
+    model: 'gpt-5-mini', // Orchestrates image generation tools
     envKey: 'OPENAI_API_KEY',
     provider: 'openai',
   },
@@ -123,14 +123,14 @@ const PRIMARY_MODELS: Record<AgentType, ModelDefinition> = {
  * Used when primary model's API key is not available
  */
 /**
- * Fallback chains prioritize gpt-4o-mini for Tier 1 accounts
- * gpt-4o-mini has ~7x higher rate limits than gpt-4 class models at Tier 1
+ * Fallback chains for each agent type
+ * Updated Jan 2026: Removed deprecated models (gpt-3.5-turbo, gemini-1.5-flash)
+ * Added gpt-5-mini as common high-rate-limit fallback
  */
 const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
   orchestrator: [
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' }, // Highest Tier 1 limits
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-nano', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   coder: [
     {
@@ -139,8 +139,8 @@ const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
       envKey: 'ANTHROPIC_API_KEY',
       provider: 'anthropic',
     },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   researcher: [
     {
@@ -155,46 +155,38 @@ const FALLBACK_CHAINS: Record<AgentType, ModelDefinition[]> = {
       envKey: 'PERPLEXITY_API_KEY',
       provider: 'perplexity',
     },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   secretary: [
     {
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-pro-preview',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
-    {
-      model: 'gemini-1.5-flash',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
-      provider: 'google',
-    },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   personality: [
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-nano', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   home: [
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-3.5-turbo', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-nano', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   finance: [
     {
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-pro-preview',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
       envKey: 'GOOGLE_GENERATIVE_AI_KEY',
       provider: 'google',
     },
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
   imagegen: [
-    { model: 'gpt-4o-mini', envKey: 'OPENAI_API_KEY', provider: 'openai' },
-    { model: 'gpt-4o', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5.2', envKey: 'OPENAI_API_KEY', provider: 'openai' },
+    { model: 'gpt-5-nano', envKey: 'OPENAI_API_KEY', provider: 'openai' },
   ],
 };
 
@@ -409,52 +401,6 @@ export function getAvailableModels(agentType: AgentType): ModelConfig[] {
   }
 
   return available;
-}
-
-/**
- * Check model health (API key present)
- */
-/**
- * Get image generation model configuration
- * @param mode - 'fast' for quick generation (Nano Banana), 'pro' for high quality (Nano Banana Pro)
- */
-export function getImageModel(mode: 'fast' | 'pro' = 'fast'): ModelConfig {
-  const imageModels = {
-    fast: {
-      model: 'gemini-2.5-flash-image',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
-      provider: 'google',
-      supportsImageGen: true,
-      maxImageInputs: 3,
-      maxImageResolution: '1k' as const,
-    },
-    pro: {
-      model: 'gemini-3-pro-image-preview',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-      envKey: 'GOOGLE_GENERATIVE_AI_KEY',
-      provider: 'google',
-      supportsImageGen: true,
-      maxImageInputs: 14,
-      maxImageResolution: '4k' as const,
-    },
-  };
-
-  const selected = imageModels[mode];
-  
-  if (!hasApiKey(selected.envKey)) {
-    logger.warn(`[ModelFactory] Image model ${mode} API key not available`);
-  }
-
-  return {
-    model: selected.model,
-    baseURL: selected.baseURL,
-    apiKey: getApiKey(selected.envKey),
-    provider: selected.provider,
-    supportsImageGen: selected.supportsImageGen,
-    maxImageInputs: selected.maxImageInputs,
-    maxImageResolution: selected.maxImageResolution,
-  };
 }
 
 /**

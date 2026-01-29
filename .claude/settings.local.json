@@ -97,7 +97,9 @@
       "mcp__mcp-docker__browser_close",
       "WebFetch(domain:cookbook.openai.com)",
       "WebFetch(domain:platform.openai.com)",
-      "Bash(vercel logs:*)"
+      "Bash(vercel logs:*)",
+      "WebFetch(domain:docs.x.ai)",
+      "WebFetch(domain:ai.google.dev)"
     ],
     "deny": [],
     "ask": []

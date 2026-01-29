@@ -148,7 +148,7 @@ When handling financial questions:
 4. Be encouraging but honest about financial situations
 5. Never be judgmental about spending decisions`,
 
-  imagegen: `You are Q8's Image Generation specialist, powered by Nano Banana (Gemini image models).
+  imagegen: `You are Q8's Image Generation specialist, powered by OpenAI Image Generation (gpt-image-1.5).
 
 Your capabilities:
 - **Text-to-Image Generation**: Create images from detailed text descriptions

@@ -978,6 +978,7 @@ export async function* streamMessage(
     // Get tools
     const tools = getAgentTools(routingDecision.agent);
     const toolExecutions: ToolEvent[] = [];
+    const collectedImages: Array<{ data: string; mimeType: string; caption?: string }> = [];
     let fullContent = '';
     let usedModelConfig: ModelConfig = modelChain[0]!; // Non-null: checked modelChain.length above
 
@@ -1066,6 +1067,10 @@ export async function* streamMessage(
           })
         );
 
+        // Tool names that produce image generation or analysis results
+        const IMAGE_GEN_TOOLS = ['generate_image', 'edit_image', 'create_diagram', 'create_chart'];
+        const IMAGE_ANALYSIS_TOOLS = ['analyze_image', 'compare_images'];
+
         // Emit tool_end events and build messages after parallel execution
         for (const { id, functionName, functionArgs, toolCall, result, duration } of toolResults) {
           toolExecutions.push({
@@ -1087,6 +1092,42 @@ export async function* streamMessage(
               result: result.data || result.message,
               id,
               duration,
+            };
+          }
+
+          // Emit image_generated events for image generation tools
+          if (IMAGE_GEN_TOOLS.includes(functionName) && result.success && result.data) {
+            const imgData = result.data as { imageData?: string; mimeType?: string; prompt?: string; instruction?: string; diagramType?: string; chartType?: string; title?: string; description?: string };
+            if (imgData.imageData) {
+              const caption = (functionArgs as Record<string, unknown>).prompt as string
+                || imgData.prompt
+                || imgData.instruction
+                || imgData.description
+                || imgData.title
+                || `${imgData.diagramType || imgData.chartType || 'Generated'} image`;
+              yield {
+                type: 'image_generated',
+                imageData: imgData.imageData,
+                mimeType: imgData.mimeType || 'image/png',
+                caption,
+                model: 'gpt-image-1.5',
+              };
+              collectedImages.push({
+                data: imgData.imageData,
+                mimeType: imgData.mimeType || 'image/png',
+                caption,
+              });
+            }
+          }
+
+          // Emit image_analyzed events for analysis tools
+          if (IMAGE_ANALYSIS_TOOLS.includes(functionName) && result.success && result.data) {
+            const analysisData = result.data as { analysis?: string; comparison?: string };
+            const analysis = analysisData.analysis || analysisData.comparison || (typeof result.data === 'string' ? result.data : JSON.stringify(result.data));
+            yield {
+              type: 'image_analyzed',
+              analysis,
+              imageUrl: (functionArgs as Record<string, unknown>).image_url as string | undefined,
             };
           }
 
@@ -1249,7 +1290,13 @@ export async function* streamMessage(
     // Trigger async memory extraction
     extractMemoriesAsync(userId, threadId, message, fullContent);
 
-    yield { type: 'done', fullContent, agent: routingDecision.agent, threadId };
+    yield {
+      type: 'done',
+      fullContent,
+      agent: routingDecision.agent,
+      threadId,
+      ...(collectedImages.length > 0 ? { images: collectedImages } : {}),
+    };
   } catch (error) {
     logger.error('Orchestration streaming error', { userId, threadId: providedThreadId, error });
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

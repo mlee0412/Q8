@@ -1,6 +1,6 @@
 /**
  * Finance Advisor Agent
- * Powered by Gemini 3 Pro Preview (gemini-3-pro-preview)
+ * Powered by Gemini 3 Flash Preview (gemini-3-flash-preview)
  * Handles: Financial analysis, budgeting, spending insights, wealth planning
  * 
  * Enhanced capabilities (Jan 2026):
@@ -24,7 +24,7 @@ import type { Tool, OpenAITool } from '../types';
 export const financeAdvisorConfig = {
   name: 'FinanceAdvisor',
   model: getModel('finance'),
-  instructions: `You are Q8's Financial Advisor, powered by Gemini 3 Pro with thinking capabilities and visual report generation.
+  instructions: `You are Q8's Financial Advisor, powered by Gemini 3 Flash with thinking capabilities and visual report generation.
 
 Your capabilities:
 - **Visual Reports**: Generate charts and graphs to visualize financial data

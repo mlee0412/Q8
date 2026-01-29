@@ -1,13 +1,13 @@
 /**
- * Image Tools - Nano Banana Integration
- * Powered by Gemini 3 Pro Image (Nano Banana Pro) and Gemini 2.5 Flash Image (Nano Banana)
+ * Image Tools - OpenAI Image Generation
+ * Powered by OpenAI gpt-image-1.5 (generation/editing) and GPT-5-mini (vision/analysis)
  *
  * Capabilities:
  * - Text-to-image generation
  * - Image editing with natural language
  * - Image analysis and understanding
  * - Diagram and chart creation
- * - Multi-turn conversational image editing
+ * - Image comparison
  */
 
 import type { OpenAITool } from '../types';
@@ -21,7 +21,7 @@ export const imageTools: OpenAITool[] = [
     function: {
       name: 'generate_image',
       description:
-        'Generate an image from a text description using Nano Banana AI. Can create diagrams, illustrations, charts, infographics, and creative visuals. Best for: product mockups, concept art, diagrams, data visualizations.',
+        'Generate an image from a text description using OpenAI image generation. Can create diagrams, illustrations, charts, infographics, and creative visuals. Best for: product mockups, concept art, diagrams, data visualizations.',
       parameters: {
         type: 'object',
         properties: {
@@ -72,7 +72,7 @@ export const imageTools: OpenAITool[] = [
     function: {
       name: 'edit_image',
       description:
-        'Edit an existing image using natural language instructions. Can modify colors, add/remove elements, change style, fix issues, or transform the image. Supports up to 14 reference images with Nano Banana Pro.',
+        'Edit an existing image using natural language instructions. Can modify colors, add/remove elements, change style, fix issues, or transform the image. Uses gpt-image-1.5 edit endpoint with source image support.',
       parameters: {
         type: 'object',
         properties: {
@@ -151,7 +151,7 @@ export const imageTools: OpenAITool[] = [
     function: {
       name: 'create_diagram',
       description:
-        'Generate a professional diagram from a description. Supports flowcharts, architecture diagrams, sequence diagrams, mind maps, ER diagrams, network diagrams, and more. Uses Nano Banana Pro for high-quality text rendering.',
+        'Generate a professional diagram from a description. Supports flowcharts, architecture diagrams, sequence diagrams, mind maps, ER diagrams, network diagrams, and more. Uses gpt-image-1.5 for high-quality text rendering.',
       parameters: {
         type: 'object',
         properties: {

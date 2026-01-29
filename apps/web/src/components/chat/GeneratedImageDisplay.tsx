@@ -39,6 +39,8 @@ function SingleImage({ image, onZoom }: SingleImageProps) {
     document.body.removeChild(link);
   };
 
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied'>('idle');
+
   const handleShare = async () => {
     try {
       // Convert base64 to blob for sharing
@@ -52,8 +54,23 @@ function SingleImage({ image, onZoom }: SingleImageProps) {
           title: image.caption || 'Generated Image',
         });
       } else {
-        // Fallback: copy image URL to clipboard
-        await navigator.clipboard.writeText(`data:${image.mimeType};base64,${image.data}`);
+        // Fallback: copy the blob as image to clipboard (not raw base64 text)
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ [image.mimeType]: blob }),
+          ]);
+        } catch {
+          // If clipboard image write fails, trigger download instead
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `generated-image-${image.id}.${image.mimeType.split('/')[1] || 'png'}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(link.href);
+        }
+        setShareStatus('copied');
+        setTimeout(() => setShareStatus('idle'), 2000);
       }
     } catch (error) {
       console.error('Share failed:', error);

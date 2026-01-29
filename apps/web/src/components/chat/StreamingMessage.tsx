@@ -17,6 +17,7 @@ import {
   ThumbsDown,
   Volume2,
   Pause,
+  ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ToolExecutionList } from './ToolExecutionChip';
@@ -162,9 +163,9 @@ function getAgentConfig(role: AgentRole | 'user') {
     },
     imagegen: {
       name: 'ImageBot',
-      icon: Sparkles,
-      bgColor: 'bg-violet-500/20',
-      iconColor: 'text-violet-400',
+      icon: ImageIcon,
+      bgColor: 'bg-pink-500/20',
+      iconColor: 'text-pink-500',
     },
   };
 
