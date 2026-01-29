@@ -57,8 +57,10 @@ export const CalendarWidget = memo(function CalendarWidget({
   // Store state
   const {
     isAuthenticated,
+    isCheckingAuth,
     isSyncing,
     isExpanded,
+    error: calendarError,
     toggleExpanded,
   } = useCalendarStore();
 
@@ -90,12 +92,7 @@ export const CalendarWidget = memo(function CalendarWidget({
     setMounted(true);
   }, []);
 
-  // Initial sync on mount
-  useEffect(() => {
-    if (isAuthenticated) {
-      syncEvents();
-    }
-  }, [isAuthenticated, syncEvents]);
+  // Initialization is handled inside useCalendarSync hook
 
   // Handle event click
   const handleEventClick = useCallback((event: CalendarEventDisplay) => {
@@ -253,8 +250,18 @@ export const CalendarWidget = memo(function CalendarWidget({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
+          {/* Checking auth */}
+          {isCheckingAuth && (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <div className="text-center">
+                <div className="h-8 w-8 border-2 border-neon-primary/50 border-t-neon-primary rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-caption">Connecting...</p>
+              </div>
+            </div>
+          )}
+
           {/* Not authenticated - show link prompt */}
-          {!isAuthenticated && (
+          {!isCheckingAuth && !isAuthenticated && (
             <LinkCalendarPrompt onLink={linkCalendar} />
           )}
 
@@ -268,8 +275,26 @@ export const CalendarWidget = memo(function CalendarWidget({
             </div>
           )}
 
+          {/* Error state */}
+          {isAuthenticated && !isLoading && calendarError && (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <div className="text-center px-4">
+                <p className="text-caption text-red-400 mb-2">{calendarError}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => syncEvents({ forceRefresh: true })}
+                  disabled={isSyncing}
+                  className="text-xs"
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Authenticated - show content */}
-          {isAuthenticated && !isLoading && (
+          {isAuthenticated && !isLoading && !calendarError && (
             <AnimatePresence mode="wait">
               {compactView === 'upcoming' && (
                 <motion.div

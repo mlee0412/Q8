@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useCalendarStore, useVisibleEvents } from '@/lib/stores/calendar';
+import { useCalendarStore, useVisibleEvents, useFetchingEvents } from '@/lib/stores/calendar';
 import type { CalendarEvent, CalendarEventDisplay, UseCalendarEventsReturn } from '../types';
 
 /**
@@ -97,8 +97,9 @@ export function useCalendarEvents(options: {
   limit?: number;
   filter?: 'all' | 'today' | 'upcoming' | 'this-week';
 } = {}): UseCalendarEventsReturn {
-  const { calendars } = useCalendarStore();
+  const { calendars, isSyncing } = useCalendarStore();
   const visibleEvents = useVisibleEvents();
+  const isFetching = useFetchingEvents();
 
   const events = useMemo(() => {
     let filtered = visibleEvents;
@@ -159,9 +160,12 @@ export function useCalendarEvents(options: {
     return enriched;
   }, [visibleEvents, calendars, options]);
 
+  // Loading when syncing for the first time (no events yet) or actively fetching
+  const isLoading = (isSyncing || isFetching) && events.length === 0;
+
   return {
     events,
-    isLoading: false, // Events come from store, no loading state
+    isLoading,
     refetch: () => {
       // Events are reactive from store, no manual refetch needed
     },

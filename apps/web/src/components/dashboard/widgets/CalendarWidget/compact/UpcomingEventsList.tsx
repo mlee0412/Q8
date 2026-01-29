@@ -23,7 +23,11 @@ export const UpcomingEventsList = memo(function UpcomingEventsList({
   const hasMore = events.length > maxItems;
 
   if (events.length === 0) {
-    return null;
+    return (
+      <div className="flex-1 flex items-center justify-center h-full">
+        <p className="text-caption text-text-muted">No upcoming events</p>
+      </div>
+    );
   }
 
   return (

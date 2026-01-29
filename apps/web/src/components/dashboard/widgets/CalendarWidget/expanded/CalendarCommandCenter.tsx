@@ -8,6 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Menu,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -15,6 +17,7 @@ import { useCalendarStore } from '@/lib/stores/calendar';
 import { useCalendarSync } from '../hooks/useCalendarSync';
 import { useCalendarEvents } from '../hooks/useCalendarEvents';
 import { CalendarSidebar } from './CalendarSidebar';
+import { MiniCalendar } from '../components/MiniCalendar';
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
 import { DayView } from './DayView';
@@ -69,6 +72,7 @@ export const CalendarCommandCenter = memo(function CalendarCommandCenter({
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [createEventDate, setCreateEventDate] = useState<Date | undefined>();
   const [createEventHour, setCreateEventHour] = useState<number | undefined>();
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   // Initialize on mount
   useEffect(() => {
@@ -172,14 +176,14 @@ export const CalendarCommandCenter = memo(function CalendarCommandCenter({
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 z-10 text-white/70 hover:text-white"
+        className="absolute top-3 right-3 md:top-4 md:right-4 z-10 text-white/70 hover:text-white"
         onClick={onClose}
       >
         <Minimize2 className="h-5 w-5" />
       </Button>
 
       <div className="h-full flex">
-        {/* Sidebar */}
+        {/* Desktop Sidebar (hidden on mobile via CalendarSidebar's own class) */}
         <CalendarSidebar
           currentView={currentView}
           onViewChange={setCurrentView}
@@ -191,29 +195,152 @@ export const CalendarCommandCenter = memo(function CalendarCommandCenter({
           onAddEvent={() => handleCreateEvent(new Date())}
         />
 
+        {/* Mobile Sidebar Drawer */}
+        <AnimatePresence>
+          {showMobileSidebar && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-30 bg-black/60 md:hidden"
+                onClick={() => setShowMobileSidebar(false)}
+              />
+              {/* Drawer */}
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="fixed inset-y-0 left-0 z-40 w-72 bg-surface-2 border-r border-border-subtle flex flex-col md:hidden"
+              >
+                <div className="flex items-center justify-between p-4 border-b border-border-subtle">
+                  <span className="text-sm font-semibold text-text-primary">Calendar</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setShowMobileSidebar(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {/* Reuse sidebar content inline for mobile drawer */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      handleCreateEvent(new Date());
+                      setShowMobileSidebar(false);
+                    }}
+                    className="w-full bg-neon-primary/20 hover:bg-neon-primary/30 text-neon-primary"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Event
+                  </Button>
+
+                  <MiniCalendar
+                    selectedDate={currentDate}
+                    onDateSelect={(date) => {
+                      setCurrentDate(date);
+                      setShowMobileSidebar(false);
+                    }}
+                    events={events}
+                    highlightToday
+                    showNavigation
+                  />
+
+                  <div>
+                    <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">View</h3>
+                    <div className="grid grid-cols-2 gap-1">
+                      {(['month', 'week', 'day', 'agenda'] as const).map((view) => (
+                        <button
+                          key={view}
+                          onClick={() => {
+                            setCurrentView(view);
+                            setShowMobileSidebar(false);
+                          }}
+                          className={cn(
+                            'px-3 py-2 rounded-lg text-sm transition-colors',
+                            currentView === view
+                              ? 'bg-neon-primary/20 text-neon-primary'
+                              : 'text-text-secondary hover:bg-surface-4'
+                          )}
+                        >
+                          {view.charAt(0).toUpperCase() + view.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Calendars</h3>
+                    <div className="space-y-1">
+                      {calendars.map((calendar, index) => {
+                        const isSelected = selectedCalendarIds.includes(calendar.id);
+                        return (
+                          <button
+                            key={`mobile-${calendar.googleAccountId ?? ''}:${calendar.id}:${index}`}
+                            onClick={() => toggleCalendar(calendar.id)}
+                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left hover:bg-surface-4"
+                          >
+                            <div
+                              className="w-4 h-4 rounded border-2 flex-shrink-0"
+                              style={{
+                                borderColor: calendar.backgroundColor,
+                                backgroundColor: isSelected ? calendar.backgroundColor : 'transparent',
+                              }}
+                            />
+                            <span className={cn('truncate', isSelected ? 'text-text-primary' : 'text-text-muted')}>
+                              {calendar.summary}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-            <div className="flex items-center gap-4">
-              <Calendar className="h-6 w-6 text-neon-primary" />
-              <div>
-                <h1 className="text-xl font-bold text-white">{headerTitle}</h1>
-                <SyncStatus
-                  lastSyncAt={lastSyncAt}
-                  isSyncing={isSyncing}
-                  onSync={() => syncEvents({ forceRefresh: true })}
-                  error={error}
-                />
+          <div className="flex items-center justify-between px-3 py-3 md:px-6 md:py-4 border-b border-border-subtle">
+            <div className="flex items-center gap-2 md:gap-4 min-w-0">
+              {/* Mobile menu button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 md:hidden text-white/70 hover:text-white flex-shrink-0"
+                onClick={() => setShowMobileSidebar(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+
+              <Calendar className="h-5 w-5 md:h-6 md:w-6 text-neon-primary flex-shrink-0 hidden md:block" />
+              <div className="min-w-0">
+                <h1 className="text-base md:text-xl font-bold text-white truncate">{headerTitle}</h1>
+                <div className="hidden md:block">
+                  <SyncStatus
+                    lastSyncAt={lastSyncAt}
+                    isSyncing={isSyncing}
+                    onSync={() => syncEvents({ forceRefresh: true })}
+                    error={error}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={goToToday}
-                className="text-white/70 hover:text-white"
+                className="text-white/70 hover:text-white text-xs md:text-sm px-2 md:px-3"
               >
                 Today
               </Button>
@@ -222,7 +349,7 @@ export const CalendarCommandCenter = memo(function CalendarCommandCenter({
                   variant="ghost"
                   size="icon"
                   onClick={goToPrevious}
-                  className="h-8 w-8 text-white/70 hover:text-white"
+                  className="h-7 w-7 md:h-8 md:w-8 text-white/70 hover:text-white"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -230,26 +357,29 @@ export const CalendarCommandCenter = memo(function CalendarCommandCenter({
                   variant="ghost"
                   size="icon"
                   onClick={goToNext}
-                  className="h-8 w-8 text-white/70 hover:text-white"
+                  className="h-7 w-7 md:h-8 md:w-8 text-white/70 hover:text-white"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
               <Button
                 variant="default"
-                size="sm"
+                size="icon"
                 onClick={() => handleCreateEvent(new Date())}
-                className="ml-2 bg-neon-primary/20 hover:bg-neon-primary/30 text-neon-primary"
+                className="ml-1 md:ml-2 h-7 w-7 md:h-auto md:w-auto md:px-3 md:py-1.5 bg-neon-primary/20 hover:bg-neon-primary/30 text-neon-primary"
               >
-                <Plus className="h-4 w-4 mr-1" />
-                New Event
+                <Plus className="h-4 w-4 md:mr-1" />
+                <span className="hidden md:inline text-sm">New Event</span>
               </Button>
             </div>
           </div>
 
           {/* View Content */}
           <div className="flex-1 overflow-hidden flex">
-            <div className={cn('flex-1 overflow-auto', selectedEvent && 'mr-80')}>
+            <div className={cn(
+              'flex-1 overflow-auto',
+              selectedEvent && 'hidden md:block md:mr-80'
+            )}>
               <AnimatePresence mode="wait">
                 {currentView === 'month' && (
                   <motion.div

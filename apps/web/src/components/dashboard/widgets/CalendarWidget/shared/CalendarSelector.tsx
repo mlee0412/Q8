@@ -18,12 +18,12 @@ export const CalendarSelector = memo(function CalendarSelector({
 }: CalendarSelectorProps) {
   return (
     <div className="space-y-1">
-      {calendars.map((calendar) => {
+      {calendars.map((calendar, index) => {
         const isSelected = selectedIds.includes(calendar.id);
 
         return (
           <button
-            key={calendar.id}
+            key={`${calendar.googleAccountId ?? ''}:${calendar.id}:${index}`}
             type="button"
             onClick={() => onToggle(calendar.id)}
             className={cn(

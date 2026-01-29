@@ -40,10 +40,12 @@ export const DeleteConfirmModal = memo(function DeleteConfirmModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className={cn(
-              'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-              'z-50 w-full max-w-sm',
+              'fixed z-50',
+              'inset-x-3 top-1/2 -translate-y-1/2 md:inset-x-auto md:left-1/2 md:-translate-x-1/2',
+              'w-auto md:w-full max-w-sm',
               'bg-surface-2 rounded-2xl shadow-2xl',
-              'border border-border-subtle overflow-hidden'
+              'border border-border-subtle overflow-hidden',
+              'max-h-[90vh] overflow-y-auto'
             )}
           >
             {/* Header */}

@@ -47,7 +47,7 @@ export const CalendarSidebar = memo(function CalendarSidebar({
   const { events } = useCalendarEvents();
 
   return (
-    <div className="w-64 h-full border-r border-border-subtle bg-surface-2/50 flex flex-col">
+    <div className="hidden md:flex w-64 h-full border-r border-border-subtle bg-surface-2/50 flex-col">
       {/* Add Event Button */}
       <div className="p-4">
         <Button
@@ -107,12 +107,12 @@ export const CalendarSidebar = memo(function CalendarSidebar({
           My Calendars
         </h3>
         <div className="space-y-1">
-          {calendars.map((calendar) => {
+          {calendars.map((calendar, index) => {
             const isSelected = selectedCalendarIds.includes(calendar.id);
 
             return (
               <button
-                key={calendar.id}
+                key={`${calendar.googleAccountId ?? ''}:${calendar.id}:${index}`}
                 onClick={() => onCalendarToggle(calendar.id)}
                 className={cn(
                   'w-full flex items-center gap-2 px-2 py-1.5 rounded transition-colors',

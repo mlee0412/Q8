@@ -30,6 +30,8 @@ async function safeJsonParse<T>(response: Response): Promise<T | null> {
  * useCalendarSync Hook
  *
  * Handles Google Calendar authentication, data fetching, syncing, and CRUD operations.
+ *
+ * Mount sequence: checkAuth → fetchCalendars → syncEvents → fetchEvents
  */
 export function useCalendarSync(): UseCalendarSyncReturn {
   const {
@@ -52,18 +54,19 @@ export function useCalendarSync(): UseCalendarSyncReturn {
     setError,
     setAuthenticated,
     setCheckingAuth,
+    setFetchingEvents,
   } = useCalendarStore();
 
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncRef = useRef<number>(0);
+  const initRef = useRef(false);
 
   /**
    * Check if user has linked Google accounts with calendar access
    */
-  const checkAuth = useCallback(async () => {
+  const checkAuth = useCallback(async (): Promise<boolean> => {
     setCheckingAuth(true);
     try {
-      // Check for linked Google accounts via API
       const response = await fetch('/api/auth/google-accounts');
       if (!response.ok) {
         setAuthenticated(false);
@@ -85,14 +88,13 @@ export function useCalendarSync(): UseCalendarSyncReturn {
   /**
    * Fetch user's Google Calendar list
    */
-  const fetchCalendars = useCallback(async () => {
+  const fetchCalendars = useCallback(async (): Promise<boolean> => {
     setError(null);
 
     try {
       const response = await fetch('/api/calendar/list');
 
       if (!response.ok) {
-        // Try to parse error response for more details
         const errorData = await safeJsonParse<{
           error?: string;
           needsRelink?: boolean;
@@ -102,7 +104,6 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         if (response.status === 401 || response.status === 403) {
           setAuthenticated(false);
 
-          // Check if this is a scope issue (user linked before calendar scopes were added)
           if (errorData?.insufficientScopes || response.status === 403) {
             setError(
               'Calendar access denied. Please re-link your Google account to grant calendar permissions. Go to Settings > Link Google Account.'
@@ -113,7 +114,7 @@ export function useCalendarSync(): UseCalendarSyncReturn {
           } else {
             setError(ERROR_MESSAGES.AUTH_REQUIRED);
           }
-          return;
+          return false;
         }
         throw new Error(`Failed to fetch calendars: ${response.status}`);
       }
@@ -125,19 +126,59 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         logger.info('[Calendar Sync] Fetched calendars', {
           count: data.calendars.length,
         });
+        return data.calendars.length > 0;
       }
+      return false;
     } catch (err) {
       logger.error('[Calendar Sync] Error fetching calendars', { error: err });
       setError(ERROR_MESSAGES.FETCH_CALENDARS);
+      return false;
     }
   }, [setCalendars, setError, setAuthenticated]);
 
   /**
-   * Sync events from Google Calendar
+   * Fetch events from Supabase (via API)
+   */
+  const fetchEvents = useCallback(async () => {
+    // Read latest selectedCalendarIds from store to avoid stale closure
+    const currentIds = useCalendarStore.getState().selectedCalendarIds;
+    if (currentIds.length === 0) return;
+
+    setFetchingEvents(true);
+    try {
+      const params = new URLSearchParams({
+        calendarIds: currentIds.join(','),
+        timeMin: new Date(
+          Date.now() - SYNC_CONFIG.SYNC_PAST_DAYS * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        timeMax: new Date(
+          Date.now() + SYNC_CONFIG.SYNC_FUTURE_DAYS * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      });
+
+      const response = await fetch(`/api/calendar/events?${params}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events: ${response.status}`);
+      }
+
+      const data = await safeJsonParse<{ events: CalendarEvent[] }>(response);
+
+      if (data?.events) {
+        setEvents(data.events);
+      }
+    } catch (err) {
+      logger.error('[Calendar Sync] Error fetching events', { error: err });
+    } finally {
+      setFetchingEvents(false);
+    }
+  }, [setEvents, setFetchingEvents]);
+
+  /**
+   * Sync events from Google Calendar to Supabase, then fetch from Supabase
    */
   const syncEvents = useCallback(
     async (options: { forceRefresh?: boolean } = {}) => {
-      // Prevent rapid re-syncing
       const now = Date.now();
       if (
         now - lastSyncRef.current < 30000 &&
@@ -147,7 +188,9 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         return;
       }
 
-      if (selectedCalendarIds.length === 0) {
+      // Read latest from store to avoid stale closure
+      const currentIds = useCalendarStore.getState().selectedCalendarIds;
+      if (currentIds.length === 0) {
         logger.warn('[Calendar Sync] No calendars selected');
         return;
       }
@@ -161,7 +204,7 @@ export function useCalendarSync(): UseCalendarSyncReturn {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            calendarIds: selectedCalendarIds,
+            calendarIds: currentIds,
             forceRefresh: options.forceRefresh,
           }),
         });
@@ -188,7 +231,7 @@ export function useCalendarSync(): UseCalendarSyncReturn {
             deleted: data.deleted,
           });
 
-          // Fetch fresh events after sync
+          // Fetch fresh events from Supabase after sync
           await fetchEvents();
         }
       } catch (err) {
@@ -198,41 +241,8 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         setSyncing(false);
       }
     },
-    [selectedCalendarIds, setSyncing, setError, setLastSyncAt, setAuthenticated]
+    [fetchEvents, setSyncing, setError, setLastSyncAt, setAuthenticated]
   );
-
-  /**
-   * Fetch events from API
-   */
-  const fetchEvents = useCallback(async () => {
-    if (selectedCalendarIds.length === 0) return;
-
-    try {
-      const params = new URLSearchParams({
-        calendarIds: selectedCalendarIds.join(','),
-        timeMin: new Date(
-          Date.now() - SYNC_CONFIG.SYNC_PAST_DAYS * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        timeMax: new Date(
-          Date.now() + SYNC_CONFIG.SYNC_FUTURE_DAYS * 24 * 60 * 60 * 1000
-        ).toISOString(),
-      });
-
-      const response = await fetch(`/api/calendar/events?${params}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch events: ${response.status}`);
-      }
-
-      const data = await safeJsonParse<{ events: CalendarEvent[] }>(response);
-
-      if (data?.events) {
-        setEvents(data.events);
-      }
-    } catch (err) {
-      logger.error('[Calendar Sync] Error fetching events', { error: err });
-    }
-  }, [selectedCalendarIds, setEvents]);
 
   /**
    * Create a new event
@@ -256,7 +266,7 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         throw new Error(ERROR_MESSAGES.CREATE_EVENT);
       }
 
-      // Add to local store
+      // Add to local store optimistically
       addEvent(data.event);
 
       logger.info('[Calendar Sync] Event created', { eventId: data.event.id });
@@ -273,7 +283,6 @@ export function useCalendarSync(): UseCalendarSyncReturn {
       eventId: string,
       updates: Partial<CalendarEventInput>
     ): Promise<CalendarEvent> => {
-      // Find the event to get calendar ID
       const existingEvent = events.find((e) => e.google_event_id === eventId);
       if (!existingEvent) {
         throw new Error('Event not found');
@@ -300,7 +309,6 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         throw new Error(ERROR_MESSAGES.UPDATE_EVENT);
       }
 
-      // Update in local store
       updateEventInStore(existingEvent.id, data.event);
 
       logger.info('[Calendar Sync] Event updated', { eventId: data.event.id });
@@ -325,7 +333,6 @@ export function useCalendarSync(): UseCalendarSyncReturn {
         throw new Error(errorData?.error || ERROR_MESSAGES.DELETE_EVENT);
       }
 
-      // Find and remove from local store
       const localEvent = events.find(
         (e) =>
           e.google_event_id === eventId && e.google_calendar_id === calendarId
@@ -343,7 +350,6 @@ export function useCalendarSync(): UseCalendarSyncReturn {
    * Initiate Google Calendar linking (add new account)
    */
   const linkCalendar = useCallback(async () => {
-    // Redirect to add Google account flow
     const redirect = encodeURIComponent(window.location.pathname);
     window.location.href = `/api/auth/add-google-account?scopes=calendar&redirect=${redirect}`;
   }, []);
@@ -374,17 +380,35 @@ export function useCalendarSync(): UseCalendarSyncReturn {
     }
   }, []);
 
-  // Check auth on mount
+  /**
+   * Full initialization sequence: checkAuth → fetchCalendars → syncEvents
+   * Runs once on mount.
+   */
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (initRef.current) return;
+    initRef.current = true;
 
-  // Cleanup on unmount
-  useEffect(() => {
+    const initialize = async () => {
+      const hasAuth = await checkAuth();
+      if (!hasAuth) return;
+
+      const hasCalendars = await fetchCalendars();
+      if (!hasCalendars) return;
+
+      // syncEvents will read selectedCalendarIds from store (set by fetchCalendars → setCalendars)
+      await syncEvents();
+
+      // Start periodic background sync
+      startPeriodicSync();
+    };
+
+    initialize();
+
     return () => {
       stopPeriodicSync();
     };
-  }, [stopPeriodicSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     // Data

@@ -1,17 +1,19 @@
 /**
  * Calendar Events API
  *
- * GET /api/calendar/events - Fetch events from Google Calendar
- * POST /api/calendar/events - Create a new event
- * PUT /api/calendar/events - Update an existing event
- * DELETE /api/calendar/events - Delete an event
+ * GET /api/calendar/events - Fetch events from Supabase (synced from Google Calendar)
+ * POST /api/calendar/events - Create a new event on Google Calendar
+ * PUT /api/calendar/events - Update an existing event on Google Calendar
+ * DELETE /api/calendar/events - Delete an event from Google Calendar
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { getAuthenticatedUser, unauthorizedResponse } from '@/lib/auth/api-auth';
 import { getGoogleProviderToken, refreshGoogleToken } from '@/lib/auth/google-token';
 import { logger } from '@/lib/logger';
+import { getServerEnv } from '@/lib/env';
 import type {
   CalendarEvent,
   CalendarEventInput,
@@ -22,6 +24,13 @@ import type {
 } from '@/components/dashboard/widgets/CalendarWidget/types';
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
+
+const serverEnv = getServerEnv();
+
+const supabaseAdmin = createClient(
+  serverEnv.NEXT_PUBLIC_SUPABASE_URL,
+  serverEnv.SUPABASE_SERVICE_ROLE_KEY
+);
 
 interface GoogleCalendarEvent {
   id: string;
@@ -96,7 +105,7 @@ async function getValidAccessToken(): Promise<{ accessToken: string | null; erro
 }
 
 /**
- * Transform Google Calendar event to our format
+ * Transform Google Calendar event to our format (used for create/update responses)
  */
 function transformEvent(
   event: GoogleCalendarEvent,
@@ -104,7 +113,6 @@ function transformEvent(
   calendarName: string,
   userId: string
 ): CalendarEvent {
-  // Get meeting URL from various sources
   const meetingUrl =
     event.hangoutLink ||
     event.conferenceData?.entryPoints?.find(
@@ -152,12 +160,13 @@ function transformEvent(
 /**
  * GET /api/calendar/events
  *
+ * Reads events from Supabase calendar_events table (populated by sync route).
+ * This avoids multi-account token issues since sync already handles that.
+ *
  * Query params:
  * - calendarIds: Comma-separated calendar IDs (required)
  * - timeMin: ISO date string for start of range
  * - timeMax: ISO date string for end of range
- * - maxResults: Number of results per calendar (default 250)
- * - singleEvents: Expand recurring events (default true)
  */
 export async function GET(request: NextRequest) {
   const user = await getAuthenticatedUser(request);
@@ -173,8 +182,6 @@ export async function GET(request: NextRequest) {
   const timeMax =
     searchParams.get('timeMax') ||
     new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-  const maxResults = parseInt(searchParams.get('maxResults') || '250');
-  const singleEvents = searchParams.get('singleEvents') !== 'false';
 
   if (calendarIds.length === 0) {
     return NextResponse.json(
@@ -183,77 +190,57 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { accessToken, error: tokenError } = await getValidAccessToken();
-
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: tokenError || 'Authentication required', authenticated: false },
-      { status: 401 }
-    );
-  }
-
   try {
-    // Fetch events from each calendar in parallel
-    const eventsPromises = calendarIds.map(async (calendarId) => {
-      try {
-        const params = new URLSearchParams({
-          timeMin,
-          timeMax,
-          maxResults: maxResults.toString(),
-          singleEvents: singleEvents.toString(),
-          orderBy: 'startTime',
-        });
+    // Fetch events from Supabase (synced from Google Calendar by /api/calendar/sync)
+    const { data, error: dbError } = await supabaseAdmin
+      .from('calendar_events')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('google_calendar_id', calendarIds)
+      .gte('start_time', timeMin)
+      .lte('start_time', timeMax)
+      .neq('status', 'cancelled')
+      .order('start_time', { ascending: true });
 
-        const response = await fetch(
-          `${CALENDAR_API_BASE}/calendars/${encodeURIComponent(
-            calendarId
-          )}/events?${params}`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            cache: 'no-store',
-          }
-        );
+    if (dbError) {
+      logger.error('[Calendar Events] Supabase query failed', { error: dbError });
+      return NextResponse.json(
+        { error: 'Failed to fetch events from database' },
+        { status: 500 }
+      );
+    }
 
-        if (!response.ok) {
-          logger.warn('[Calendar Events] Failed to fetch from calendar', {
-            calendarId,
-            status: response.status,
-          });
-          return [];
-        }
+    const events: CalendarEvent[] = (data || []).map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      title: row.title,
+      description: row.description || undefined,
+      start_time: row.start_time,
+      end_time: row.end_time,
+      all_day: row.all_day || false,
+      location: row.location || undefined,
+      meeting_url: row.meeting_url || undefined,
+      attendees: row.attendees || [],
+      color: row.color || undefined,
+      calendar_name: row.calendar_name,
+      google_calendar_id: row.google_calendar_id,
+      google_event_id: row.google_event_id,
+      google_account_id: row.google_account_id || undefined,
+      recurrence: row.recurrence || undefined,
+      reminders: row.reminders || undefined,
+      status: row.status || 'confirmed',
+      visibility: row.visibility || undefined,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }));
 
-        const data = await response.json();
-
-        // Get calendar name from the calendar ID (or summary field if available)
-        const calendarName = calendarId.includes('@')
-          ? calendarId.split('@')[0] ?? calendarId
-          : calendarId;
-
-        return (data.items || [])
-          .filter((e: GoogleCalendarEvent) => e.status !== 'cancelled')
-          .map((event: GoogleCalendarEvent) =>
-            transformEvent(event, calendarId, calendarName, user.id)
-          );
-      } catch (err) {
-        logger.warn('[Calendar Events] Error fetching calendar', {
-          calendarId,
-          error: err,
-        });
-        return [];
-      }
+    logger.info('[Calendar Events] Fetched events from Supabase', {
+      userId: user.id,
+      calendarCount: calendarIds.length,
+      eventCount: events.length,
     });
 
-    const allEventsArrays = await Promise.all(eventsPromises);
-    const events = allEventsArrays.flat();
-
-    // Sort by start time
-    events.sort(
-      (a, b) =>
-        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
-    );
-
     const result: EventsResponse = { events };
-
     return NextResponse.json(result);
   } catch (error) {
     logger.error('[Calendar Events] Error fetching events', { error });

@@ -97,8 +97,9 @@ export const EventDetailPanel = memo(function EventDetailPanel({
       exit={{ opacity: 0, x: '100%' }}
       transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       className={cn(
-        'fixed right-0 top-0 bottom-0 w-80 z-40',
-        'bg-surface-2 border-l border-border-subtle',
+        'fixed right-0 top-0 bottom-0 z-40',
+        'w-full md:w-80',
+        'bg-surface-2 md:border-l border-border-subtle',
         'flex flex-col shadow-2xl'
       )}
     >

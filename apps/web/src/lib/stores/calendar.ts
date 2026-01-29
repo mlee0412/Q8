@@ -44,6 +44,9 @@ interface CalendarState {
   // Expanded state
   isExpanded: boolean;
 
+  // Fetching state
+  isFetchingEvents: boolean;
+
   // UI state
   isCreatingEvent: boolean;
   isEditingEvent: boolean;
@@ -81,6 +84,9 @@ interface CalendarState {
   // Actions - Auth
   setAuthenticated: (authenticated: boolean) => void;
   setCheckingAuth: (checking: boolean) => void;
+
+  // Actions - Fetching
+  setFetchingEvents: (fetching: boolean) => void;
 
   // Actions - UI
   toggleExpanded: () => void;
@@ -122,6 +128,9 @@ const initialState = {
 
   // Expanded state
   isExpanded: false,
+
+  // Fetching state
+  isFetchingEvents: false,
 
   // UI state
   isCreatingEvent: false,
@@ -308,6 +317,10 @@ export const useCalendarStore = create<CalendarState>()(
 
       setCheckingAuth: (isCheckingAuth) => set({ isCheckingAuth }),
 
+      // ========== FETCHING ACTIONS ==========
+
+      setFetchingEvents: (isFetchingEvents) => set({ isFetchingEvents }),
+
       // ========== UI ACTIONS ==========
 
       toggleExpanded: () => set((state) => ({ isExpanded: !state.isExpanded })),
@@ -371,6 +384,9 @@ export const useCalendarAuthenticated = () =>
   useCalendarStore((s) => s.isAuthenticated);
 export const useCheckingCalendarAuth = () =>
   useCalendarStore((s) => s.isCheckingAuth);
+
+// Fetching selectors
+export const useFetchingEvents = () => useCalendarStore((s) => s.isFetchingEvents);
 
 // UI selectors
 export const useCalendarExpanded = () => useCalendarStore((s) => s.isExpanded);

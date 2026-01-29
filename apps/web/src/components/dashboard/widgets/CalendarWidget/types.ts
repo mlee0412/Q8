@@ -369,7 +369,7 @@ export interface UseCalendarSyncReturn {
   error: string | null;
 
   // Actions
-  fetchCalendars: () => Promise<void>;
+  fetchCalendars: () => Promise<boolean>;
   syncEvents: (options?: { forceRefresh?: boolean }) => Promise<void>;
   createEvent: (event: CalendarEventInput) => Promise<CalendarEvent>;
   updateEvent: (eventId: string, event: Partial<CalendarEventInput>) => Promise<CalendarEvent>;

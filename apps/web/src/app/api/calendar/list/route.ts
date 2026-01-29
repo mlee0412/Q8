@@ -169,8 +169,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Deduplicate calendars across accounts.
+    // Same calendar ID can appear from multiple linked accounts.
+    // Keep the one with higher access (owner > writer > reader) or the first found.
+    const accessRank: Record<string, number> = {
+      owner: 4,
+      writer: 3,
+      reader: 2,
+      freeBusyReader: 1,
+    };
+    const calendarMap = new Map<string, GoogleCalendar>();
+    for (const cal of allCalendars) {
+      const existing = calendarMap.get(cal.id);
+      if (!existing) {
+        calendarMap.set(cal.id, cal);
+      } else {
+        // Keep the one with higher access role, or primary
+        const existingRank = accessRank[existing.accessRole] ?? 0;
+        const newRank = accessRank[cal.accessRole] ?? 0;
+        if (newRank > existingRank || (cal.primary && !existing.primary)) {
+          calendarMap.set(cal.id, cal);
+        }
+      }
+    }
+    const dedupedCalendars = Array.from(calendarMap.values());
+
     // Sort calendars: primary first, then by account, then alphabetically
-    allCalendars.sort((a, b) => {
+    dedupedCalendars.sort((a, b) => {
       // Primary calendars first
       if (a.primary && !b.primary) return -1;
       if (!a.primary && b.primary) return 1;
@@ -185,7 +210,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Check if we got any calendars
-    if (allCalendars.length === 0 && accountStatuses.every((s) => !s.success)) {
+    if (dedupedCalendars.length === 0 && accountStatuses.every((s) => !s.success)) {
       return NextResponse.json(
         {
           error: 'Failed to fetch calendars from all linked accounts. Please check account permissions.',
@@ -197,7 +222,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result: CalendarListResponse & { accountStatuses?: typeof accountStatuses } = {
-      calendars: allCalendars,
+      calendars: dedupedCalendars,
     };
 
     // Include account statuses if any had errors

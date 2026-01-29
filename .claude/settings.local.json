@@ -99,7 +99,10 @@
       "WebFetch(domain:platform.openai.com)",
       "Bash(vercel logs:*)",
       "WebFetch(domain:docs.x.ai)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(npx turbo build:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []
